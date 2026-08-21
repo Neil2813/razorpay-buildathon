@@ -184,11 +184,10 @@ def train():
     final_model.fit(X_train, y_train)
     print(f"[train] Training complete in {time.time()-t0:.1f}s.")
 
-    train_pred = final_model.predict(X_train)
-    print(f"[train] Training F1 (diagnostic only): {f1_score(y_train, train_pred):.4f}")
-
     # Threshold selection on held-out test set (no data leakage)
     threshold = find_threshold(final_model, X_test, y_test)
+    train_pred = (final_model.predict_proba(X_train)[:, 1] >= threshold).astype(int)
+    print(f"[train] Training F1 at selected threshold (diagnostic only): {f1_score(y_train, train_pred):.4f}")
 
     # Persist everything
     joblib.dump(final_model, MODEL_PATH)

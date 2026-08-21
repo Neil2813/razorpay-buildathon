@@ -33,6 +33,8 @@ The core of the transaction process is handled by a suite of specialized agents 
 
 PaySim fraud examples contain a near-deterministic balance-drain signature by design, particularly for `TRANSFER` and `CASH_OUT` transactions. This can produce unusually high separability and PR-AUC; it is not evidence of production-grade fraud detection. The model is presented as a demonstration trained on synthetic data, with held-out metrics reported transparently.
 
+`hybrid_model.joblib` is the only deployed model artifact. Any legacy `risk_model.json` file is historical and must not be used for inference or threshold generation.
+
 ---
 
 ## 🚀 Getting Started
