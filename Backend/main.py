@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
+from app.routes.profile import router as profile_router
 from app.routes.risk import router as risk_router
 from app.routes.webhooks import router as webhooks_router
 
@@ -59,6 +61,8 @@ def create_app() -> FastAPI:
 
     # Include Routers
     app.include_router(health_router)
+    app.include_router(auth_router, prefix=settings.API_V1_STR)
+    app.include_router(profile_router, prefix=settings.API_V1_STR)
     app.include_router(risk_router, prefix=settings.API_V1_STR)
     app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 
