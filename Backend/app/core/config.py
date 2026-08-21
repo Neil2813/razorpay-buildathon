@@ -16,8 +16,11 @@ class Settings(BaseModel):
     # CORS Configuration
     CORS_ORIGINS: list[str] = ["*"]
 
-    # Database Configuration
+    # Database & Supabase Configuration
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", os.path.join(BASE_DIR, "glassbox.db"))
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
     # Razorpay Integration Configuration
     RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "rzp_test_mock_key")
