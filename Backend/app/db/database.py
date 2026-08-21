@@ -79,11 +79,20 @@ def init_db():
         payment_status TEXT NOT NULL CHECK (payment_status IN ('pending', 'success', 'failed', 'escalated')),
         chosen_product_id TEXT,
         risk_score REAL,
+        idempotency_key TEXT,
+        state_json TEXT NOT NULL DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE,
         FOREIGN KEY (chosen_product_id) REFERENCES catalog (product_id) ON DELETE SET NULL
     );
     """)
+
+    # Lightweight forward migrations for existing demo databases.
+    transaction_columns = {row[1] for row in cursor.execute("PRAGMA table_info(transactions);")}
+    if "idempotency_key" not in transaction_columns:
+        cursor.execute("ALTER TABLE transactions ADD COLUMN idempotency_key TEXT;")
+    if "state_json" not in transaction_columns:
+        cursor.execute("ALTER TABLE transactions ADD COLUMN state_json TEXT NOT NULL DEFAULT '{}';")
 
     # 5. Audit Events Table
     cursor.execute("""
@@ -255,6 +264,76 @@ def get_tenant_ceiling(tenant_id: str) -> float:
     row = cursor.fetchone()
     conn.close()
     return float(row["unattended_spend_ceiling"]) if row else 5000.0
+
+
+# ---------------------------------------------------------------------------
+# Transaction checkpointing (write-ahead state and audit persistence)
+# ---------------------------------------------------------------------------
+def checkpoint_transaction(state: dict[str, Any], *, from_event_index: int = 0) -> int:
+    """Atomically save current state and newly appended audit events.
+
+    Callers must use this before an irreversible external side effect, such as
+    a payment gateway request. The stored state includes the idempotency key so
+    a resumed transaction can use the same provider request identity.
+    """
+    conn = get_db_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR IGNORE INTO tenants (tenant_id, name) VALUES (?, ?);",
+                (state["tenant_id"], f"Tenant {state['tenant_id']}"),
+            )
+            chosen_product = state.get("chosen_product") or {}
+            cursor.execute(
+                """
+                INSERT INTO transactions (
+                    session_id, tenant_id, user_message, payment_status,
+                    chosen_product_id, risk_score, idempotency_key, state_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    payment_status = excluded.payment_status,
+                    chosen_product_id = excluded.chosen_product_id,
+                    risk_score = excluded.risk_score,
+                    idempotency_key = COALESCE(transactions.idempotency_key, excluded.idempotency_key),
+                    state_json = excluded.state_json
+                """,
+                (
+                    state["session_id"], state["tenant_id"], state["user_message"],
+                    state["payment_status"], chosen_product.get("product_id"), state.get("risk_score"),
+                    state.get("idempotency_key"), json.dumps(state, default=str),
+                ),
+            )
+            for event in state.get("audit_log", [])[from_event_index:]:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO audit_events (
+                        event_id, session_id, tenant_id, timestamp, agent,
+                        inputs_summary, output_summary, decision_reason
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        event["event_id"], state["session_id"], state["tenant_id"], event["timestamp"], event["agent"],
+                        json.dumps(event["inputs_summary"], default=str), json.dumps(event["output_summary"], default=str),
+                        event["decision_reason"],
+                    ),
+                )
+        return len(state.get("audit_log", []))
+    finally:
+        conn.close()
+
+
+def load_transaction_checkpoint(session_id: str, tenant_id: str) -> dict[str, Any] | None:
+    """Load state only when the caller proves the transaction's tenant scope."""
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT state_json FROM transactions WHERE session_id = ? AND tenant_id = ?;",
+            (session_id, tenant_id),
+        ).fetchone()
+        return json.loads(row["state_json"]) if row else None
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .groq_client import FAST_MODEL, complete_json
 from .state import TransactionState, audit_event
@@ -14,7 +14,16 @@ class PaymentGateway(Protocol):
                idempotency_key: str) -> dict[str, Any]: ...
 
 
-def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR") -> TransactionState:
+def prepare_idempotency_key(state: TransactionState) -> str:
+    """Create a stable payment identity that survives retries and resumptions."""
+    product = state.get("chosen_product") or {}
+    key = state.get("idempotency_key") or f"{state['session_id']}:{product.get('product_id', 'product')}"
+    state["idempotency_key"] = key
+    return key
+
+
+def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR",
+        before_first_charge: Callable[[TransactionState], None] | None = None) -> TransactionState:
     """Try once plus exactly one retry; never charge after an escalation."""
     if not state.get("guardrail_passed") or state.get("requires_confirmation"):
         state["payment_status"] = "escalated"
@@ -28,8 +37,9 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
         return state
     # Persist the key in state before the first external side effect. Retries and
     # a resumed graph invocation must reuse it rather than create another charge.
-    idempotency_key = state.get("idempotency_key") or f"{state['session_id']}:{product.get('product_id', 'product')}"
-    state["idempotency_key"] = idempotency_key
+    idempotency_key = prepare_idempotency_key(state)
+    if before_first_charge:
+        before_first_charge(state)
     for attempt_number in range(1, 3):
         try:
             result = gateway.charge(

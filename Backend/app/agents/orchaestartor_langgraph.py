@@ -12,24 +12,46 @@ from . import catalog_agent, concierge_agent, decision_agent, ledger_agent, paym
 from .state import TransactionState, new_transaction_state
 
 
-def run_transaction(*, tenant_id: str, user_message: str, catalog: Iterable[dict[str, Any]], guardrail_ceiling: float, transaction: dict[str, Any], gateway: payment_execution_agent.PaymentGateway | None = None, session_id: str | None = None) -> TransactionState:
+def run_transaction(*, tenant_id: str, user_message: str, catalog: Iterable[dict[str, Any]], guardrail_ceiling: float, transaction: dict[str, Any], gateway: payment_execution_agent.PaymentGateway | None = None, session_id: str | None = None, ledger: ledger_agent.SQLiteLedger | None = None) -> TransactionState:
     """Run a purchase request through the guarded graph and return its full audit trail."""
     state = new_transaction_state(tenant_id=tenant_id, user_message=user_message, session_id=session_id)
+    ledger = ledger or ledger_agent.SQLiteLedger()
+    event_index = 0
+
+    def checkpoint(current_state: TransactionState) -> None:
+        nonlocal event_index
+        event_index = ledger.checkpoint(current_state, from_index=event_index)
+
     concierge_agent.run(state)
+    checkpoint(state)
     if state["intent"].get("needs_clarification"):
         state["payment_status"] = "escalated"
         state["escalation_message"] = state["intent"]["clarification_reason"]
-        return ledger_agent.finalize(state)
+        ledger_agent.finalize(state)
+        checkpoint(state)
+        return state
     catalog_agent.run(state, catalog)
+    checkpoint(state)
     decision_agent.run(state, guardrail_ceiling=guardrail_ceiling)
+    checkpoint(state)
     if not state["guardrail_passed"]:
-        return ledger_agent.finalize(state)
+        ledger_agent.finalize(state)
+        checkpoint(state)
+        return state
     risk_agent.run(state, transaction)
+    checkpoint(state)
     if state.get("requires_confirmation"):
-        return ledger_agent.finalize(state)
+        ledger_agent.finalize(state)
+        checkpoint(state)
+        return state
     if gateway is None:
         state["payment_status"] = "escalated"
         state["escalation_message"] = "A payment gateway is required before a charge can be attempted."
-        return ledger_agent.finalize(state)
-    payment_execution_agent.run(state, gateway)
-    return ledger_agent.finalize(state)
+        ledger_agent.finalize(state)
+        checkpoint(state)
+        return state
+    payment_execution_agent.run(state, gateway, before_first_charge=checkpoint)
+    checkpoint(state)
+    ledger_agent.finalize(state)
+    checkpoint(state)
+    return state

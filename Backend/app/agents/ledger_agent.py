@@ -9,6 +9,17 @@ from .groq_client import REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
 
 
+class SQLiteLedger:
+    """Write-ahead SQLite checkpoint store used by the transaction graph."""
+    def __init__(self) -> None:
+        from app.db.database import init_db
+        init_db()
+
+    def checkpoint(self, state: TransactionState, *, from_index: int = 0) -> int:
+        from app.db.database import checkpoint_transaction
+        return checkpoint_transaction(state, from_event_index=from_index)
+
+
 class InMemoryLedger:
     """Small repository for demos/tests; replace with a durable DB adapter in deployment."""
     def __init__(self) -> None:
