@@ -184,6 +184,9 @@ def train():
     final_model.fit(X_train, y_train)
     print(f"[train] Training complete in {time.time()-t0:.1f}s.")
 
+    train_pred = final_model.predict(X_train)
+    print(f"[train] Training F1 (diagnostic only): {f1_score(y_train, train_pred):.4f}")
+
     # Threshold selection on held-out test set (no data leakage)
     threshold = find_threshold(final_model, X_test, y_test)
 

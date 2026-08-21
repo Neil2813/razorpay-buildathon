@@ -42,16 +42,6 @@ def predict_risk_fallback(
             score += 0.25
 
     score = min(max(score, 0.0), 1.0)
-    threshold = 0.999750
-    is_flagged = score >= threshold
-
-    if score < 0.3:
-        risk_level = "LOW"
-    elif score < threshold:
-        risk_level = "MEDIUM"
-    else:
-        risk_level = "HIGH"
-
     top_features = [
         {
             "feature": "balance_delta_orig",
@@ -73,18 +63,13 @@ def predict_risk_fallback(
         },
     ]
 
-    flag_str = "[FLAGGED]" if is_flagged else "[CLEAR]"
     explanation = (
-        f"{flag_str} - Risk score {score:.2%} "
-        f"({'above' if is_flagged else 'below'} threshold {threshold:.4f}). "
+        f"[FALLBACK] - Risk score {score:.2%}. "
         f"Top signal (Fallback Rule): Change in sender's balance = {balance_delta_orig:.2f}."
     )
 
     return {
         "risk_score": round(score, 6),
-        "risk_level": risk_level,
-        "is_flagged": is_flagged,
-        "threshold": threshold,
         "top_features": top_features,
         "explanation": explanation,
         "model": "Rule-based Risk Engine (Fallback)",
@@ -140,6 +125,7 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
         "top_features": result["top_features"],
         "model": result["model"],
         "source": source,
+        "explanation": result.get("explanation"),
     }
 
     if risk_score > confirmation_threshold:
@@ -161,6 +147,7 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
             "threshold": confirmation_threshold,
             "requires_confirmation": state["requires_confirmation"],
             "model_source": source,
+            "explanation": result.get("explanation"),
         },
     )
     return state

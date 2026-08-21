@@ -29,6 +29,10 @@ The core of the transaction process is handled by a suite of specialized agents 
 *   **Instant Load:** The `.joblib` model artifact is loaded instantly into memory during the FastAPI lifespan startup event.
 *   **Safe Fallback:** If the environment lacks ML dependencies (like `xgboost` or `lightgbm`), the API automatically falls back to a deterministic rule-based risk calculator without crashing.
 
+### Evaluation caveat: PaySim is synthetic
+
+PaySim fraud examples contain a near-deterministic balance-drain signature by design, particularly for `TRANSFER` and `CASH_OUT` transactions. This can produce unusually high separability and PR-AUC; it is not evidence of production-grade fraud detection. The model is presented as a demonstration trained on synthetic data, with held-out metrics reported transparently.
+
 ---
 
 ## 🚀 Getting Started

@@ -104,11 +104,11 @@ def evaluate():
     print("\n" + "="*60)
     print("  GlassBox Hybrid Risk Agent -- Evaluation Results")
     print("  Model: XGBoost + LightGBM Soft-Voting Ensemble")
-    print("  Dataset: Full PaySim (6.36M rows), 20%% held-out test set")
+    print("  Dataset: Full PaySim (6.36M rows), 20% held-out test set")
     print("="*60)
     print(f"  Decision Threshold : {threshold:.6f}")
-    print(f"  Precision          : {precision:.4f}  ({precision*100:.1f}%%)")
-    print(f"  Recall             : {recall:.4f}  ({recall*100:.1f}%%)")
+    print(f"  Precision          : {precision:.4f}  ({precision*100:.1f}%)")
+    print(f"  Recall             : {recall:.4f}  ({recall*100:.1f}%)")
     print(f"  F1 Score           : {f1:.4f}")
     print(f"  PR-AUC             : {pr_auc:.4f}")
     print(f"\n  Confusion Matrix:")
@@ -116,8 +116,8 @@ def evaluate():
     print(f"    False Positives (FP) : {fp:,}  <- legit txns flagged (friction cost)")
     print(f"    False Negatives (FN) : {fn:,}  <- fraud missed (risk exposure)")
     print(f"    True Positives  (TP) : {tp:,}")
-    print(f"\n  False Positive Rate : {fp/(fp+tn)*100:.4f}%% of legit txns flagged")
-    print(f"  False Negative Rate : {fn/(fn+tp)*100:.2f}%% of fraud missed")
+    print(f"\n  False Positive Rate : {fp/(fp+tn)*100:.4f}% of legit txns flagged")
+    print(f"  False Negative Rate : {fn/(fn+tp)*100:.2f}% of fraud missed")
     print("\n  Full Classification Report:")
     print(classification_report(y_test, y_pred, target_names=["Legit", "Fraud"]))
 
@@ -132,13 +132,7 @@ def evaluate():
     for fname, score in importances.head(5).items():
         print(f"    {fname:<35} {score:.4f}")
 
-    # Overfitting check: train score vs test score
-    print("\n  Anti-Overfitting Check:")
-    train_proba_sample = model.predict_proba(X_test[:10_000])[:, 1]
-    train_pred_sample  = (train_proba_sample >= threshold).astype(int)
-    test_f1  = f1
-    print(f"    Test  F1: {test_f1:.4f}")
-    print("    (Compare with CV F1 printed during training -- should be within +/- 0.03)")
+    print("\n  Generalization note: compare this held-out F1 with the training F1 and CV F1 printed by train.py.")
 
     # PR Curve plot
     plt.figure(figsize=(8, 5))
@@ -164,9 +158,9 @@ def evaluate():
     print("-"*60)
     print(f"""
   "Trained on the full synthetic PaySim dataset (6.36M transactions),
-  our XGBoost+LightGBM hybrid ensemble achieves {precision*100:.1f}%% precision
-  and {recall*100:.1f}%% recall on a held-out test set of {n_total:,} transactions.
-  At our chosen threshold ({threshold:.4f}), {fp_rate_pct}%% of flagged
+  our XGBoost+LightGBM hybrid ensemble achieves {precision*100:.1f}% precision
+  and {recall*100:.1f}% recall on a held-out test set of {n_total:,} transactions.
+  At our chosen threshold ({threshold:.4f}), {fp_rate_pct}% of flagged
   transactions are false positives -- a deliberate tradeoff favoring fraud
   capture appropriate for a demonstration system."
 """)
