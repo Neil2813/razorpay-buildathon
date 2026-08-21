@@ -1,5 +1,5 @@
 """
-Risk Assessment API Routes.
+Risk Assessment API Routes with safe ML and rule-based fallback handling.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -10,7 +10,7 @@ try:
     HAS_ML = True
 except (ImportError, ModuleNotFoundError):
     HAS_ML = False
-    from app.agents.risk_agent import predict_risk_fallback as predict_risk
+    predict_risk = None
 
 router = APIRouter(prefix="/risk", tags=["Risk Agent"])
 
@@ -25,33 +25,40 @@ router = APIRouter(prefix="/risk", tags=["Risk Agent"])
     ),
 )
 def predict(body: TransactionRequest):
-    try:
-        result = predict_risk(
-            amount=body.amount,
-            transaction_type=body.transaction_type,
-            old_balance_orig=body.old_balance_orig,
-            new_balance_orig=body.new_balance_orig,
-            old_balance_dest=body.old_balance_dest,
-            new_balance_dest=body.new_balance_dest,
-        )
-    except FileNotFoundError as e:
-        # If the model file itself isn't found but ML dependencies exist, we can also fallback gracefully
-        if not HAS_ML:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Model not available: {str(e)}. Run `python app/ml/train.py` first.",
+    result = None
+    
+    # Attempt ML inference if dependencies are present
+    if HAS_ML and predict_risk is not None:
+        try:
+            result = predict_risk(
+                amount=body.amount,
+                transaction_type=body.transaction_type,
+                old_balance_orig=body.old_balance_orig,
+                new_balance_orig=body.new_balance_orig,
+                old_balance_dest=body.old_balance_dest,
+                new_balance_dest=body.new_balance_dest,
             )
-        # Otherwise run fallback to keep API functional
-        from app.agents.risk_agent import predict_risk_fallback
-        result = predict_risk_fallback(
-            amount=body.amount,
-            transaction_type=body.transaction_type,
-            old_balance_orig=body.old_balance_orig,
-            new_balance_orig=body.new_balance_orig,
-            old_balance_dest=body.old_balance_dest,
-            new_balance_dest=body.new_balance_dest,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+        except (FileNotFoundError, ImportError, ModuleNotFoundError) as e:
+            print(f"[routes/risk] ML prediction failed on loading/dependencies: {e}. Using fallback.")
+        except Exception as e:
+            print(f"[routes/risk] ML prediction failed on runtime error: {e}. Using fallback.")
+
+    # Fallback to rule-based risk agent logic if ML inference failed or was unavailable
+    if result is None:
+        try:
+            from app.agents.risk_agent import predict_risk_fallback
+            result = predict_risk_fallback(
+                amount=body.amount,
+                transaction_type=body.transaction_type,
+                old_balance_orig=body.old_balance_orig,
+                new_balance_orig=body.new_balance_orig,
+                old_balance_dest=body.old_balance_dest,
+                new_balance_dest=body.new_balance_dest,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Inference and fallback both failed: {str(e)}",
+            )
 
     return RiskPredictionResponse(**result)

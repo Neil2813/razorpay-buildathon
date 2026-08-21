@@ -2,7 +2,10 @@
 Core configuration settings for GlassBox Backend.
 """
 
+import os
 from pydantic import BaseModel
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class Settings(BaseModel):
@@ -12,6 +15,9 @@ class Settings(BaseModel):
 
     # CORS Configuration
     CORS_ORIGINS: list[str] = ["*"]
+
+    # Database Configuration
+    DATABASE_PATH: str = os.getenv("DATABASE_PATH", os.path.join(BASE_DIR, "glassbox.db"))
 
 
 settings = Settings()
