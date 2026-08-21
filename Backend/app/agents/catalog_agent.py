@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from .groq_client import FAST_MODEL, complete_json
 from .state import TransactionState, audit_event
 
 
@@ -37,6 +38,10 @@ def run(state: TransactionState, catalog: Iterable[dict[str, Any]]) -> Transacti
         candidates.append(candidate)
     # Ranking occurs only within deterministic, real catalog rows.
     candidates.sort(key=lambda item: (not item["structured_policy_flags"]["within_stated_budget"], float(item["price"])))
+    for candidate in candidates:
+        phrasing = complete_json(model=FAST_MODEL, system="Write JSON: {\"reason\": string}. Explain a catalog match using only supplied facts.", user=str({"intent": intent, "product": candidate}))
+        if isinstance(phrasing, dict) and isinstance(phrasing.get("reason"), str):
+            candidate["match_reason"] = phrasing["reason"]
     state["catalog_candidates"] = candidates
     audit_event(state, agent="catalog", decision_reason="Applied stock, category, size and colour filters before ranking.",
                 inputs_summary={"intent": intent}, output_summary={"candidate_count": len(candidates)})

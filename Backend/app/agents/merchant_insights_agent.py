@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, Iterable
 
+from .groq_client import FAST_MODEL, complete_json
+
 
 def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
     """Compute only traceable facts; callers may phrase them with an LLM separately."""
@@ -15,4 +17,8 @@ def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
     selected = [item for item in selected if item]
     successful = sum(e.get("output_summary", {}).get("payment_id") is not None for e in payments)
     escalation_reasons = Counter(e.get("decision_reason", "Unknown") for e in rows if "escalat" in e.get("decision_reason", "").lower())
-    return {"transaction_event_count": len(rows), "selected_sku_counts": dict(Counter(selected)), "payment_success_count": successful, "payment_attempt_event_count": len(payments), "top_escalation_reasons": dict(escalation_reasons.most_common(3)), "sample_size_note": f"Based on {len(rows)} logged events."}
+    insights = {"transaction_event_count": len(rows), "selected_sku_counts": dict(Counter(selected)), "payment_success_count": successful, "payment_attempt_event_count": len(payments), "top_escalation_reasons": dict(escalation_reasons.most_common(3)), "sample_size_note": f"Based on {len(rows)} logged events."}
+    phrasing = complete_json(model=FAST_MODEL, system="Return JSON {\"summary\": string}. State only the aggregate figures supplied.", user=str(insights))
+    if isinstance(phrasing, dict) and isinstance(phrasing.get("summary"), str):
+        insights["summary"] = phrasing["summary"]
+    return insights

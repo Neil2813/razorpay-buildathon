@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .groq_client import REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
 
 
@@ -34,7 +35,18 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
 
 
 def run(state: TransactionState) -> TransactionState:
-    intent = parse_intent_fallback(state["user_message"])
+    fallback = parse_intent_fallback(state["user_message"])
+    llm_intent = complete_json(
+        model=REASONING_MODEL,
+        system=("Extract buyer intent as JSON with category, budget_max, size, color, deadline, "
+                "needs_clarification. Never invent a budget."),
+        user=state["user_message"],
+    )
+    # The fallback enforces required bounds even if an LLM responds malformed.
+    intent = fallback if not isinstance(llm_intent, dict) else {**fallback, **{key: llm_intent.get(key, fallback[key]) for key in fallback}}
+    intent["needs_clarification"] = intent.get("budget_max") is None
+    if intent["needs_clarification"]:
+        intent["clarification_reason"] = fallback["clarification_reason"]
     state["intent"] = intent
     audit_event(state, agent="concierge", decision_reason="Parsed bounded buyer preferences.",
                 inputs_summary={"message": state["user_message"]},

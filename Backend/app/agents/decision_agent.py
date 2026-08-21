@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .groq_client import REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
 
 
@@ -18,7 +19,8 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         state["escalation_message"] = "I couldn't find an in-stock item matching those requirements."
         audit_event(state, agent="negotiation", decision_reason="No eligible catalog candidates; payment is unavailable.")
         return state
-    chosen = candidates[0]
+    proposal = complete_json(model=REASONING_MODEL, system="Choose the best product_id from the supplied candidates. Return JSON {\"product_id\": string}. Do not propose another product.", user=str({"intent": state["intent"], "candidates": candidates}))
+    chosen = next((item for item in candidates if item.get("product_id") == (proposal or {}).get("product_id")), candidates[0])
     price = float(chosen["price"])
     passed = check_guardrail(price, state["guardrail_ceiling"])
     state["chosen_product"] = chosen

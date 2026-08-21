@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from .groq_client import FAST_MODEL, complete_json
 from .state import TransactionState, audit_event
 
 
@@ -36,6 +37,8 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
         except Exception as exc:
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})
     state["payment_status"] = "escalated"
-    state["escalation_message"] = "Payment could not be completed after one retry. No further charge will be attempted."
+    fallback_message = "Payment could not be completed after one retry. No further charge will be attempted."
+    phrasing = complete_json(model=FAST_MODEL, system="Return JSON {\"message\": string}. Explain a failed payment clearly, and state that no further charge will be attempted.", user=str(state["payment_attempts"]))
+    state["escalation_message"] = phrasing.get("message", fallback_message) if isinstance(phrasing, dict) else fallback_message
     audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"])})
     return state
