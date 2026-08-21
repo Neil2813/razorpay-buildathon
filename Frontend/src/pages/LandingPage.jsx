@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
+  const { user } = useAuth();
+
   return (
     <div className="flex flex-col h-screen justify-center items-center text-center">
       <div className="glass-box" style={{ maxWidth: '800px', width: '90%' }}>
@@ -17,8 +20,8 @@ export default function LandingPage() {
         </p>
         
         <div style={{ marginTop: '2rem' }}>
-          <Link to="/checkout" className="btn-primary">
-            Experience Agent Checkout
+          <Link to={user ? "/checkout" : "/login"} className="btn-primary">
+            {user ? "Continue to Checkout" : "Log In to Start"}
           </Link>
         </div>
       </div>
