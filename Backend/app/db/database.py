@@ -285,6 +285,15 @@ def checkpoint_transaction(state: dict[str, Any], *, from_event_index: int = 0) 
                 (state["tenant_id"], f"Tenant {state['tenant_id']}"),
             )
             chosen_product = state.get("chosen_product") or {}
+            chosen_product_id = chosen_product.get("product_id")
+            # Catalog may be supplied by an external tenant-scoped repository;
+            # retain the full choice in state_json without violating this local
+            # database's optional catalog foreign key.
+            if chosen_product_id and not cursor.execute(
+                "SELECT 1 FROM catalog WHERE product_id = ? AND tenant_id = ?;",
+                (chosen_product_id, state["tenant_id"]),
+            ).fetchone():
+                chosen_product_id = None
             cursor.execute(
                 """
                 INSERT INTO transactions (
@@ -300,7 +309,7 @@ def checkpoint_transaction(state: dict[str, Any], *, from_event_index: int = 0) 
                 """,
                 (
                     state["session_id"], state["tenant_id"], state["user_message"],
-                    state["payment_status"], chosen_product.get("product_id"), state.get("risk_score"),
+                    state["payment_status"], chosen_product_id, state.get("risk_score"),
                     state.get("idempotency_key"), json.dumps(state, default=str),
                 ),
             )
