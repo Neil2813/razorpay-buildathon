@@ -1,0 +1,41 @@
+"""Bounded payment execution. A gateway is injected for live/test integrations."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Protocol
+
+from .state import TransactionState, audit_event
+
+
+class PaymentGateway(Protocol):
+    def charge(self, *, amount: float, currency: str, receipt: str) -> dict[str, Any]: ...
+
+
+def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR") -> TransactionState:
+    """Try once plus exactly one retry; never charge after an escalation."""
+    if not state.get("guardrail_passed") or state.get("requires_confirmation"):
+        state["payment_status"] = "escalated"
+        audit_event(state, agent="payment", decision_reason="Payment blocked by deterministic guardrail or confirmation requirement.")
+        return state
+    product = state.get("chosen_product")
+    if not product:
+        state["payment_status"] = "escalated"
+        state["escalation_message"] = "No product was selected, so no payment was attempted."
+        audit_event(state, agent="payment", decision_reason="Payment blocked because there is no chosen product.")
+        return state
+    for attempt_number in range(1, 3):
+        try:
+            result = gateway.charge(amount=float(product["price"]), currency=currency, receipt=state["session_id"])
+            status = str(result.get("status", "failed"))
+            state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": status, "reason": result.get("reason"), "payment_id": result.get("payment_id")})
+            if status == "success":
+                state["payment_status"] = "success"
+                audit_event(state, agent="payment", decision_reason="Gateway charge succeeded.", output_summary={"attempts": attempt_number, "payment_id": result.get("payment_id")})
+                return state
+        except Exception as exc:
+            state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})
+    state["payment_status"] = "escalated"
+    state["escalation_message"] = "Payment could not be completed after one retry. No further charge will be attempted."
+    audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"])})
+    return state
