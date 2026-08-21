@@ -13,6 +13,30 @@ from typing import Any
 from app.core.config import settings
 
 
+try:
+    from supabase import Client, create_client
+    HAS_SUPABASE = True
+except ImportError:
+    HAS_SUPABASE = False
+
+_supabase_client: Client | None = None
+
+
+def get_supabase_client() -> Client | None:
+    """Return an active Supabase client instance if credentials are present."""
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+    if HAS_SUPABASE and settings.SUPABASE_URL and settings.SUPABASE_KEY:
+        try:
+            _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+            return _supabase_client
+        except Exception as e:
+            print(f"[db] Failed to initialize Supabase client: {e}")
+            return None
+    return None
+
+
 def get_db_connection() -> sqlite3.Connection:
     """Return a connection to the SQLite database with row factory enabled."""
     conn = sqlite3.connect(settings.DATABASE_PATH)

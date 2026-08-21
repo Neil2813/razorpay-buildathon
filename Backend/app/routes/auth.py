@@ -125,3 +125,27 @@ def get_me(current_user: dict = Depends(get_current_user)):
         tenant_id=current_user["tenant_id"],
         created_at=str(current_user["created_at"]),
     )
+
+
+@router.get(
+    "/oauth/{provider}",
+    summary="Get OAuth Login URL",
+    description="Returns redirect URL for Supabase OAuth providers (e.g. google, github).",
+)
+def get_oauth_url(provider: str, redirect_to: str = "http://localhost:3000/auth/callback"):
+    from app.db.database import get_supabase_client
+    supabase = get_supabase_client()
+    if not supabase:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Supabase credentials not configured in environment.",
+        )
+    try:
+        res = supabase.auth.get_user() # Validate setup
+    except Exception:
+        pass
+    
+    # Generate Supabase OAuth redirect URL
+    url = f"{supabase.supabase_url}/auth/v1/authorize?provider={provider}&redirect_to={redirect_to}"
+    return {"provider": provider, "url": url}
+

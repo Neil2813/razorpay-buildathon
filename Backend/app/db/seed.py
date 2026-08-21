@@ -9,10 +9,48 @@ Usage:
 from __future__ import annotations
 
 import json
-from app.db.database import get_db_connection
+from app.db.database import get_db_connection, get_supabase_client
 
 
 def seed_db():
+    supabase = get_supabase_client()
+    if supabase:
+        print("[seed] Seeding to Supabase...")
+        try:
+            supabase.table("tenants").upsert({"tenant_id": "demo_tenant", "name": "Apex Athletics", "unattended_spend_ceiling": 4000.0}).execute()
+            products = [
+                {
+                    "product_id": "prod_shoes_01",
+                    "tenant_id": "demo_tenant",
+                    "name": "Apex Alpha Running Shoes",
+                    "description": "Premium lightweight mesh running shoes with standard response cushioning.",
+                    "price": 3800.0,
+                    "category": "shoe",
+                    "color": "Black",
+                    "sizes": ["8", "9", "10", "11"],
+                    "in_stock": True,
+                    "return_policy": "Return within 30 days in original packaging for a full refund.",
+                    "delivery_time_days": 2,
+                },
+                {
+                    "product_id": "prod_shoes_02",
+                    "tenant_id": "demo_tenant",
+                    "name": "Apex Trail Runner",
+                    "description": "All-terrain rugged running shoe with high grip rubber sole.",
+                    "price": 3500.0,
+                    "category": "shoe",
+                    "color": "Red",
+                    "sizes": ["7", "8", "9"],
+                    "in_stock": True,
+                    "return_policy": None,
+                    "delivery_time_days": 3,
+                },
+            ]
+            supabase.table("catalog").upsert(products).execute()
+            print("[seed] Supabase seeded successfully.")
+        except Exception as e:
+            print(f"[seed] Supabase seeding warning: {e}")
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
