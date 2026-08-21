@@ -11,6 +11,7 @@ from app.routes.auth import router as auth_router
 from app.routes.health import router as health_router
 from app.routes.profile import router as profile_router
 from app.routes.risk import router as risk_router
+from app.routes.transaction import router as transaction_router
 from app.routes.webhooks import router as webhooks_router
 
 try:
@@ -43,8 +44,10 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description=(
-            "Fraud risk scoring service powered by an XGBoost model "
-            "trained on the PaySim synthetic mobile-money dataset."
+            "GLASSBOX: The trust layer for agentic commerce. "
+            "A 6-agent LangGraph pipeline (Concierge → Catalog → Negotiation → Risk → Payment → Audit) "
+            "with real-time WebSocket streaming, Razorpay test-mode payments, "
+            "and a Hybrid XGBoost+LightGBM fraud risk engine."
         ),
         version=settings.VERSION,
         lifespan=lifespan,
@@ -64,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix=settings.API_V1_STR)
     app.include_router(profile_router, prefix=settings.API_V1_STR)
     app.include_router(risk_router, prefix=settings.API_V1_STR)
+    app.include_router(transaction_router, prefix=settings.API_V1_STR)
     app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 
     return app
