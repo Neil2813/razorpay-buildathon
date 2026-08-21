@@ -23,7 +23,8 @@ def prepare_idempotency_key(state: TransactionState) -> str:
 
 
 def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR",
-        before_first_charge: Callable[[TransactionState], None] | None = None) -> TransactionState:
+        before_first_charge: Callable[[TransactionState], None] | None = None,
+        after_attempt: Callable[[TransactionState], None] | None = None) -> TransactionState:
     """Try once plus exactly one retry; never charge after an escalation."""
     if not state.get("guardrail_passed") or state.get("requires_confirmation"):
         state["payment_status"] = "escalated"
@@ -40,7 +41,9 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
     idempotency_key = prepare_idempotency_key(state)
     if before_first_charge:
         before_first_charge(state)
-    for attempt_number in range(1, 3):
+    # Preserve the fixed two-attempt policy across a process restart.
+    next_attempt = len(state["payment_attempts"]) + 1
+    for attempt_number in range(next_attempt, 3):
         try:
             result = gateway.charge(
                 amount=float(product["price"]),
@@ -50,12 +53,16 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
             )
             status = str(result.get("status", "failed"))
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": status, "reason": result.get("reason"), "payment_id": result.get("payment_id")})
+            if after_attempt:
+                after_attempt(state)
             if status == "success":
                 state["payment_status"] = "success"
                 audit_event(state, agent="payment", decision_reason="Gateway charge succeeded.", output_summary={"attempts": attempt_number, "payment_id": result.get("payment_id"), "idempotency_key_present": True})
                 return state
         except Exception as exc:
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})
+            if after_attempt:
+                after_attempt(state)
     state["payment_status"] = "escalated"
     fallback_message = "Payment could not be completed after one retry. No further charge will be attempted."
     phrasing = complete_json(model=FAST_MODEL, system="Return JSON {\"message\": string}. Explain a failed payment clearly, and state that no further charge will be attempted.", user=str(state["payment_attempts"]))

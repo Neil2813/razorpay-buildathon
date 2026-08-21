@@ -20,8 +20,19 @@ class SQLiteLedger:
         return checkpoint_transaction(state, from_event_index=from_index)
 
 
+_default_sqlite_ledger: SQLiteLedger | None = None
+
+
+def get_default_sqlite_ledger() -> SQLiteLedger:
+    """Create the process-wide durable ledger once, rather than per request."""
+    global _default_sqlite_ledger
+    if _default_sqlite_ledger is None:
+        _default_sqlite_ledger = SQLiteLedger()
+    return _default_sqlite_ledger
+
+
 class InMemoryLedger:
-    """Small repository for demos/tests; replace with a durable DB adapter in deployment."""
+    """Ephemeral repository retained solely for isolated unit tests."""
     def __init__(self) -> None:
         self._events: list[dict[str, Any]] = []
 
