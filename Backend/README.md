@@ -1,23 +1,35 @@
-# GlassBox Backend - Risk Agent & API Service
+# GlassBox Backend - AI Agentic Commerce Service
 
-This is the backend service for the GlassBox agentic commerce system, primarily featuring the **Risk Agent**. It is built using **FastAPI** for high-performance, asynchronous API routing and uses a state-of-the-art **Hybrid Machine Learning Ensemble** for real-time fraud detection.
+This is the backend service for the **GLASSBOX** agentic commerce system. It provides a robust, multi-tenant FastAPI backend that powers a 6-agent LangGraph orchestration, secure JWT authentication, local SQLite persistence, and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection.
 
-## 🏗️ Architecture & Design Choices
+## 🏗️ Architecture & Features
 
-### 1. Modular FastAPI Architecture
-The backend is structured for production readiness, scalability, and maintainability.
-*   **`main.py` as an Application Factory:** The entry point is kept clean, handling only app initialization, lifespan events (like loading the ML model into memory on startup), and router inclusion.
-*   **Separation of Concerns:** Routes (`app/routes`), schemas for data validation (`app/schemas`), core configuration (`app/core`), and machine learning logic (`app/ml`) are strictly isolated.
-*   **Zero Cold-Start Latency:** The ML model is loaded into memory during the FastAPI lifespan startup event. This ensures that the very first API request (and all subsequent ones) are served instantly without waiting for disk I/O or model deserialization.
+### 1. LangGraph Multi-Agent System (The Virtual Brain)
+The core of the transaction process is handled by a suite of specialized agents working sequentially and securely:
+*   **Concierge Agent:** Parses natural language intent into structured boundaries.
+*   **Catalog Agent (RAG):** Retrieves candidate products using deterministic eligibility filtering.
+*   **Negotiation Agent:** Selects the best product and strictly enforces tenant-configured spend ceilings (a deterministic check that the LLM cannot override).
+*   **Risk Agent (ML):** Scores transactions using a trained Hybrid Ensemble (XGBoost + LightGBM). Features a **graceful rule-based fallback** if ML dependencies are missing.
+*   **Payment Agent:** Executes Razorpay test-mode API calls with a strict, non-configurable single-retry policy.
+*   **Audit/Ledger Agent:** An always-on observer that writes immutable, replayable event logs for every state transition to power the knowledge graph and merchant insights.
 
-### 2. Hybrid ML Model (XGBoost + LightGBM)
-Instead of relying on a single algorithm, the Risk Agent utilizes a **Soft-Voting Ensemble** combining **XGBoost** and **LightGBM**.
+### 2. Multi-Tenancy, RBAC & Authentication
+*   **JWT Auth:** Zero-dependency, standards-compliant HS256 JWT access tokens.
+*   **Password Hashing:** NIST-recommended PBKDF2-HMAC-SHA256 with unique salts.
+*   **Roles:** Distinct roles for `buyer`, `merchant_admin`, and `platform_admin`.
+*   **Tenant Isolation:** All database tables and spend ceilings are scoped to `tenant_id`.
 
-**Why this choice?**
-*   **Reduced Variance & Overfitting:** Synthetic datasets (like PaySim) often contain sharp, artificial decision boundaries. A single tree model can easily overfit these artifacts. By combining depth-wise tree growth (XGBoost) and leaf-wise histogram binning (LightGBM), the ensemble smooths out these boundaries.
-*   **Robustness on Imbalanced Data:** Financial fraud datasets are notoriously imbalanced (e.g., < 0.2% fraud). Combining different algorithms with their respective class-weighting strategies prevents a single algorithm's bias from dominating.
-*   **Full Dataset Utilization:** LightGBM's histogram binning allows it to train on the entire 6.36 million row dataset extremely fast, allowing us to leverage all available data rather than relying on sampling techniques.
-*   **Anti-Overfitting Controls:** The training pipeline employs 5-Fold Stratified Cross-Validation, L1/L2 regularization, feature sub-sampling, and row sub-sampling to guarantee the model generalizes well to unseen data.
+### 3. Deep Security Layer
+*   **Webhook Signature Verification:** Enforces HMAC-SHA256 validation against `X-Razorpay-Signature` to block forged webhook payloads.
+*   **SSRF Protection:** Validates all outbound URLs to block requests to private/internal IPs, loopbacks, and cloud metadata endpoints (e.g., AWS `169.254.169.254`).
+*   **Domain Allowlisting:** Explicitly limits outbound API calls to approved domains (e.g., `api.razorpay.com`, `api.groq.com`).
+
+### 4. Zero Cold-Start Hybrid ML Pipeline
+*   **XGBoost + LightGBM Soft-Voting:** Combines depth-wise tree growth with leaf-wise histogram binning to prevent overfitting on synthetic PaySim artifacts.
+*   **Instant Load:** The `.joblib` model artifact is loaded instantly into memory during the FastAPI lifespan startup event.
+*   **Safe Fallback:** If the environment lacks ML dependencies (like `xgboost` or `lightgbm`), the API automatically falls back to a deterministic rule-based risk calculator without crashing.
+
+---
 
 ## 🚀 Getting Started
 
@@ -33,88 +45,60 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2. Dataset
-Ensure the PaySim dataset is placed at the correct location:
-`d:\RazorPay\Backend\Dataset\PaySim Dataset.csv`
-
-### 3. Model Training (One-time setup)
-The backend requires a trained model artifact (`hybrid_model.joblib`) to run. The training script will process all 6.36 million rows, select the optimal threshold, and save the model.
-
+### 2. Database Initialization & Seeding
+The backend uses a local SQLite database (`glassbox.db`).
 ```powershell
-# Train the hybrid ensemble on the full dataset (takes ~10-20 mins)
-python app/ml/train.py
+# Create tables (Users, Tenants, Catalog, Transactions, Audit)
+python app/db/database.py
 
-# Evaluate the trained model on a held-out test set
+# Seed demo tenant and test catalog items
+python app/db/seed.py
+```
+
+### 3. Model Training (One-time setup - Optional)
+If you want to train the ML model from scratch on the 6.36 million row PaySim dataset:
+```powershell
+# Requires dataset at: Backend/Dataset/PaySim Dataset.csv
+python app/ml/train.py
 python app/ml/evaluate.py
 ```
-*Note: Once trained, the model is saved to `app/model/`. The backend will load this artifact directly. You do not need to retrain the model when restarting the server.*
 
 ### 4. Run the Server
-Start the FastAPI server using Uvicorn. The `--reload` flag is useful for development.
-
 ```powershell
 uvicorn main:app --reload --port 8000
 ```
+API Documentation available at `http://localhost:8000/docs`.
 
-## 🔌 API Endpoints
+---
 
-Once the server is running, you can access the interactive API documentation at:
-*   **Swagger UI:** `http://localhost:8000/docs`
-*   **ReDoc:** `http://localhost:8000/redoc`
+## 🔌 Core API Endpoints
 
-### `POST /api/risk/predict`
-Predicts the fraud risk for a given transaction.
+### Auth & Profile (`/api/auth`, `/api/profile`)
+*   `POST /api/auth/register` - Create user (`buyer` or `merchant_admin`).
+*   `POST /api/auth/login` - Authenticate and receive JWT.
+*   `GET /api/profile/me` - View current user profile.
+*   `PATCH /api/profile/tenant` - Update spend ceilings (Requires `merchant_admin`).
 
-**Request Body:**
-```json
-{
-  "type": "TRANSFER",
-  "amount": 70000,
-  "old_balance_orig": 70000,
-  "new_balance_orig": 0,
-  "old_balance_dest": 0,
-  "new_balance_dest": 70000
-}
-```
+### Risk (`/api/risk`)
+*   `POST /api/risk/predict` - Scores a transaction using the Hybrid ML model (or rule-based fallback). Returns risk score, threshold, and top feature importances.
 
-**Response:**
-```json
-{
-  "risk_score": 0.999988,
-  "risk_level": "MEDIUM",
-  "is_flagged": false,
-  "threshold": 0.999993,
-  "top_features": [
-    {
-      "feature": "balance_delta_orig",
-      "label": "Change in sender's balance",
-      "importance": 0.7757,
-      "value": 70000.0
-    }
-    // ... other features
-  ],
-  "explanation": "[CLEAR] - Risk score 100.00% (below threshold 1.00). Top signal: Change in sender's balance = 70000.00.",
-  "model": "XGBoost+LightGBM Hybrid Ensemble"
-}
-```
+### Webhooks (`/api/webhooks`)
+*   `POST /api/webhooks/razorpay` - Receives payment events. Requires valid HMAC-SHA256 `X-Razorpay-Signature`.
 
-### `GET /health`
-Basic health check endpoint to verify the service is running.
+---
 
 ## 📁 Directory Structure
 
 ```text
 Backend/
-├── main.py                     # FastAPI application factory and entry point
-├── requirements.txt            # Python dependencies
-├── Dataset/                    # Raw dataset folder
+├── main.py                     # FastAPI application factory
+├── glassbox.db                 # SQLite database (auto-generated)
 ├── app/
-│   ├── core/                   # Core configurations (CORS, settings)
-│   ├── ml/                     # Machine learning pipelines
-│   │   ├── train.py            # Training script (XGBoost + LightGBM)
-│   │   ├── evaluate.py         # Evaluation and metrics script
-│   │   └── inference.py        # Model loading and prediction logic
-│   ├── model/                  # Saved model artifacts (.joblib, threshold, etc.)
-│   ├── routes/                 # API route definitions
-│   └── schemas/                # Pydantic data validation schemas
+│   ├── agents/                 # LangGraph Multi-Agent Nodes (Concierge, Risk, etc.)
+│   ├── auth/                   # JWT & PBKDF2 Security primitives
+│   ├── core/                   # Settings, SSRF protection, Webhook security
+│   ├── db/                     # SQLite schema and seeding scripts
+│   ├── ml/                     # Hybrid XGBoost+LightGBM Training & Inference
+│   ├── routes/                 # FastAPI routers (Auth, Profile, Risk, Webhooks)
+│   └── schemas/                # Pydantic validation schemas
 ```
