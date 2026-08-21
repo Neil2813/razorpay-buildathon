@@ -10,7 +10,8 @@ from .state import TransactionState, audit_event
 
 
 class PaymentGateway(Protocol):
-    def charge(self, *, amount: float, currency: str, receipt: str) -> dict[str, Any]: ...
+    def charge(self, *, amount: float, currency: str, receipt: str,
+               idempotency_key: str) -> dict[str, Any]: ...
 
 
 def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR") -> TransactionState:
@@ -25,14 +26,23 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
         state["escalation_message"] = "No product was selected, so no payment was attempted."
         audit_event(state, agent="payment", decision_reason="Payment blocked because there is no chosen product.")
         return state
+    # Persist the key in state before the first external side effect. Retries and
+    # a resumed graph invocation must reuse it rather than create another charge.
+    idempotency_key = state.get("idempotency_key") or f"{state['session_id']}:{product.get('product_id', 'product')}"
+    state["idempotency_key"] = idempotency_key
     for attempt_number in range(1, 3):
         try:
-            result = gateway.charge(amount=float(product["price"]), currency=currency, receipt=state["session_id"])
+            result = gateway.charge(
+                amount=float(product["price"]),
+                currency=currency,
+                receipt=state["session_id"],
+                idempotency_key=idempotency_key,
+            )
             status = str(result.get("status", "failed"))
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": status, "reason": result.get("reason"), "payment_id": result.get("payment_id")})
             if status == "success":
                 state["payment_status"] = "success"
-                audit_event(state, agent="payment", decision_reason="Gateway charge succeeded.", output_summary={"attempts": attempt_number, "payment_id": result.get("payment_id")})
+                audit_event(state, agent="payment", decision_reason="Gateway charge succeeded.", output_summary={"attempts": attempt_number, "payment_id": result.get("payment_id"), "idempotency_key_present": True})
                 return state
         except Exception as exc:
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})
@@ -40,5 +50,5 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
     fallback_message = "Payment could not be completed after one retry. No further charge will be attempted."
     phrasing = complete_json(model=FAST_MODEL, system="Return JSON {\"message\": string}. Explain a failed payment clearly, and state that no further charge will be attempted.", user=str(state["payment_attempts"]))
     state["escalation_message"] = phrasing.get("message", fallback_message) if isinstance(phrasing, dict) else fallback_message
-    audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"])})
+    audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"]), "idempotency_key_present": True})
     return state

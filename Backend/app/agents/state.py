@@ -22,6 +22,7 @@ class TransactionState(TypedDict, total=False):
     risk_score: float | None
     risk_features: dict[str, Any] | None
     payment_attempts: list[dict[str, Any]]
+    idempotency_key: str | None
     payment_status: PaymentStatus
     escalation_message: str | None
     audit_log: list[dict[str, Any]]
@@ -42,6 +43,7 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         risk_score=None,
         risk_features=None,
         payment_attempts=[],
+        idempotency_key=None,
         payment_status="pending",
         escalation_message=None,
         audit_log=[],
