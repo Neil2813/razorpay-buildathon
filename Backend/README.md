@@ -82,8 +82,16 @@ API Documentation available at `http://localhost:8000/docs`.
 ### Auth & Profile (`/api/auth`, `/api/profile`)
 *   `POST /api/auth/register` - Create user (`buyer` or `merchant_admin`).
 *   `POST /api/auth/login` - Authenticate and receive JWT.
+*   `GET /api/auth/oauth/{provider}` - Get Supabase OAuth redirect URL (Google, GitHub).
 *   `GET /api/profile/me` - View current user profile.
 *   `PATCH /api/profile/tenant` - Update spend ceilings (Requires `merchant_admin`).
+
+### Transaction Orchestrator (`/api/transaction`) 🆕
+*   `POST /api/transaction/run` - **The main endpoint.** Runs the complete 6-agent GLASSBOX pipeline (Concierge → Catalog → Negotiation → Risk → Payment → Audit) from a natural language buyer intent. Returns the full auditable transaction state.
+    - Set `force_payment_fail: true` in the request body to trigger the **demo failure script** (decline → one retry → escalate).
+*   `GET /api/transaction/{session_id}` - Replay/fetch a persisted transaction by session ID.
+*   `GET /api/transaction/insights/{tenant_id}` - Merchant revenue intelligence: AI buyer acceptance rates, top escalation reasons, SKU selection counts.
+*   `WS /api/transaction/ws/{session_id}` - **WebSocket endpoint.** Connect before or during a `/run` call to stream live agent events in real-time (<300ms latency).
 
 ### Risk (`/api/risk`)
 *   `POST /api/risk/predict` - Scores a transaction using the Hybrid ML model (or rule-based fallback). Returns risk score, threshold, and top feature importances.
