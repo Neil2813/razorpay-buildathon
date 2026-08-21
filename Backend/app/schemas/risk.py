@@ -33,3 +33,4 @@ class RiskPredictionResponse(BaseModel):
     threshold: float = Field(..., description="Decision threshold used")
     top_features: list[FeatureContribution]
     explanation: str = Field(..., description="Human-readable risk summary")
+    model: str = Field(..., description="Model architecture used for scoring")
