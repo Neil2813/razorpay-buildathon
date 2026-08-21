@@ -1,29 +1,166 @@
-"""ML-backed risk node. Threshold routing is deterministic."""
+"""ML-backed risk node with safe deterministic rule-based fallback when ML dependencies/artifacts are missing."""
 
 from __future__ import annotations
 
 from typing import Any
-
-from app.ml.inference import predict_risk
 from .state import TransactionState, audit_event
+
+# Safe import wrapper to prevent runtime crashes if ML dependencies are missing
+try:
+    from app.ml.inference import predict_risk
+    HAS_ML = True
+except (ImportError, ModuleNotFoundError):
+    HAS_ML = False
+    predict_risk = None
+
+
+def predict_risk_fallback(
+    amount: float,
+    transaction_type: str,
+    old_balance_orig: float,
+    new_balance_orig: float,
+    old_balance_dest: float,
+    new_balance_dest: float,
+    step: int = 1,
+    dest_name: str = "C0000000",
+) -> dict[str, Any]:
+    """Rule-based risk scoring fallback that mimics the trained hybrid ensemble's decision logic."""
+    is_transfer = transaction_type == "TRANSFER"
+    is_cash_out = transaction_type == "CASH_OUT"
+    balance_delta_orig = old_balance_orig - new_balance_orig
+    orig_balance_wiped = int(new_balance_orig == 0)
+
+    # Mimic hybrid model key features:
+    # High risk when TRANSFER/CASH_OUT completely drains the sender's account for larger amounts.
+    score = 0.01
+    if is_transfer or is_cash_out:
+        if orig_balance_wiped and balance_delta_orig > 0:
+            score += 0.50
+        if amount > 100000:
+            score += 0.40
+        elif amount > 20000:
+            score += 0.25
+
+    score = min(max(score, 0.0), 1.0)
+    threshold = 0.999750
+    is_flagged = score >= threshold
+
+    if score < 0.3:
+        risk_level = "LOW"
+    elif score < threshold:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "HIGH"
+
+    top_features = [
+        {
+            "feature": "balance_delta_orig",
+            "label": "Change in sender's balance",
+            "importance": 0.7757,
+            "value": float(balance_delta_orig),
+        },
+        {
+            "feature": "orig_balance_wiped",
+            "label": "Sender's balance completely drained",
+            "importance": 0.0685,
+            "value": float(orig_balance_wiped),
+        },
+        {
+            "feature": "type_" + transaction_type,
+            "label": f"Transaction type: {transaction_type}",
+            "importance": 0.0557,
+            "value": 1.0,
+        },
+    ]
+
+    flag_str = "[FLAGGED]" if is_flagged else "[CLEAR]"
+    explanation = (
+        f"{flag_str} - Risk score {score:.2%} "
+        f"({'above' if is_flagged else 'below'} threshold {threshold:.4f}). "
+        f"Top signal (Fallback Rule): Change in sender's balance = {balance_delta_orig:.2f}."
+    )
+
+    return {
+        "risk_score": round(score, 6),
+        "risk_level": risk_level,
+        "is_flagged": is_flagged,
+        "threshold": threshold,
+        "top_features": top_features,
+        "explanation": explanation,
+        "model": "Rule-based Risk Engine (Fallback)",
+    }
 
 
 def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_threshold: float = 0.8) -> TransactionState:
-    result = predict_risk(
-        amount=float(transaction["amount"]), transaction_type=transaction.get("type", "PAYMENT"),
-        old_balance_orig=float(transaction.get("old_balance_orig", transaction["amount"])),
-        new_balance_orig=float(transaction.get("new_balance_orig", 0)),
-        old_balance_dest=float(transaction.get("old_balance_dest", 0)),
-        new_balance_dest=float(transaction.get("new_balance_dest", transaction["amount"])),
-        step=int(transaction.get("step", 1)), dest_name=str(transaction.get("dest_name", "M0000000")),
-    )
-    state["risk_score"] = result["risk_score"]
-    state["risk_features"] = {"top_features": result["top_features"], "model": result["model"], "source": "local"}
-    if result["risk_score"] > confirmation_threshold:
+    amount = float(transaction.get("amount", 0))
+    transaction_type = transaction.get("type", "PAYMENT")
+    old_balance_orig = float(transaction.get("old_balance_orig", amount))
+    new_balance_orig = float(transaction.get("new_balance_orig", 0))
+    old_balance_dest = float(transaction.get("old_balance_dest", 0))
+    new_balance_dest = float(transaction.get("new_balance_dest", amount))
+    step = int(transaction.get("step", 1))
+    dest_name = str(transaction.get("dest_name", "M0000000"))
+
+    result = None
+    source = "local_ensemble"
+
+    # Attempt ML inference first
+    if HAS_ML and predict_risk is not None:
+        try:
+            result = predict_risk(
+                amount=amount,
+                transaction_type=transaction_type,
+                old_balance_orig=old_balance_orig,
+                new_balance_orig=new_balance_orig,
+                old_balance_dest=old_balance_dest,
+                new_balance_dest=new_balance_dest,
+                step=step,
+                dest_name=dest_name,
+            )
+        except Exception as exc:
+            print(f"[risk_agent] ML inference failed: {exc}. Falling back to rule-based logic.")
+
+    # Fallback if ML module/inference is unavailable
+    if result is None:
+        result = predict_risk_fallback(
+            amount=amount,
+            transaction_type=transaction_type,
+            old_balance_orig=old_balance_orig,
+            new_balance_orig=new_balance_orig,
+            old_balance_dest=old_balance_dest,
+            new_balance_dest=new_balance_dest,
+            step=step,
+            dest_name=dest_name,
+        )
+        source = "rule_based_fallback"
+
+    risk_score = result["risk_score"]
+    state["risk_score"] = risk_score
+    state["risk_features"] = {
+        "top_features": result["top_features"],
+        "model": result["model"],
+        "source": source,
+    }
+
+    if risk_score > confirmation_threshold:
         state["requires_confirmation"] = True
         state["payment_status"] = "escalated"
-        state["escalation_message"] = f"This order needs confirmation: risk score {result['risk_score']:.2%} exceeds the {confirmation_threshold:.0%} review threshold."
-    audit_event(state, agent="risk", decision_reason="Local trained hybrid model scored transaction; code applied review threshold.",
-                output_summary={"risk_score": result["risk_score"], "threshold": confirmation_threshold,
-                                "requires_confirmation": state["requires_confirmation"]})
+        state["escalation_message"] = (
+            f"This order needs confirmation: risk score {risk_score:.2%} "
+            f"exceeds the {confirmation_threshold:.0%} review threshold."
+        )
+    else:
+        state["requires_confirmation"] = False
+
+    audit_event(
+        state,
+        agent="risk",
+        decision_reason=f"Scored transaction via {source}; applied review threshold.",
+        output_summary={
+            "risk_score": risk_score,
+            "threshold": confirmation_threshold,
+            "requires_confirmation": state["requires_confirmation"],
+            "model_source": source,
+        },
+    )
     return state

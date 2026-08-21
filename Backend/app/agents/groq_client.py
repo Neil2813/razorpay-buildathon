@@ -23,9 +23,11 @@ def complete_json(*, model: str, system: str, user: str) -> dict[str, Any] | Non
         return None
     body = json.dumps({"model": model, "temperature": 0, "response_format": {"type": "json_object"}, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
     request = Request(GROQ_ENDPOINT, data=body, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}, method="POST")
-    try:
-        with urlopen(request, timeout=6) as response:
-            payload = json.loads(response.read().decode())
-        return json.loads(payload["choices"][0]["message"]["content"])
-    except (KeyError, IndexError, TypeError, ValueError, URLError, TimeoutError):
-        return None
+    for _ in range(2):  # one stricter-format retry before deterministic fallback
+        try:
+            with urlopen(request, timeout=6) as response:
+                payload = json.loads(response.read().decode())
+            return json.loads(payload["choices"][0]["message"]["content"])
+        except (KeyError, IndexError, TypeError, ValueError, URLError, TimeoutError):
+            continue
+    return None

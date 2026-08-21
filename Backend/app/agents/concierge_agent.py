@@ -43,7 +43,14 @@ def run(state: TransactionState) -> TransactionState:
         user=state["user_message"],
     )
     # The fallback enforces required bounds even if an LLM responds malformed.
-    intent = fallback if not isinstance(llm_intent, dict) else {**fallback, **{key: llm_intent.get(key, fallback[key]) for key in fallback}}
+    intent = dict(fallback)
+    if isinstance(llm_intent, dict):
+        for key in ("category", "size", "color", "deadline"):
+            if isinstance(llm_intent.get(key), str) or llm_intent.get(key) is None:
+                intent[key] = llm_intent.get(key)
+        candidate_budget = llm_intent.get("budget_max")
+        if isinstance(candidate_budget, (int, float)) and candidate_budget > 0:
+            intent["budget_max"] = float(candidate_budget)
     intent["needs_clarification"] = intent.get("budget_max") is None
     if intent["needs_clarification"]:
         intent["clarification_reason"] = fallback["clarification_reason"]

@@ -7,9 +7,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.ml.inference import get_model
 from app.routes.health import router as health_router
 from app.routes.risk import router as risk_router
+
+try:
+    from app.ml.inference import get_model
+    HAS_ML = True
+except (ImportError, ModuleNotFoundError):
+    HAS_ML = False
+    def get_model():
+        print("[startup] ML dependencies not available. Skipping model pre-loading.")
 
 
 @asynccontextmanager
@@ -18,10 +25,13 @@ async def lifespan(app: FastAPI):
     print("[startup] Pre-loading risk model...")
     try:
         get_model()
-        print("[startup] Risk model loaded and ready.")
+        if HAS_ML:
+            print("[startup] Risk model loaded and ready.")
+        else:
+            print("[startup] Server started in rule-based fallback mode (no ML dependencies).")
     except FileNotFoundError as e:
         print(f"[startup] WARNING: {e}")
-        print("[startup] Server started, but /api/risk/predict will return 503 until model is trained.")
+        print("[startup] Server started, but /api/risk/predict will use rule-based fallback until model is trained.")
     yield
 
 
