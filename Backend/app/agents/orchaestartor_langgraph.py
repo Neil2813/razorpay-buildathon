@@ -29,14 +29,13 @@ from .state import TransactionState, new_transaction_state
 
 def concierge_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Concierge Agent node: Parse natural language intent."""
-    if not state.get("current_agent"):
-        concierge_agent.run(state)
-        if state.get("intent", {}).get("needs_clarification"):
-            state["payment_status"] = "escalated"
-            state["escalation_message"] = state["intent"].get("clarification_reason")
-        checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
-        if checkpoint_cb:
-            checkpoint_cb(state)
+    concierge_agent.run(state)
+    if state.get("intent", {}).get("needs_clarification"):
+        state["payment_status"] = "escalated"
+        state["escalation_message"] = state["intent"].get("clarification_reason")
+    checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
+    if checkpoint_cb:
+        checkpoint_cb(state)
     return dict(state)
 
 
@@ -221,18 +220,29 @@ def run_transaction(
         from app.db.database import load_transaction_checkpoint
         existing_state = load_transaction_checkpoint(session_id, tenant_id)
 
-    state: TransactionState = existing_state or new_transaction_state(
-        tenant_id=tenant_id, user_message=user_message, session_id=session_id
-    )
-    # Seed autonomy state from caller (non-destructive — existing state wins).
-    if autonomy_mode and not state.get("autonomy_mode"):
-        state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
-    if requested_sites and not state.get("requested_sites"):
-        state["requested_sites"] = requested_sites
+    if existing_state:
+        state = existing_state
+        # Successful transactions are terminal durable checkpoints.
+        if state.get("payment_status") == "success":
+            return state
 
-    # A terminal durable checkpoint is the source of truth on duplicate/resume calls.
-    if existing_state and state.get("payment_status") in {"success", "escalated"}:
-        return state
+        # If resuming an escalated or pending session with a new user message:
+        state["user_message"] = user_message
+        state["payment_status"] = "pending"
+        state["escalation_message"] = None
+        state["current_agent"] = ""
+        if autonomy_mode:
+            state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
+        if requested_sites:
+            state["requested_sites"] = requested_sites
+    else:
+        state = new_transaction_state(
+            tenant_id=tenant_id, user_message=user_message, session_id=session_id
+        )
+        if autonomy_mode:
+            state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
+        if requested_sites:
+            state["requested_sites"] = requested_sites
 
     event_index = len(state.get("audit_log", []))
 
