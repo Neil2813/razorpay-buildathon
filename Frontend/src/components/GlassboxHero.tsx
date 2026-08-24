@@ -184,39 +184,9 @@ export default function GlassboxHero() {
           }}
         />
 
-        {/* Floating Header Intro */}
-        <div 
-          className="absolute top-[10vh] z-10 text-center px-4 pointer-events-none"
-          style={{
-            opacity: introOpacity,
-            transform: `translate3d(0, ${introY}px, 0)`,
-            display: introOpacity <= 0.005 ? 'none' : 'block'
-          }}
-        >
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0149ae]/[0.06] border border-[#0149ae]/15 mb-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#0149ae] animate-pulse" />
-            <span className="text-[11px] font-semibold tracking-widest text-[#0149ae] uppercase font-mono">
-              GLASSBOX · SCROLL INTERACTION
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-[#032676] uppercase">
-            GLASSBOX
-          </h1>
-          <p className="mt-1.5 text-sm md:text-base text-slate-500 max-w-md mx-auto font-light">
-            Scroll down to experience the continuous payment authorization stage.
-          </p>
-        </div>
 
-        {/* Scroll Indicator Prompt */}
-        <div 
-          className="absolute bottom-[5vh] z-10 flex flex-col items-center gap-2 pointer-events-none text-[#0149ae]"
-          style={{ opacity: scrollPromptOpacity }}
-        >
-          <span className="text-[10px] uppercase font-mono tracking-widest text-slate-400">Scroll to Reveal</span>
-          <div className="w-5 h-8 border-2 border-slate-300 rounded-full flex justify-center p-1">
-            <div className="w-1 h-2 bg-[#0149ae] rounded-full animate-bounce" />
-          </div>
-        </div>
+
+
 
         {/* Multi-Agent Architecture Diagram (`/Agents.png`) */}
         <div
@@ -301,14 +271,14 @@ export default function GlassboxHero() {
           }}
         >
           <div 
-            className="absolute -bottom-6 w-[80%] h-8 bg-[#032676]/25 rounded-full blur-xl transition-opacity"
+            className="absolute -bottom-8 w-[85%] h-12 bg-[#032676]/30 rounded-full blur-2xl transition-opacity"
             style={{ opacity: cardShadowOpacity }}
           />
 
           <img 
             src="/razorpay-card.png" 
             alt="Razorpay Card"
-            className="w-[85vw] max-w-[480px] md:max-w-[560px] h-auto object-contain drop-shadow-2xl"
+            className="w-[90vw] max-w-[720px] md:max-w-[850px] lg:max-w-[920px] h-auto object-contain drop-shadow-2xl"
             loading="eager"
           />
         </div>
