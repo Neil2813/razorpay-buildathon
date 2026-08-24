@@ -305,7 +305,7 @@ export default function CheckoutPage() {
   const [_completedAgents, setCompletedAgents] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided' | null>(null);
+  const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided'>('autonomous');
   const [requestedSitesInput, setRequestedSitesInput] = useState('');
   const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 9)}`);
   const [isRunning, setIsRunning] = useState(false);
@@ -431,10 +431,19 @@ export default function CheckoutPage() {
         if (data.state.audit_log) setAuditLog(data.state.audit_log);
         if (data.state.trust_override) setTrustOverrideActive(true);
 
-        // If escalated on clarification, keep awaitingClarification
+        // If escalated on clarification, keep awaitingClarification and skip generic ledger complete banner
         const isParamHalt = data.state.payment_status === 'escalated' &&
-          (data.state.escalation_message || '').includes('detail');
-        if (!isParamHalt) setAwaitingClarification(false);
+          (data.state.intent?.needs_clarification ||
+           (data.state.escalation_message || '').includes('detail') ||
+           (data.state.escalation_message || '').includes('search') ||
+           (data.state.escalation_message || '').includes('mode'));
+
+        if (isParamHalt) {
+          setAwaitingClarification(true);
+          return;
+        }
+
+        setAwaitingClarification(false);
 
         let finalRiskData: RiskFeaturesData | undefined;
         if (data.state?.risk_features) {
@@ -467,14 +476,23 @@ export default function CheckoutPage() {
     const query = queryOverride || input;
     if (!query.trim() || isRunning) return;
 
-    const modeToUse = forceMode || autonomyMode;
+    const modeToUse = forceMode !== undefined ? forceMode : (autonomyMode ?? 'autonomous');
     const sitesToUse = siteOverride !== undefined
       ? (siteOverride ? [siteOverride] : null)
       : (requestedSitesInput.trim() ? [requestedSitesInput.trim()] : null);
 
-    setMessages(prev => [...prev, { role: 'user', content: query }]);
-    if (!queryOverride) setInput('');
-    setActiveAgent('concierge'); setCompletedAgents([]); setAuditLog([]);
+    // Append user message. On clarification turns (queryOverride set), keep prior agent messages.
+    // On fresh top-level sends, keep only prior user messages (wipe stale agent cards).
+    if (queryOverride) {
+      // Clarification / mode continuation: append user reply, don't reset history
+      setMessages(prev => [...prev, { role: 'user', content: query }]);
+    } else {
+      // Fresh query: clear everything and start new
+      setMessages([{ role: 'user', content: query }]);
+      setInput('');
+    }
+
+    setActiveAgent('concierge');
     setPaymentStatus('pending'); setEscalationMessage(null); setIsRunning(true);
     setAwaitingClarification(false);
 
@@ -489,7 +507,7 @@ export default function CheckoutPage() {
       });
 
       const data = res.data;
-      if (data) {
+      if (data && data.audit_log && data.audit_log.length > 0) {
         setPaymentStatus(data.payment_status || 'pending');
         if (data.escalation_message) setEscalationMessage(data.escalation_message);
         if (data.guardrail_ceiling) setGuardrailCeiling(data.guardrail_ceiling);
@@ -499,34 +517,107 @@ export default function CheckoutPage() {
         if (data.audit_log) setAuditLog(data.audit_log);
         if (data.trust_override) setTrustOverrideActive(true);
 
-        // If WS didn't receive messages yet, populate messages from response
-        const conciergeEvent = data.audit_log?.find((e: any) => e.agent === 'concierge');
-        if (conciergeEvent?.output_summary?.missing_parameters?.length > 0) {
-          const missing: string[] = conciergeEvent.output_summary.missing_parameters;
-          let missingParams: MissingParam[] = [];
-          if (missing.includes('autonomy_mode')) {
-            missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
-          } else {
-            const mode = modeToUse || 'autonomous';
-            const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
-            missingParams = allParams.filter(p => missing.includes(p.key));
-          }
-          setAwaitingClarification(true);
+        // Find the start index of the latest turn (last concierge event in this response)
+        const auditLog: any[] = data.audit_log;
+        const lastConciergeIdx = auditLog.map(e => e.agent).lastIndexOf('concierge');
+        const currentTurnEvents = lastConciergeIdx !== -1 ? auditLog.slice(lastConciergeIdx) : auditLog;
 
-          setMessages(prev => {
-            const hasClarificationMsg = prev.some(m => m.missingParams && m.missingParams.length > 0);
-            if (!hasClarificationMsg) {
-              return [...prev, {
-                role: 'agent',
-                agent: 'concierge',
-                content: conciergeEvent.output_summary.clarification || conciergeEvent.decision_reason || 'Please provide the missing details:',
-                missingParams,
-                clarificationMode: modeToUse || undefined,
-              }];
+        const newTurnMessages: Message[] = [];
+
+        for (const event of currentTurnEvents) {
+          const currentAgentKey = event.agent === 'catalog' ? 'discovery' : event.agent;
+          let missingParams: MissingParam[] | undefined;
+          let candidates: Message['candidates'];
+          let siteTrustData: Message['siteTrustData'];
+          let trustWarningPrompt: Message['trustWarningPrompt'];
+          let sitesRejectedCount: number | undefined;
+          let riskData: RiskFeaturesData | undefined;
+          let guardrailData: Message['guardrailData'];
+          let paymentAttempts: PaymentAttempt[] | undefined;
+
+          if (event.agent === 'concierge' && event.output_summary?.missing_parameters?.length > 0) {
+            const missing: string[] = event.output_summary.missing_parameters;
+            // If the user already chose a mode (autonomyMode is set), never re-show mode selection
+            if (missing.includes('autonomy_mode') && modeToUse) {
+              // mode is already known — skip this card, backend will handle it next turn
+              setAwaitingClarification(false);
+            } else if (missing.includes('autonomy_mode')) {
+              missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
+              setAwaitingClarification(true);
+            } else {
+              const mode = event.inputs_summary?.mode || modeToUse || 'autonomous';
+              const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
+              missingParams = allParams.filter(p => missing.includes(p.key));
+              setAwaitingClarification(true);
             }
-            return prev;
+          }
+
+          if (event.agent === 'site_trust' && event.output_summary) {
+            const s = event.output_summary;
+            siteTrustData = { site: s.site || 'candidate site', status: s.status, reason: s.reason, trustOverride: s.user_overrode_trust_warning || s.trust_override };
+          } else if ((event.agent === 'discovery' || event.agent === 'catalog') && event.output_summary) {
+            candidates = event.output_summary.discovered_candidates || event.output_summary.candidates || data.discovered_candidates;
+            sitesRejectedCount = event.output_summary.sites_rejected_count || data.sites_rejected_count;
+            if (candidates?.length) setAwaitingClarification(false);
+          } else if (event.agent === 'risk' && event.output_summary) {
+            const s = event.output_summary;
+            riskData = {
+              risk_score: s.risk_score ?? data.risk_score ?? 0.01,
+              risk_level: s.risk_level,
+              threshold: s.threshold ?? 0.8,
+              top_features: s.top_features || data.risk_features?.top_features || [],
+              explanation: s.explanation || data.risk_features?.explanation,
+              model: s.model_source === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
+            };
+          } else if (event.agent === 'negotiation' && event.output_summary) {
+            const s = event.output_summary;
+            guardrailData = { ceiling: s.ceiling || data.guardrail_ceiling || 5000, price: s.price || 0, passed: s.guardrail_passed !== false, productName: s.product_id };
+          } else if (event.agent === 'payment' && (event.output_summary?.payment_attempts || data.payment_attempts)) {
+            paymentAttempts = event.output_summary?.payment_attempts || data.payment_attempts;
+          }
+
+          if (event.decision_reason && (event.decision_reason.includes('safety check') || event.decision_reason.includes('untrusted'))) {
+            trustWarningPrompt = {
+              site: event.output_summary?.site || event.inputs_summary?.requested_sites?.[0] || 'amaz0n-deals.com',
+              reason: event.decision_reason,
+            };
+          }
+
+          // Skip ledger banner on clarification halts
+          if (event.agent === 'ledger') {
+            const isParamHalt = data.payment_status === 'escalated' &&
+              (data.intent?.needs_clarification || (data.escalation_message || '').includes('detail') || (data.escalation_message || '').includes('search') || (data.escalation_message || '').includes('mode'));
+            if (isParamHalt) continue;
+          }
+
+          // Skip events that have no useful content to render
+          if (!event.decision_reason && !missingParams?.length && !candidates?.length && !riskData && !guardrailData && !paymentAttempts?.length && !siteTrustData && !trustWarningPrompt) {
+            continue;
+          }
+
+          newTurnMessages.push({
+            role: 'agent',
+            agent: currentAgentKey,
+            content: event.agent === 'concierge' && missingParams?.length
+              ? (event.output_summary?.clarification || event.decision_reason)
+              : event.decision_reason,
+            candidates,
+            siteTrustData,
+            trustWarningPrompt,
+            sitesRejectedCount,
+            riskData,
+            guardrailData,
+            paymentAttempts,
+            missingParams,
+            clarificationMode: event.inputs_summary?.mode || modeToUse || undefined,
           });
         }
+
+        // Replace all prior agent messages with this turn's messages (user msgs preserved)
+        setMessages(prev => {
+          const userMsgsOnly = prev.filter(m => m.role === 'user');
+          return [...userMsgsOnly, ...newTurnMessages];
+        });
       }
     } catch (err) {
       console.error(err);
@@ -603,7 +694,13 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', background: '#f5f5f5', padding: '2px', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)' }}>
                 <button
                   type="button"
-                  onClick={() => setAutonomyMode('autonomous')}
+                  onClick={() => {
+                    if (autonomyMode !== 'autonomous') {
+                      setAutonomyMode('autonomous');
+                      setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
+                      setMessages([]);
+                    }
+                  }}
                   disabled={isRunning}
                   style={{
                     padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer',
@@ -616,7 +713,13 @@ export default function CheckoutPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAutonomyMode('guided')}
+                  onClick={() => {
+                    if (autonomyMode !== 'guided') {
+                      setAutonomyMode('guided');
+                      setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
+                      setMessages([]);
+                    }
+                  }}
                   disabled={isRunning}
                   style={{
                     padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer',

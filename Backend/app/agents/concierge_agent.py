@@ -45,7 +45,6 @@ _PARAM_LABELS: dict[str, str] = {
     "requested_sites": "website to shop from (e.g. myntra.com)",
 }
 
-# Params required per mode
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "size", "min_rating", "requested_sites"]
 _AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min"]
 
@@ -130,7 +129,7 @@ def _extract_sites_from_message(message: str) -> list[str]:
 
 def _extract_number(s: str) -> float | None:
     try:
-        return float(s.replace(",", ""))
+        return float(str(s).replace(",", "").strip())
     except (ValueError, AttributeError):
         return None
 
@@ -143,7 +142,6 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
     """Reliable no-network fallback — extracts as many parameters as possible via regex."""
     text = message.strip()
 
-    # Budget range ("between 1000 and 4000")
     budget_min: float | None = None
     budget_max: float | None = None
 
@@ -165,28 +163,23 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         if floor_match:
             budget_min = _extract_number(floor_match.group(1))
 
-    # Size
     size_match = _SIZE_RE.search(text)
     size = size_match.group(1).upper() if size_match else None
 
-    # Category
     category = next(
         (word for word in ("shirt", "shoe", "shoes", "dress", "laptop", "phone", "bag", "jeans", "jacket", "trouser", "pant", "skirt", "kurta")
          if re.search(rf"\b{word}s?\b", text, re.I)),
         None,
     )
 
-    # Colour
     colours = ("black", "white", "blue", "red", "green", "brown", "pink", "yellow", "grey", "gray", "orange", "purple", "navy", "beige")
     color = next((c for c in colours if re.search(rf"\b{c}\b", text, re.I)), None)
 
-    # Brand
     brand_match = _BRAND_RE.search(text)
     brand = brand_match.group(1).title() if brand_match else None
     if _ANY_RE.search(text) and brand is None:
         brand = "any"
 
-    # Rating
     rating_match = _RATING_RE.search(text)
     min_rating: float | None = None
     if rating_match:
@@ -204,10 +197,6 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         "color": color,
         "size": size,
         "min_rating": min_rating,
-        "deadline": None,
-        "needs_clarification": False,
-        "clarification_reason": None,
-        "missing_parameters": [],
     }
 
 
@@ -223,9 +212,6 @@ def _find_missing_params(intent: dict[str, Any], mode: str) -> list[str]:
         val = intent.get(param)
         if val is None or val == "":
             missing.append(param)
-        elif param == "requested_sites":
-            # Check the state field, not intent — sites live separately
-            pass  # handled in run() directly
     return missing
 
 
@@ -247,10 +233,6 @@ def _build_clarification_message(missing: list[str]) -> str:
 # ---------------------------------------------------------------------------
 
 def _handle_trust_override_response(state: TransactionState) -> bool:
-    """
-    If the transaction is currently blocked on a trust warning, interpret the
-    latest user message as a Continue / Restart decision.
-    """
     if state.get("payment_status") != "escalated":
         return False
     msg = (state.get("escalation_message") or "")
@@ -289,43 +271,11 @@ def _handle_trust_override_response(state: TransactionState) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Clarification continuation handler
-# ---------------------------------------------------------------------------
-
-def _handle_clarification_response(state: TransactionState) -> bool:
-    """
-    If the agent was waiting for parameter clarification, try to extract the
-    supplied answers from the new user message and merge them into existing intent.
-
-    Returns True if this turn was a clarification response (caller should re-run validation).
-    """
-    intent = state.get("intent", {})
-    missing = intent.get("missing_parameters", [])
-    if not missing:
-        return False
-
-    # Parse the new message and merge any newly provided fields into existing intent
-    new_intent = parse_intent_fallback(state["user_message"])
-    changed = False
-    for key in missing:
-        if key == "requested_sites":
-            # sites are handled separately in run()
-            continue
-        new_val = new_intent.get(key)
-        if new_val is not None:
-            intent[key] = new_val
-            changed = True
-
-    state["intent"] = intent
-    return changed or bool(missing)  # always re-run validation if we were waiting
-
-
-# ---------------------------------------------------------------------------
 # Main run()
 # ---------------------------------------------------------------------------
 
 def run(state: TransactionState) -> TransactionState:
-    """Parse intent, enforce parameter checklists, and ask for what's missing."""
+    """Parse intent accumulatively across turns, enforce parameter checklists, and execute."""
 
     # ------------------------------------------------------------------
     # 0. Check if this is a trust-override response turn.
@@ -334,63 +284,56 @@ def run(state: TransactionState) -> TransactionState:
         return state
 
     # ------------------------------------------------------------------
-    # 1. Determine if we are continuing a clarification conversation.
+    # 1. Accumulate product intent non-destructively across turns.
     # ------------------------------------------------------------------
-    is_clarification_turn = _handle_clarification_response(state)
+    existing_intent = dict(state.get("intent", {}))
+    fallback = parse_intent_fallback(state["user_message"])
+
+    llm_intent = complete_json(
+        model=REASONING_MODEL,
+        system=(
+            "Extract buyer intent as JSON with keys: "
+            "category, budget_min (floor price as number or null), "
+            "budget_max (ceiling price as number or null), "
+            "brand (string or null), color (string or null), "
+            "size (string or null), min_rating (float 0-5 or null), "
+            "deadline (string or null), "
+            "autonomy_mode (one of: guided, autonomous, or null), "
+            "requested_sites (list of URLs/domain names, or null). "
+            "If a single price is given (e.g. 'shirt of 4000 rupees'), set budget_max to that value and budget_min to null. "
+            "Never invent a budget. Never set guardrail_ceiling."
+        ),
+        user=state["user_message"],
+    )
+
+    # Merge fallback regex extraction
+    for key in ("category", "size", "color", "brand", "budget_min", "budget_max", "min_rating"):
+        val = fallback.get(key)
+        if val is not None:
+            existing_intent[key] = val
+
+    # Merge LLM extraction
+    if isinstance(llm_intent, dict):
+        for key in ("category", "size", "color", "brand"):
+            cand = llm_intent.get(key)
+            if isinstance(cand, str) and cand.strip() and cand.lower() != "null":
+                existing_intent[key] = cand
+        for key in ("budget_min", "budget_max", "min_rating"):
+            candidate = llm_intent.get(key)
+            if isinstance(candidate, (int, float)) and candidate >= 0:
+                existing_intent[key] = float(candidate)
+
+    intent = existing_intent
+    intent["needs_clarification"] = False
+    intent["missing_parameters"] = []
+    state["intent"] = intent
 
     # ------------------------------------------------------------------
-    # 2. Parse product intent (fresh or merge into existing).
-    # ------------------------------------------------------------------
-    if not is_clarification_turn:
-        # Fresh message — full extraction
-        fallback = parse_intent_fallback(state["user_message"])
-        llm_intent = complete_json(
-            model=REASONING_MODEL,
-            system=(
-                "Extract buyer intent as JSON with keys: "
-                "category, budget_min (floor price as number or null), "
-                "budget_max (ceiling price as number or null), "
-                "brand (string or null), color (string or null), "
-                "size (string or null), min_rating (float 0-5 or null), "
-                "deadline (string or null), "
-                "autonomy_mode (one of: guided, autonomous, or null), "
-                "requested_sites (list of URLs/domain names, or null). "
-                "If a single price is given (e.g. 'shirt of 4000 rupees'), set budget_max to that value and budget_min to null. "
-                "Never invent a budget. Never set guardrail_ceiling."
-            ),
-            user=state["user_message"],
-        )
-        intent = dict(fallback)
-        if isinstance(llm_intent, dict):
-            for key in ("category", "size", "color", "deadline", "brand"):
-                if isinstance(llm_intent.get(key), str) or llm_intent.get(key) is None:
-                    intent[key] = llm_intent.get(key)
-            for key in ("budget_min", "budget_max", "min_rating"):
-                candidate = llm_intent.get(key)
-                if isinstance(candidate, (int, float)) and candidate >= 0:
-                    intent[key] = float(candidate)
-        intent["needs_clarification"] = False
-        intent["missing_parameters"] = []
-        state["intent"] = intent
-    else:
-        intent = state["intent"]
-
-    # ------------------------------------------------------------------
-    # 3. Determine autonomy_mode.
+    # 2. Determine autonomy_mode.
     # ------------------------------------------------------------------
     existing_mode = state.get("autonomy_mode")
     if not existing_mode:
-        llm_intent_raw = None
-        if not is_clarification_turn:
-            llm_intent_raw = complete_json(
-                model=REASONING_MODEL,
-                system=(
-                    "Extract ONLY the autonomy_mode from user message. "
-                    "Return JSON: {\"autonomy_mode\": \"guided\" | \"autonomous\" | null}"
-                ),
-                user=state["user_message"],
-            )
-        llm_mode = llm_intent_raw.get("autonomy_mode") if isinstance(llm_intent_raw, dict) else None
+        llm_mode = llm_intent.get("autonomy_mode") if isinstance(llm_intent, dict) else None
         if llm_mode in ("guided", "autonomous"):
             state["autonomy_mode"] = llm_mode
         else:
@@ -417,19 +360,21 @@ def run(state: TransactionState) -> TransactionState:
     mode = state["autonomy_mode"]
 
     # ------------------------------------------------------------------
-    # 4. Handle requested_sites for guided mode (merge from new message).
+    # 3. Handle requested_sites for guided mode (merge from new message).
     # ------------------------------------------------------------------
     if mode == "guided" and not state.get("requested_sites"):
         sites: list[str] = _extract_sites_from_message(state["user_message"])
+        if not sites and isinstance(llm_intent, dict) and isinstance(llm_intent.get("requested_sites"), list):
+            sites = [_normalise_url(s) for s in llm_intent["requested_sites"] if isinstance(s, str)]
         if sites:
             state["requested_sites"] = sites
 
     # ------------------------------------------------------------------
-    # 5. Strict parameter checklist — mode-specific.
+    # 4. Strict parameter checklist — mode-specific.
     # ------------------------------------------------------------------
     missing_params = _find_missing_params(intent, mode)
 
-    # For guided mode, also check requested_sites separately (not in intent dict)
+    # For guided mode, also check requested_sites separately
     if mode == "guided" and not state.get("requested_sites"):
         if "requested_sites" not in missing_params:
             missing_params.append("requested_sites")
@@ -457,7 +402,7 @@ def run(state: TransactionState) -> TransactionState:
         return state
 
     # ------------------------------------------------------------------
-    # 6. All parameters present — proceed.
+    # 5. All parameters present — proceed to discovery.
     # ------------------------------------------------------------------
     intent["needs_clarification"] = False
     intent["clarification_reason"] = None
