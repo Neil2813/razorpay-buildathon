@@ -13,6 +13,8 @@ export default function Navbar() {
     navigate('/');
   };
 
+  const isLanding = location.pathname === '/';
+
   return (
     <nav className="navbar">
       {/* Brand */}
@@ -31,11 +33,14 @@ export default function Navbar() {
 
       {/* Nav Links */}
       <div className="navbar-links" style={{ flex: 1, justifyContent: 'center' }}>
-        {user && (
+        {!isLanding && (
+          <Link to="/checkout" className={`nav-link${isActive('/checkout') ? ' active' : ''}`} style={{ textDecoration: 'none' }}>
+            Checkout Cockpit
+          </Link>
+        )}
+        
+        {user && !isLanding && (
           <>
-            <Link to="/checkout" className={`nav-link${isActive('/checkout') ? ' active' : ''}`} style={{ textDecoration: 'none' }}>
-              Checkout Cockpit
-            </Link>
             {user.role === 'merchant_admin' && (
               <Link to="/dashboard" className={`nav-link${isActive('/dashboard') ? ' active' : ''}`} style={{ textDecoration: 'none' }}>
                 Revenue Intel
@@ -52,21 +57,32 @@ export default function Navbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
         {user ? (
           <>
-            <Link to="/profile" className="btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none', borderRadius: '6px' }}>
-              Profile
-            </Link>
-            <button onClick={handleLogout} className="btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)', cursor: 'pointer' }}>
-              Logout
-            </button>
+            {isLanding && (
+              <Link to="/checkout" className="btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+                Enter Cockpit
+              </Link>
+            )}
+            {!isLanding && (
+              <>
+                <Link to="/profile" className="btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', textDecoration: 'none', borderRadius: '6px' }}>
+                  Profile
+                </Link>
+                <button onClick={handleLogout} className="btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)', cursor: 'pointer' }}>
+                  Logout
+                </button>
+              </>
+            )}
           </>
         ) : (
           <>
-            <Link to="/login" className="btn-ghost" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+            <Link to="/login" className={isLanding ? "btn-primary" : "btn-ghost"} style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
               Login
             </Link>
-            <Link to="/register" className="btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
-              Get Started
-            </Link>
+            {!isLanding && (
+              <Link to="/register" className="btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+                Get Started
+              </Link>
+            )}
           </>
         )}
       </div>
