@@ -84,7 +84,7 @@ const AUTONOMOUS_PARAMS: MissingParam[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Clarification Card Component
+// Clarification Card Component (Clean State)
 // ---------------------------------------------------------------------------
 function ClarificationCard({
   missing,
