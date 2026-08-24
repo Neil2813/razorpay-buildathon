@@ -20,6 +20,7 @@ interface DiscoveredCandidate {
   has_delivery_time?: boolean;
   trust_status?: string;
   image_url?: string;
+  source_url?: string;
   match_reason?: string;
 }
 
@@ -40,7 +41,14 @@ interface Message {
   trustWarningPrompt?: { site: string; reason: string };
   sitesRejectedCount?: number;
   riskData?: RiskFeaturesData;
-  guardrailData?: { ceiling: number; price: number; passed: boolean; productName?: string; };
+  guardrailData?: {
+    ceiling: number;
+    price: number;
+    passed: boolean;
+    productName?: string;
+    chosenProduct?: DiscoveredCandidate;
+    selectionReason?: string;
+  };
   paymentAttempts?: PaymentAttempt[];
   missingParams?: MissingParam[];
   clarificationMode?: 'guided' | 'autonomous';
@@ -91,13 +99,16 @@ function ClarificationCard({
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
 
-  const allFilled = missing.every(p => {
-    const v = values[p.key];
-    return v !== undefined && v.trim() !== '';
-  });
-
   const handleSubmit = () => {
-    if (allFilled) onSubmit(values);
+    const finalValues = { ...values };
+    for (const p of missing) {
+      if (!finalValues[p.key]) {
+        if (p.inputType === 'select' && p.options?.includes('any')) {
+          finalValues[p.key] = 'any';
+        }
+      }
+    }
+    onSubmit(finalValues);
   };
 
   const modeColor = mode === 'guided' ? '#0149ae' : '#5c2db8';
@@ -179,16 +190,16 @@ function ClarificationCard({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={!allFilled || disabled}
+        disabled={disabled}
         style={{
           padding: '0.55rem 1.25rem',
           borderRadius: '7px',
-          background: allFilled && !disabled ? `linear-gradient(135deg, ${modeColor}, #032676)` : 'rgba(0,0,0,0.08)',
-          color: allFilled && !disabled ? '#fff' : 'rgba(0,0,0,0.35)',
+          background: !disabled ? `linear-gradient(135deg, ${modeColor}, #032676)` : 'rgba(0,0,0,0.08)',
+          color: !disabled ? '#fff' : 'rgba(0,0,0,0.35)',
           border: 'none',
           fontWeight: 700,
           fontSize: '0.82rem',
-          cursor: allFilled && !disabled ? 'pointer' : 'not-allowed',
+          cursor: !disabled ? 'pointer' : 'not-allowed',
           transition: 'all 0.2s',
           display: 'flex',
           alignItems: 'center',
@@ -571,7 +582,14 @@ export default function CheckoutPage() {
             };
           } else if (event.agent === 'negotiation' && event.output_summary) {
             const s = event.output_summary;
-            guardrailData = { ceiling: s.ceiling || data.guardrail_ceiling || 5000, price: s.price || 0, passed: s.guardrail_passed !== false, productName: s.product_id };
+            guardrailData = {
+              ceiling: s.ceiling || data.guardrail_ceiling || 5000,
+              price: s.price || 0,
+              passed: s.guardrail_passed !== false,
+              productName: s.product_id,
+              chosenProduct: s.chosen_product || data.chosen_product,
+              selectionReason: s.selection_reason,
+            };
           } else if (event.agent === 'payment' && (event.output_summary?.payment_attempts || data.payment_attempts)) {
             paymentAttempts = event.output_summary?.payment_attempts || data.payment_attempts;
           }

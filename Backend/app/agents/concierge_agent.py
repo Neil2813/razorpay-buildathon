@@ -145,6 +145,10 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
     budget_min: float | None = None
     budget_max: float | None = None
 
+    floor_match = _FLOOR_RE.search(text)
+    if floor_match:
+        budget_min = _extract_number(floor_match.group(1))
+
     range_match = _CURRENCY_RANGE_RE.search(text)
     if range_match:
         v1 = _extract_number(range_match.group(1))
@@ -152,16 +156,11 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         if v1 is not None and v2 is not None:
             budget_min, budget_max = sorted([v1, v2])
 
-    if budget_max is None:
+    if budget_max is None and not floor_match:
         max_match = _CURRENCY_RE.search(text)
         if max_match:
             val_str = max_match.group(1) or max_match.group(2)
             budget_max = _extract_number(val_str)
-
-    if budget_min is None:
-        floor_match = _FLOOR_RE.search(text)
-        if floor_match:
-            budget_min = _extract_number(floor_match.group(1))
 
     size_match = _SIZE_RE.search(text)
     size = size_match.group(1).upper() if size_match else None
@@ -306,22 +305,31 @@ def run(state: TransactionState) -> TransactionState:
         user=state["user_message"],
     )
 
-    # Merge fallback regex extraction
-    for key in ("category", "size", "color", "brand", "budget_min", "budget_max", "min_rating"):
+    # Merge fallback regex extraction non-destructively
+    for key in ("category", "size", "color", "brand", "min_rating"):
         val = fallback.get(key)
         if val is not None:
             existing_intent[key] = val
 
-    # Merge LLM extraction
+    if fallback.get("budget_min") is not None:
+        existing_intent["budget_min"] = fallback["budget_min"]
+    if fallback.get("budget_max") is not None and "minimum budget" not in state["user_message"].lower() and "floor" not in state["user_message"].lower():
+        existing_intent["budget_max"] = fallback["budget_max"]
+
+    # Merge LLM extraction non-destructively
     if isinstance(llm_intent, dict):
         for key in ("category", "size", "color", "brand"):
             cand = llm_intent.get(key)
             if isinstance(cand, str) and cand.strip() and cand.lower() != "null":
                 existing_intent[key] = cand
-        for key in ("budget_min", "budget_max", "min_rating"):
-            candidate = llm_intent.get(key)
-            if isinstance(candidate, (int, float)) and candidate >= 0:
-                existing_intent[key] = float(candidate)
+        if isinstance(llm_intent.get("budget_min"), (int, float)) and llm_intent["budget_min"] >= 0:
+            existing_intent["budget_min"] = float(llm_intent["budget_min"])
+        if isinstance(llm_intent.get("budget_max"), (int, float)) and llm_intent["budget_max"] >= 0:
+            # Don't overwrite existing budget_max if user explicitly specified floor/minimum budget in this message
+            if not (existing_intent.get("budget_max") and ("minimum budget" in state["user_message"].lower() or "floor" in state["user_message"].lower() or "above" in state["user_message"].lower())):
+                existing_intent["budget_max"] = float(llm_intent["budget_max"])
+        if isinstance(llm_intent.get("min_rating"), (int, float)) and llm_intent["min_rating"] >= 0:
+            existing_intent["min_rating"] = float(llm_intent["min_rating"])
 
     intent = existing_intent
     intent["needs_clarification"] = False
@@ -369,9 +377,13 @@ def run(state: TransactionState) -> TransactionState:
         if sites:
             state["requested_sites"] = sites
 
-    # ------------------------------------------------------------------
-    # 4. Strict parameter checklist — mode-specific.
-    # ------------------------------------------------------------------
+    # If size, budget_min, and budget_max are provided, default optional parameters (color, brand) to "any"
+    if intent.get("size") and intent.get("budget_min") is not None and intent.get("budget_max") is not None:
+        if not intent.get("color"):
+            intent["color"] = "any"
+        if not intent.get("brand"):
+            intent["brand"] = "any"
+
     missing_params = _find_missing_params(intent, mode)
 
     # For guided mode, also check requested_sites separately
