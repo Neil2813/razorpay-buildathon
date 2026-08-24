@@ -59,7 +59,6 @@ export default function CheckoutPage() {
   const [input, setInput] = useState('');
   const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided'>('autonomous');
   const [requestedSitesInput, setRequestedSitesInput] = useState('');
-  const [forcePaymentFail, setForcePaymentFail] = useState(false);
   const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 9)}`);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -193,7 +192,7 @@ export default function CheckoutPage() {
         user_message: query,
         tenant_id: user?.tenant_id || 'demo_tenant',
         session_id: sessionId,
-        force_payment_fail: forcePaymentFail,
+        force_payment_fail: false,
         autonomy_mode: modeToUse,
         requested_sites: sitesToUse,
       });
@@ -278,23 +277,7 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/* Force Payment Fail Toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'rgba(30,30,30,0.55)', cursor: 'pointer', userSelect: 'none' }} title="Force Razorpay gateway to fail for retry demo">
-                <input
-                  type="checkbox"
-                  checked={forcePaymentFail}
-                  onChange={e => setForcePaymentFail(e.target.checked)}
-                  disabled={isRunning}
-                />
-                Simulate Fail
-              </label>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.3rem' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isRunning ? '#0149ae' : paymentStatus === 'success' ? '#1250b2' : paymentStatus === 'escalated' ? '#032676' : 'rgba(30,30,30,0.2)', ...(isRunning ? { animation: 'pulse-ring 1.4s ease-out infinite' } : {}) }} />
-                <span style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.4)', fontWeight: 600 }}>
-                  {isRunning ? `${AGENT_LABELS[activeAgent] || activeAgent} running…` : paymentStatus === 'pending' ? 'Awaiting input' : paymentStatus}
-                </span>
-              </div>
             </div>
           </div>
 
