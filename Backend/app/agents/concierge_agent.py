@@ -55,7 +55,7 @@ _AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min"]
 # ---------------------------------------------------------------------------
 
 _CURRENCY_RE = re.compile(
-    r"(?:₹|rs\.?|inr|under|below|max|budget|ceiling|upto|up to)\s*([\d,]+(?:\.\d+)?)"
+    r"(?:₹|rs\.?|inr|under|below|max|budget|ceiling|upto|up to)\s*(?:price|cost|amount)?\s*([\d,]+(?:\.\d+)?)"
     r"|([\d,]+(?:\.\d+)?)\s*(?:inr|rs\.?|rupees)",
     re.I,
 )
@@ -64,7 +64,7 @@ _CURRENCY_RANGE_RE = re.compile(
     re.I,
 )
 _FLOOR_RE = re.compile(
-    r"(?:above|over|min(?:imum)?|floor|atleast|at least|starting|from)\s*(?:₹|rs\.?\s*|inr\s*)?([\d,]+(?:\.\d+)?)",
+    r"(?:above|over|min(?:imum)?|floor|atleast|at least|starting|from)\s*(?:price|budget|cost|amount)?\s*(?:₹|rs\.?\s*|inr\s*)?([\d,]+(?:\.\d+)?)",
     re.I,
 )
 _SIZE_RE = re.compile(r"\b(?:size\s*)?(xxs|xs|s|m|l|xl|xxl|\d{1,2})\b", re.I)
