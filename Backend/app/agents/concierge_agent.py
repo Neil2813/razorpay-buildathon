@@ -108,7 +108,7 @@ _ANY_RE = re.compile(r"\b(any|anything|no preference|doesn.t matter|don.t care|w
 # ---------------------------------------------------------------------------
 
 def _normalise_url(raw: str) -> str:
-    raw = raw.strip().rstrip("/")
+    raw = raw.strip().rstrip("/.").rstrip(".")
     if not raw.startswith(("http://", "https://")):
         raw = "https://" + raw
     return raw
@@ -175,7 +175,18 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
     color = next((c for c in colours if re.search(rf"\b{c}\b", text, re.I)), None)
 
     brand_match = _BRAND_RE.search(text)
-    brand = brand_match.group(1).title() if brand_match else None
+    brand = None
+    if brand_match:
+        matched_b = brand_match.group(1).title()
+        # If it's a retailer platform name (amazon, flipkart, myntra, ajio) and appears in a URL or 'from/on/site' context, it's a store site, not a clothing brand
+        if matched_b.lower() in ("amazon", "flipkart", "myntra", "ajio"):
+            if re.search(rf"\bbrand\s*{matched_b}\b", text, re.I):
+                brand = matched_b
+            else:
+                brand = None
+        else:
+            brand = matched_b
+
     if _ANY_RE.search(text) and brand is None:
         brand = "any"
 
@@ -203,11 +214,16 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
 # Parameter validation
 # ---------------------------------------------------------------------------
 
-def _find_missing_params(intent: dict[str, Any], mode: str) -> list[str]:
+def _find_missing_params(intent: dict[str, Any], mode: str, state: TransactionState | None = None) -> list[str]:
     """Return list of parameter keys that are still unset/None."""
     required = _GUIDED_REQUIRED if mode == "guided" else _AUTONOMOUS_REQUIRED
     missing = []
     for param in required:
+        if param == "requested_sites":
+            has_sites = (state and state.get("requested_sites")) or intent.get("requested_sites")
+            if not has_sites:
+                missing.append(param)
+            continue
         val = intent.get(param)
         if val is None or val == "":
             missing.append(param)
@@ -365,17 +381,20 @@ def run(state: TransactionState) -> TransactionState:
                 )
                 return state
 
-    mode = state["autonomy_mode"]
+    mode = state.get("autonomy_mode", "autonomous")
 
     # ------------------------------------------------------------------
-    # 3. Handle requested_sites for guided mode (merge from new message).
+    # 3. Handle requested_sites for guided mode (merge from new message or state).
     # ------------------------------------------------------------------
-    if mode == "guided" and not state.get("requested_sites"):
-        sites: list[str] = _extract_sites_from_message(state["user_message"])
-        if not sites and isinstance(llm_intent, dict) and isinstance(llm_intent.get("requested_sites"), list):
-            sites = [_normalise_url(s) for s in llm_intent["requested_sites"] if isinstance(s, str)]
-        if sites:
-            state["requested_sites"] = sites
+    if mode == "guided":
+        if not state.get("requested_sites"):
+            sites: list[str] = _extract_sites_from_message(state["user_message"])
+            if not sites and isinstance(llm_intent, dict) and isinstance(llm_intent.get("requested_sites"), list):
+                sites = [_normalise_url(s) for s in llm_intent["requested_sites"] if isinstance(s, str)]
+            if sites:
+                state["requested_sites"] = sites
+        if state.get("requested_sites"):
+            intent["requested_sites"] = state["requested_sites"]
 
     # If size, budget_min, and budget_max are provided, default optional parameters (color, brand) to "any"
     if intent.get("size") and intent.get("budget_min") is not None and intent.get("budget_max") is not None:
@@ -384,12 +403,7 @@ def run(state: TransactionState) -> TransactionState:
         if not intent.get("brand"):
             intent["brand"] = "any"
 
-    missing_params = _find_missing_params(intent, mode)
-
-    # For guided mode, also check requested_sites separately
-    if mode == "guided" and not state.get("requested_sites"):
-        if "requested_sites" not in missing_params:
-            missing_params.append("requested_sites")
+    missing_params = _find_missing_params(intent, mode, state=state)
 
     if missing_params:
         clarification_msg = _build_clarification_message(missing_params)
