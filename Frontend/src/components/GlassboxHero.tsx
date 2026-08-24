@@ -75,43 +75,43 @@ export default function GlassboxHero() {
   const introY = interpolate(p, 0.00, 0.05, 0, -20);
 
   // 1. Razorpay Card Transforms: Primary Hero element at p=0
-  const cardScale = p < 0.12 
-    ? interpolate(p, 0.00, 0.12, 1.0, 0.90)
-    : interpolate(p, 0.12, 0.18, 0.90, 0.75);
+  const cardScale = p < 0.14 
+    ? interpolate(p, 0.00, 0.14, 1.0, 0.95)
+    : interpolate(p, 0.14, 0.20, 0.95, 0.85);
 
-  const cardOpacity = p < 0.12 
+  const cardOpacity = p < 0.14 
     ? 1.0 
-    : interpolate(p, 0.12, 0.18, 1.0, 0.0);
+    : interpolate(p, 0.14, 0.20, 1.0, 0.0);
 
-  const cardY = p < 0.12
-    ? interpolate(p, 0.00, 0.12, 0, -10) // vh
-    : interpolate(p, 0.12, 0.18, -10, -90); // vh (Exit quickly)
+  const cardY = p < 0.14
+    ? interpolate(p, 0.00, 0.14, 0, -5) // vh
+    : interpolate(p, 0.14, 0.20, -5, -25); // vh (Slight upward drift while fading)
 
-  const cardShadowOpacity = p < 0.12 
+  const cardShadowOpacity = p < 0.14 
     ? 0.7 
-    : interpolate(p, 0.12, 0.18, 0.7, 0);
+    : interpolate(p, 0.14, 0.20, 0.7, 0);
 
-  // 2. Multi-Agent Architecture Diagram (`/Agents.png`): Enters AFTER card exits
-  const agentsOpacity = p < 0.18
+  // 2. Multi-Agent Architecture Diagram (`/Agents.png`): Enters seamlessly
+  const agentsOpacity = p < 0.16
     ? 0.0
-    : p < 0.24
-      ? interpolate(p, 0.18, 0.24, 0.0, 1.0)
+    : p < 0.22
+      ? interpolate(p, 0.16, 0.22, 0.0, 1.0)
       : p < 0.36
         ? 1.0
         : interpolate(p, 0.36, 0.44, 1.0, 0.0);
 
-  const agentsY = p < 0.18
-    ? 40 // vh
-    : p < 0.24
-      ? interpolate(p, 0.18, 0.24, 40, 0) // vh
+  const agentsY = p < 0.16
+    ? 15 // vh (Start closer to center to eliminate spatial gap)
+    : p < 0.22
+      ? interpolate(p, 0.16, 0.22, 15, 0) // vh
       : p < 0.36
-        ? interpolate(p, 0.24, 0.36, 0, -15) // vh
-        : interpolate(p, 0.36, 0.44, -15, -90); // vh (Exit)
+        ? interpolate(p, 0.22, 0.36, 0, -10) // vh
+        : interpolate(p, 0.36, 0.44, -10, -90); // vh (Exit)
 
-  const agentsScale = p < 0.18
-    ? 0.85
-    : p < 0.24
-      ? interpolate(p, 0.18, 0.24, 0.85, 1.0)
+  const agentsScale = p < 0.16
+    ? 0.90
+    : p < 0.22
+      ? interpolate(p, 0.16, 0.22, 0.90, 1.0)
       : p < 0.36
         ? 1.0
         : interpolate(p, 0.36, 0.44, 1.0, 0.90);
@@ -200,7 +200,7 @@ export default function GlassboxHero() {
           <img 
             src="/Agents.png" 
             alt="GlassBox Multi-Agent Architecture"
-            className="w-[92vw] max-w-[850px] md:max-w-[1000px] h-auto object-contain drop-shadow-2xl rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-2 md:p-3 shadow-xl"
+            className="w-[92vw] max-w-[850px] md:max-w-[1000px] h-auto object-contain drop-shadow-2xl"
             loading="eager"
           />
         </div>
