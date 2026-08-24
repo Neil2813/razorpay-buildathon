@@ -43,6 +43,17 @@ def verify_razorpay_signature(payload_bytes: bytes, signature_header: str, webho
     return hmac.compare_digest(expected_signature, signature_header)
 
 
+def is_private_ip(ip_str: str) -> bool:
+    """
+    Check whether an IP address string falls within any blocked/private network range.
+    """
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+        return any(ip_obj in blocked_net for blocked_net in BLOCKED_IP_NETWORKS)
+    except ValueError:
+        return False
+
+
 def is_ssrf_safe_url(url: str, allow_local_dev: bool = False) -> bool:
     """
     Validate an outbound URL to prevent SSRF (Server-Side Request Forgery).
@@ -67,10 +78,8 @@ def is_ssrf_safe_url(url: str, allow_local_dev: bool = False) -> bool:
         if allow_local_dev and (ip_obj.is_loopback or hostname in ("localhost", "127.0.0.1")):
             return True
 
-        # Check against blocked private IP networks
-        for blocked_net in BLOCKED_IP_NETWORKS:
-            if ip_obj in blocked_net:
-                return False
+        if is_private_ip(ip_str):
+            return False
 
         return True
     except Exception:

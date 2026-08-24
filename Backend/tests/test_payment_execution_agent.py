@@ -87,10 +87,10 @@ class PaymentIdempotencyTests(unittest.TestCase):
             transaction = {"amount": 100.0, "type": "PAYMENT", "old_balance_orig": 1_000.0, "new_balance_orig": 900.0, "old_balance_dest": 0.0, "new_balance_dest": 100.0}
             crashed_gateway = CrashAfterProviderAcceptsGateway()
             with self.assertRaises(SystemExit):
-                run_transaction(tenant_id="tenant", session_id="resume-session", user_message="blue shirt size M under ₹1000", catalog=catalog, guardrail_ceiling=1_000.0, transaction=transaction, gateway=crashed_gateway, ledger=ledger)
+                run_transaction(tenant_id="tenant", session_id="resume-session", user_message="blue shirt size M under ₹1000", catalog=catalog, guardrail_ceiling=1_000.0, transaction=transaction, gateway=crashed_gateway, ledger=ledger, autonomy_mode="autonomous")
 
             resumed_gateway = SuccessfulGateway()
-            resumed = run_transaction(tenant_id="tenant", session_id="resume-session", user_message="ignored on resume", catalog=catalog, guardrail_ceiling=1_000.0, transaction=transaction, gateway=resumed_gateway, ledger=ledger)
+            resumed = run_transaction(tenant_id="tenant", session_id="resume-session", user_message="ignored on resume", catalog=catalog, guardrail_ceiling=1_000.0, transaction=transaction, gateway=resumed_gateway, ledger=ledger, autonomy_mode="autonomous")
 
             self.assertEqual(resumed["payment_status"], "success")
             self.assertEqual(crashed_gateway.keys, resumed_gateway.keys)

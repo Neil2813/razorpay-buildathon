@@ -6,7 +6,7 @@ and state checkpointing.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 try:
     from langgraph.graph import StateGraph, START, END
@@ -212,6 +212,7 @@ def run_transaction(
     # callers that want to pre-seed them without a Concierge turn.
     autonomy_mode: str | None = None,
     requested_sites: list[str] | None = None,
+    on_checkpoint: Callable[[TransactionState], None] | None = None,
 ) -> TransactionState:
     """Run a purchase request through the compiled LangGraph StateGraph."""
     ledger = ledger or ledger_agent.get_default_sqlite_ledger()
@@ -238,6 +239,8 @@ def run_transaction(
     def checkpoint(current_state: TransactionState) -> None:
         nonlocal event_index
         event_index = ledger.checkpoint(current_state, from_index=event_index)
+        if on_checkpoint:
+            on_checkpoint(current_state)
 
     graph = get_transaction_graph()
 

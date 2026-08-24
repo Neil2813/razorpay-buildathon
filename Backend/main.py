@@ -50,8 +50,8 @@ def create_app() -> FastAPI:
         title=settings.PROJECT_NAME,
         description=(
             "GLASSBOX: The trust layer for agentic commerce. "
-            "A 6-agent LangGraph pipeline (Concierge → Catalog → Negotiation → Risk → Payment → Audit) "
-            "with real-time WebSocket streaming, Razorpay test-mode payments, "
+            "A 6-agent LangGraph pipeline (Concierge → Discovery → Negotiation → Risk → Payment → Audit) "
+            "with Site Trust security gating, real-time WebSocket streaming, Razorpay test-mode payments, "
             "and a Hybrid XGBoost+LightGBM fraud risk engine."
         ),
         version=settings.VERSION,

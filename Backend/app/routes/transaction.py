@@ -34,6 +34,16 @@ from app.schemas.transaction import RunTransactionRequest, TransactionResponse
 router = APIRouter(prefix="/transaction", tags=["Transaction Orchestrator"])
 
 
+def _resolve_tenant_id(requested: str | None, current_user: dict) -> str:
+    """
+    Enforce tenant isolation. Non-admin users are strictly tied to their JWT tenant claim.
+    Platform admins are permitted to override tenant_id explicitly.
+    """
+    if current_user.get("role") == "platform_admin" and requested:
+        return requested
+    return current_user.get("tenant_id", "demo_tenant")
+
+
 @router.get(
     "/history/list",
     summary="Transaction History",
@@ -43,7 +53,7 @@ async def get_history(
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
 ):
-    tenant_id = current_user.get("tenant_id", "demo_tenant")
+    tenant_id = _resolve_tenant_id(None, current_user)
     history = get_transaction_history(tenant_id=tenant_id, limit=limit)
     return {"tenant_id": tenant_id, "history": history, "count": len(history)}
 
@@ -67,7 +77,7 @@ def _run_with_streaming(
     Checkpoint writes are synchronous (SQLite); WebSocket push is done via
     loop.call_soon_threadsafe so we don't block the agent steps.
     """
-    tenant_id = request.tenant_id
+    tenant_id = _resolve_tenant_id(request.tenant_id, current_user)
     catalog = query_catalog(tenant_id)
     guardrail_ceiling = get_tenant_ceiling(tenant_id)
     gateway = get_gateway(force_fail=request.force_payment_fail)
@@ -83,6 +93,21 @@ def _run_with_streaming(
         "new_balance_dest": 0,
     }
 
+    session_id = request.session_id or ""
+    last_sent_index = 0
+
+    def checkpoint_and_broadcast(state: TransactionState) -> None:
+        nonlocal last_sent_index
+        audit_log = state.get("audit_log", [])
+        new_events = audit_log[last_sent_index:]
+        if new_events:
+            last_sent_index = len(audit_log)
+            if loop and session_id and session_id in _ws_queues:
+                for event in new_events:
+                    loop.call_soon_threadsafe(
+                        lambda e=event: asyncio.create_task(_broadcast(session_id, {"type": "agent_event", **e}))
+                    )
+
     ledger = ledger_agent.get_default_sqlite_ledger()
     state = run_transaction(
         tenant_id=tenant_id,
@@ -95,6 +120,7 @@ def _run_with_streaming(
         ledger=ledger,
         autonomy_mode=request.autonomy_mode,
         requested_sites=request.requested_sites,
+        on_checkpoint=checkpoint_and_broadcast,
     )
     return state
 
@@ -160,7 +186,7 @@ async def get_transaction(
     session_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    tenant_id = current_user.get("tenant_id", "demo_tenant")
+    tenant_id = _resolve_tenant_id(None, current_user)
     state = load_transaction_checkpoint(session_id, tenant_id)
     if not state:
         raise HTTPException(
@@ -203,13 +229,14 @@ async def get_merchant_insights(
     tenant_id: str,
     current_user: dict = Depends(get_current_user),
 ):
+    resolved_tenant_id = _resolve_tenant_id(tenant_id, current_user)
     from app.db.database import get_db_connection
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM audit_events WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 500;",
-            (tenant_id,),
+            (resolved_tenant_id,),
         )
         rows = cursor.fetchall()
     finally:
@@ -226,7 +253,7 @@ async def get_merchant_insights(
         events.append(event)
 
     insights = merchant_insights_agent.compute_insights(events)
-    return {"tenant_id": tenant_id, "insights": insights, "event_count": len(events)}
+    return {"tenant_id": resolved_tenant_id, "insights": insights, "event_count": len(events)}
 
 
 @router.websocket("/ws/{session_id}")

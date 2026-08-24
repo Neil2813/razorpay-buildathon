@@ -21,6 +21,7 @@ import socket
 from typing import Any
 from urllib.parse import urlparse
 
+from app.core.security import is_private_ip
 from .state import TransactionState
 
 
@@ -51,15 +52,6 @@ _SSRF_BLOCKED_HOSTS: set[str] = {
     "metadata.google.internal",
     "100.100.100.200",  # Alibaba Cloud metadata
 }
-
-# Private IPv4 network ranges.
-_PRIVATE_NETWORKS: list[ipaddress.IPv4Network] = [
-    ipaddress.IPv4Network("10.0.0.0/8"),
-    ipaddress.IPv4Network("172.16.0.0/12"),
-    ipaddress.IPv4Network("192.168.0.0/16"),
-    ipaddress.IPv4Network("127.0.0.0/8"),
-    ipaddress.IPv4Network("169.254.0.0/16"),  # link-local / metadata
-]
 
 # Domains flagged as recently registered (demo stub — real impl would call a WHOIS API).
 _YOUNG_DOMAINS: set[str] = {
@@ -103,14 +95,6 @@ def _resolve_ip(hostname: str) -> str | None:
         return socket.gethostbyname(hostname)
     except OSError:
         return None
-
-
-def _is_private_ip(ip_str: str) -> bool:
-    try:
-        addr = ipaddress.IPv4Address(ip_str)
-        return any(addr in net for net in _PRIVATE_NETWORKS)
-    except ValueError:
-        return False
 
 
 def _strip_www(domain: str) -> str:
@@ -170,7 +154,7 @@ def check_site(url: str) -> dict[str, Any]:
         return result
 
     resolved = _resolve_ip(domain)
-    if resolved and _is_private_ip(resolved):
+    if resolved and is_private_ip(resolved):
         result["status"] = "blocked"
         result["reason"] = (
             f"Domain '{domain}' resolves to a private IP address ({resolved}), "
