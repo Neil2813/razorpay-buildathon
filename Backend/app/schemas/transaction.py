@@ -23,6 +23,14 @@ class RunTransactionRequest(BaseModel):
         default=False,
         description="For demo: force payment to fail (triggers the decline → retry → escalate script).",
     )
+    autonomy_mode: Literal["guided", "autonomous"] | None = Field(
+        default=None,
+        description="Buyer autonomy mode preference.",
+    )
+    requested_sites: list[str] | None = Field(
+        default=None,
+        description="Target site URLs or domains for guided mode.",
+    )
 
 
 class AuditEventResponse(BaseModel):
@@ -49,3 +57,9 @@ class TransactionResponse(BaseModel):
     current_agent: str = ""
     requires_confirmation: bool = False
     catalog_candidates: list[dict[str, Any]] = []
+    autonomy_mode: Literal["guided", "autonomous"] | None = None
+    requested_sites: list[str] | None = None
+    discovered_candidates: list[dict[str, Any]] = []
+    site_trust_results: list[dict[str, Any]] = []
+    trust_override: bool = False
+    sites_rejected_count: int = 0

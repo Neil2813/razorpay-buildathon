@@ -25,11 +25,27 @@ from app.agents.state import TransactionState, new_transaction_state
 from app.auth.deps import get_current_user
 from app.core.razorpay_gateway import get_gateway
 from app.db.database import (
-    checkpoint_transaction, get_tenant_ceiling, load_transaction_checkpoint, query_catalog,
+    checkpoint_transaction, get_tenant_ceiling, get_transaction_history, load_transaction_checkpoint, query_catalog,
 )
+
+
 from app.schemas.transaction import RunTransactionRequest, TransactionResponse
 
 router = APIRouter(prefix="/transaction", tags=["Transaction Orchestrator"])
+
+
+@router.get(
+    "/history/list",
+    summary="Transaction History",
+    description="Returns past transaction logs and audit summaries for the user's tenant.",
+)
+async def get_history(
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
+):
+    tenant_id = current_user.get("tenant_id", "demo_tenant")
+    history = get_transaction_history(tenant_id=tenant_id, limit=limit)
+    return {"tenant_id": tenant_id, "history": history, "count": len(history)}
 
 # In-memory broadcast registry: session_id -> list of connected WebSocket queues
 _ws_queues: dict[str, list[asyncio.Queue]] = {}
@@ -77,6 +93,8 @@ def _run_with_streaming(
         gateway=gateway,
         session_id=request.session_id,
         ledger=ledger,
+        autonomy_mode=request.autonomy_mode,
+        requested_sites=request.requested_sites,
     )
     return state
 
@@ -123,6 +141,12 @@ async def run_transaction_endpoint(
         current_agent=state.get("current_agent", ""),
         requires_confirmation=state.get("requires_confirmation", False),
         catalog_candidates=state.get("catalog_candidates", []),
+        autonomy_mode=state.get("autonomy_mode"),
+        requested_sites=state.get("requested_sites"),
+        discovered_candidates=state.get("discovered_candidates", []),
+        site_trust_results=state.get("site_trust_results", []),
+        trust_override=state.get("trust_override", False),
+        sites_rejected_count=state.get("sites_rejected_count", 0),
     )
 
 
@@ -158,6 +182,12 @@ async def get_transaction(
         current_agent=state.get("current_agent", ""),
         requires_confirmation=state.get("requires_confirmation", False),
         catalog_candidates=state.get("catalog_candidates", []),
+        autonomy_mode=state.get("autonomy_mode"),
+        requested_sites=state.get("requested_sites"),
+        discovered_candidates=state.get("discovered_candidates", []),
+        site_trust_results=state.get("site_trust_results", []),
+        trust_override=state.get("trust_override", False),
+        sites_rejected_count=state.get("sites_rejected_count", 0),
     )
 
 

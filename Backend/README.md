@@ -2,7 +2,7 @@
 
 This is the backend service for the **GLASSBOX** agentic commerce system. It provides a robust, multi-tenant FastAPI backend that powers a 6-agent LangGraph orchestration, secure JWT authentication, local SQLite persistence, and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection.
 
-## 🏗️ Architecture & Features
+## Architecture & Features
 
 ### 1. LangGraph Multi-Agent System (The Virtual Brain)
 The core of the transaction process is handled by a suite of specialized agents working sequentially and securely:
@@ -37,7 +37,7 @@ PaySim fraud examples contain a near-deterministic balance-drain signature by de
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 *   Python 3.11+
@@ -77,7 +77,7 @@ API Documentation available at `http://localhost:8000/docs`.
 
 ---
 
-## 🔌 Core API Endpoints
+## Core API Endpoints
 
 ### Auth & Profile (`/api/auth`, `/api/profile`)
 *   `POST /api/auth/register` - Create user (`buyer` or `merchant_admin`).
@@ -86,7 +86,7 @@ API Documentation available at `http://localhost:8000/docs`.
 *   `GET /api/profile/me` - View current user profile.
 *   `PATCH /api/profile/tenant` - Update spend ceilings (Requires `merchant_admin`).
 
-### Transaction Orchestrator (`/api/transaction`) 🆕
+### Transaction Orchestrator (`/api/transaction`)
 *   `POST /api/transaction/run` - **The main endpoint.** Runs the complete 6-agent GLASSBOX pipeline (Concierge → Catalog → Negotiation → Risk → Payment → Audit) from a natural language buyer intent. Returns the full auditable transaction state.
     - Set `force_payment_fail: true` in the request body to trigger the **demo failure script** (decline → one retry → escalate).
 *   `GET /api/transaction/{session_id}` - Replay/fetch a persisted transaction by session ID.
@@ -101,7 +101,7 @@ API Documentation available at `http://localhost:8000/docs`.
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```text
 Backend/

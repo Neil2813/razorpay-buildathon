@@ -43,6 +43,23 @@ def run(state: TransactionState, catalog: Iterable[dict[str, Any]]) -> Transacti
         if isinstance(phrasing, dict) and isinstance(phrasing.get("reason"), str):
             candidate["match_reason"] = phrasing["reason"]
     state["catalog_candidates"] = candidates
-    audit_event(state, agent="catalog", decision_reason="Applied stock, category, size and colour filters before ranking.",
-                inputs_summary={"intent": intent}, output_summary={"candidate_count": len(candidates)})
+    audit_event(
+        state,
+        agent="catalog",
+        decision_reason="Applied stock, category, size and colour filters before ranking.",
+        inputs_summary={"intent": intent},
+        output_summary={
+            "candidate_count": len(candidates),
+            "candidates": [
+                {
+                    "product_id": c.get("product_id"),
+                    "name": c.get("name"),
+                    "price": float(c.get("price", 0)),
+                    "has_return_policy": bool(c.get("return_policy")),
+                    "has_delivery_time": c.get("delivery_time_days") is not None,
+                }
+                for c in candidates
+            ],
+        },
+    )
     return state

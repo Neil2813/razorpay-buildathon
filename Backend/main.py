@@ -26,6 +26,10 @@ except (ImportError, ModuleNotFoundError):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Pre-load ML model during startup for zero cold-start latency."""
+    print("[startup] Initializing database...")
+    from app.db.database import init_db
+    init_db()
+    
     print("[startup] Pre-loading risk model...")
     try:
         get_model()
@@ -37,6 +41,7 @@ async def lifespan(app: FastAPI):
         print(f"[startup] WARNING: {e}")
         print("[startup] Server started, but /api/risk/predict will use rule-based fallback until model is trained.")
     yield
+
 
 
 def create_app() -> FastAPI:

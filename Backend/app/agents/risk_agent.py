@@ -144,10 +144,12 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
         decision_reason=f"Scored transaction via {source}; applied review threshold.",
         output_summary={
             "risk_score": risk_score,
+            "risk_level": result.get("risk_level", "LOW"),
             "threshold": confirmation_threshold,
             "requires_confirmation": state["requires_confirmation"],
             "model_source": source,
             "explanation": result.get("explanation"),
+            "top_features": result.get("top_features", []),
         },
     )
     return state

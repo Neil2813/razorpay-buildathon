@@ -371,6 +371,39 @@ def load_transaction_checkpoint(session_id: str, tenant_id: str) -> dict[str, An
         conn.close()
 
 
+def get_transaction_history(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """Retrieve history of transactions for a given tenant."""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT session_id, tenant_id, user_message, payment_status, chosen_product_id, risk_score, state_json, created_at
+            FROM transactions
+            WHERE tenant_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?;
+            """,
+            (tenant_id, limit),
+        ).fetchall()
+
+        history = []
+        for row in rows:
+            item = dict(row)
+            try:
+                state = json.loads(item.pop("state_json", "{}"))
+                item["chosen_product"] = state.get("chosen_product")
+                item["escalation_message"] = state.get("escalation_message")
+                item["audit_count"] = len(state.get("audit_log", []))
+            except Exception:
+                item["chosen_product"] = None
+                item["escalation_message"] = None
+                item["audit_count"] = 0
+            history.append(item)
+        return history
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     print("[db] Database initialization completed successfully.")

@@ -15,6 +15,14 @@ class TransactionState(TypedDict, total=False):
     session_id: str
     user_message: str
     intent: dict[str, Any]
+    # --- Autonomy & Discovery (UPDATE.md §1) ---
+    autonomy_mode: Literal["guided", "autonomous"] | None
+    requested_sites: list[str] | None          # guided mode only
+    discovered_candidates: list[dict[str, Any]] # pre-trust-filter site+product+review_summary
+    site_trust_results: list[dict[str, Any]]    # {site, status, reason} per site checked
+    trust_override: bool                        # user explicitly continued past a warning
+    sites_rejected_count: int                   # how many sources were silently skipped (autonomous)
+    # --- Existing fields (unchanged) ---
     catalog_candidates: list[dict[str, Any]]
     chosen_product: dict[str, Any] | None
     guardrail_ceiling: float
@@ -37,6 +45,14 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         session_id=session_id or str(uuid4()),
         user_message=user_message,
         intent={},
+        # Autonomy & Discovery defaults
+        autonomy_mode=None,
+        requested_sites=None,
+        discovered_candidates=[],
+        site_trust_results=[],
+        trust_override=False,
+        sites_rejected_count=0,
+        # Existing defaults
         catalog_candidates=[],
         chosen_product=None,
         guardrail_passed=False,
