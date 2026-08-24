@@ -301,8 +301,8 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
 // ---------------------------------------------------------------------------
 export default function CheckoutPage() {
   const { user } = useAuth();
-  const [activeAgent, setActiveAgent] = useState('concierge');
-  const [completedAgents, setCompletedAgents] = useState<string[]>([]);
+  const [_activeAgent, setActiveAgent] = useState('concierge');
+  const [_completedAgents, setCompletedAgents] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided' | null>(null);
@@ -310,13 +310,13 @@ export default function CheckoutPage() {
   const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 9)}`);
   const [isRunning, setIsRunning] = useState(false);
 
-  const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
-  const [paymentStatus, setPaymentStatus] = useState<string>('pending');
-  const [escalationMessage, setEscalationMessage] = useState<string | null>(null);
-  const [guardrailCeiling, setGuardrailCeiling] = useState<number | undefined>(undefined);
-  const [chosenProduct, setChosenProduct] = useState<Record<string, any> | null>(null);
-  const [riskScore, setRiskScore] = useState<number | null>(null);
-  const [riskFeatures, setRiskFeatures] = useState<Record<string, any> | null>(null);
+  const [_auditLog, setAuditLog] = useState<AuditEvent[]>([]);
+  const [_paymentStatus, setPaymentStatus] = useState<string>('pending');
+  const [_escalationMessage, setEscalationMessage] = useState<string | null>(null);
+  const [_guardrailCeiling, setGuardrailCeiling] = useState<number | undefined>(undefined);
+  const [_chosenProduct, setChosenProduct] = useState<Record<string, any> | null>(null);
+  const [_riskScore, setRiskScore] = useState<number | null>(null);
+  const [_riskFeatures, setRiskFeatures] = useState<Record<string, any> | null>(null);
   const [trustOverrideActive, setTrustOverrideActive] = useState<boolean>(false);
   const [awaitingClarification, setAwaitingClarification] = useState<boolean>(false);
 
