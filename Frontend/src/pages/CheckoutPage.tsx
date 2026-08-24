@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Play } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import AgentRail from '../components/AgentRail';
-import KnowledgeGraph, { AuditEvent } from '../components/KnowledgeGraph';
+import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -498,17 +498,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Knowledge Graph below Canvas */}
-        <KnowledgeGraph
-          activeAgent={activeAgent}
-          auditLog={auditLog}
-          paymentStatus={paymentStatus}
-          escalationMessage={escalationMessage}
-          guardrailCeiling={guardrailCeiling}
-          chosenProduct={chosenProduct}
-          riskScore={riskScore}
-          riskFeatures={riskFeatures}
-        />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import Navbar from '../components/Navbar';
+import KnowledgeGraph from '../components/KnowledgeGraph';
 
 interface TransactionItem {
   session_id: string; tenant_id: string; user_message: string; payment_status: string;
@@ -18,6 +19,30 @@ export default function HistoryPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [sessionDetails, setSessionDetails] = useState<Record<string, any>>({});
+  const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
+
+  const handleRowClick = async (sessionId: string) => {
+    if (expandedSessionId === sessionId) {
+      setExpandedSessionId(null);
+      return;
+    }
+    setExpandedSessionId(sessionId);
+    
+    if (!sessionDetails[sessionId]) {
+      setLoadingDetails(prev => ({ ...prev, [sessionId]: true }));
+      try {
+        const res = await api.get(`/transaction/${sessionId}`);
+        setSessionDetails(prev => ({ ...prev, [sessionId]: res }));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingDetails(prev => ({ ...prev, [sessionId]: false }));
+      }
+    }
+  };
 
   useEffect(() => {
     api.get('/transaction/history/list')
@@ -120,44 +145,76 @@ export default function HistoryPage() {
                   {filtered.map(item => {
                     const isSuccess = item.payment_status === 'success';
                     const isEscalated = item.payment_status === 'escalated';
+                    const isExpanded = expandedSessionId === item.session_id;
                     return (
-                      <tr key={item.session_id} style={{ borderBottom: '1px solid rgba(1,73,174,0.07)', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f5')}
-                        onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                        <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.7rem', color: 'rgba(30,30,30,0.4)', whiteSpace: 'nowrap' }}>{item.session_id}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e', maxWidth: '260px' }}>
-                          <div style={{ fontWeight: 500, fontSize: '0.82rem' }}>{item.user_message}</div>
-                          {item.escalation_message && <div style={{ fontSize: '0.7rem', color: '#032676', marginTop: '0.2rem' }}>{item.escalation_message}</div>}
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e', whiteSpace: 'nowrap' }}>
-                          {item.chosen_product ? (
-                            <div>
-                              <div style={{ fontWeight: 600, color: '#1e1e1e', fontSize: '0.82rem' }}>{item.chosen_product.name || item.chosen_product.product_id}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.4)' }}>&#8377;{item.chosen_product.price?.toLocaleString()}</div>
-                            </div>
-                          ) : <span style={{ color: 'rgba(30,30,30,0.2)' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem' }}>
-                          <span className={`pill ${isSuccess ? 'pill-success' : isEscalated ? 'pill-danger' : 'pill-gray'}`}>{item.payment_status}</span>
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem' }}>
-                          {item.risk_score !== null && item.risk_score !== undefined ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <div className="progress-bar-track" style={{ width: '48px', height: '6px' }}>
-                                <div className="progress-bar-fill" style={{ width: `${item.risk_score * 100}%`, background: item.risk_score > 0.7 ? '#032676' : item.risk_score > 0.3 ? '#1250b2' : '#0149ae' }} />
+                      <React.Fragment key={item.session_id}>
+                        <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid rgba(1,73,174,0.07)', transition: 'background 0.15s', cursor: 'pointer', background: isExpanded ? '#ffffff' : '' }}
+                          onClick={() => handleRowClick(item.session_id)}
+                          onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#f5f5f5' }}
+                          onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '' }}>
+                          <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontSize: '0.7rem', color: 'rgba(30,30,30,0.4)', whiteSpace: 'nowrap' }}>{item.session_id}</td>
+                          <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e', maxWidth: '260px' }}>
+                            <div style={{ fontWeight: 500, fontSize: '0.82rem' }}>{item.user_message}</div>
+                            {item.escalation_message && <div style={{ fontSize: '0.7rem', color: '#032676', marginTop: '0.2rem' }}>{item.escalation_message}</div>}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e', whiteSpace: 'nowrap' }}>
+                            {item.chosen_product ? (
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#1e1e1e', fontSize: '0.82rem' }}>{item.chosen_product.name || item.chosen_product.product_id}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.4)' }}>&#8377;{item.chosen_product.price?.toLocaleString()}</div>
                               </div>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#1e1e1e' }}>{(item.risk_score * 100).toFixed(1)}%</span>
-                            </div>
-                          ) : <span style={{ color: 'rgba(30,30,30,0.2)' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e' }}>
-                          <span style={{ fontWeight: 600 }}>{item.audit_count}</span>
-                          <span style={{ color: 'rgba(30,30,30,0.4)' }}> events</span>
-                        </td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'rgba(30,30,30,0.4)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                          {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}
-                        </td>
-                      </tr>
+                            ) : <span style={{ color: 'rgba(30,30,30,0.2)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span className={`pill ${isSuccess ? 'pill-success' : isEscalated ? 'pill-danger' : 'pill-gray'}`}>{item.payment_status}</span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            {item.risk_score !== null && item.risk_score !== undefined ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <div className="progress-bar-track" style={{ width: '48px', height: '6px' }}>
+                                  <div className="progress-bar-fill" style={{ width: `${item.risk_score * 100}%`, background: item.risk_score > 0.7 ? '#032676' : item.risk_score > 0.3 ? '#1250b2' : '#0149ae' }} />
+                                </div>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#1e1e1e' }}>{(item.risk_score * 100).toFixed(1)}%</span>
+                              </div>
+                            ) : <span style={{ color: 'rgba(30,30,30,0.2)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: '#1e1e1e' }}>
+                            <span style={{ fontWeight: 600 }}>{item.audit_count}</span>
+                            <span style={{ color: 'rgba(30,30,30,0.4)' }}> events</span>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', color: 'rgba(30,30,30,0.4)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                            {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}
+                          </td>
+                        </tr>
+                        
+                        {isExpanded && (
+                          <tr style={{ borderBottom: '1px solid rgba(1,73,174,0.07)', background: '#ffffff' }}>
+                            <td colSpan={7} style={{ padding: '0 1rem 1.5rem 1rem' }}>
+                              {loadingDetails[item.session_id] ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(30,30,30,0.4)' }}>
+                                  <div style={{ width: '24px', height: '24px', border: '2px solid rgba(1,73,174,0.15)', borderTop: '2px solid #0149ae', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.5rem auto' }} />
+                                  Loading graph data...
+                                </div>
+                              ) : sessionDetails[item.session_id] ? (
+                                <div style={{ animation: 'slide-in-up 0.25s ease-out' }}>
+                                  <KnowledgeGraph
+                                    activeAgent="ledger"
+                                    auditLog={sessionDetails[item.session_id].audit_log || []}
+                                    paymentStatus={sessionDetails[item.session_id].payment_status}
+                                    escalationMessage={sessionDetails[item.session_id].escalation_message}
+                                    guardrailCeiling={sessionDetails[item.session_id].guardrail_ceiling}
+                                    chosenProduct={sessionDetails[item.session_id].chosen_product}
+                                    riskScore={sessionDetails[item.session_id].risk_score}
+                                    riskFeatures={sessionDetails[item.session_id].risk_features}
+                                  />
+                                </div>
+                              ) : (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: '#032676' }}>Failed to load details.</div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
