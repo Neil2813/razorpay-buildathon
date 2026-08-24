@@ -10,3 +10,5 @@ lightgbm
 joblib
 matplotlib
 langgraph
+httpx
+beautifulsoup4
