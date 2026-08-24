@@ -36,7 +36,7 @@ export default function GlassboxHero() {
     const updatePhysics = () => {
       const diff = targetProgressRef.current - currentProgressRef.current;
       if (Math.abs(diff) > 0.0001) {
-        currentProgressRef.current += diff * 0.2; // Fast, responsive physics
+        currentProgressRef.current += diff * 0.15; // Smooth physics
       } else {
         currentProgressRef.current = targetProgressRef.current;
       }
@@ -62,99 +62,102 @@ export default function GlassboxHero() {
 
   const p = progress;
 
-  // --- 7-PHASE TIMELINE MATHEMATICS ---
+  // --- REFINED TIMELINE (WITH 1-PAGE GAP) ---
+  // Total container height is now 500vh.
+  // 0.00 -> 0.10: Intro & Card Reveal
+  // 0.10 -> 0.30: Card Parallax & Info Reveal
+  // 0.30 -> 0.45: Card Exits
+  // 0.45 -> 0.55: GAP (Empty white space)
+  // 0.55 -> 0.65: Payment Success Enters
+  // 0.65 -> 1.00: Payment Success Locked Centered
 
-  // Intro Header (Phase 1 start -> fades out)
-  const introOpacity = interpolate(p, 0.00, 0.10, 1, 0);
-  const introY = interpolate(p, 0.00, 0.10, 0, -20);
+  const introOpacity = interpolate(p, 0.00, 0.05, 1, 0);
+  const introY = interpolate(p, 0.00, 0.05, 0, -20);
 
-  // Phase 1, 2, 5: Razorpay Card Transforms
-  const cardScale = p < 0.12 
-    ? interpolate(p, 0.00, 0.12, 0.82, 1.0)
+  // Razorpay Card Transforms (Exits by 0.45)
+  const cardScale = p < 0.10 
+    ? interpolate(p, 0.00, 0.10, 0.82, 1.0)
+    : p < 0.30 
+      ? interpolate(p, 0.10, 0.30, 1.0, 0.92)
+      : interpolate(p, 0.30, 0.45, 0.92, 0.82);
+
+  const cardOpacity = p < 0.05 
+    ? interpolate(p, 0.00, 0.05, 0.0, 1.0)
     : p < 0.35 
-      ? interpolate(p, 0.12, 0.35, 1.0, 0.92)
-      : interpolate(p, 0.35, 0.58, 0.92, 0.82);
-
-  const cardOpacity = p < 0.06 
-    ? interpolate(p, 0.00, 0.06, 0.0, 1.0)
-    : p < 0.38 
       ? 1.0 
-      : interpolate(p, 0.38, 0.55, 1.0, 0.0);
+      : interpolate(p, 0.35, 0.45, 1.0, 0.0);
 
-  const cardY = p < 0.12
-    ? interpolate(p, 0.00, 0.12, 4, 0) // vh
-    : p < 0.35
-      ? interpolate(p, 0.12, 0.35, 0, -35) // vh (Phase 2 elevation)
-      : interpolate(p, 0.35, 0.58, -35, -120); // vh (Phase 5 exit)
+  const cardY = p < 0.10
+    ? interpolate(p, 0.00, 0.10, 4, 0) // vh
+    : p < 0.30
+      ? interpolate(p, 0.10, 0.30, 0, -35) // vh
+      : interpolate(p, 0.30, 0.45, -35, -120); // vh (Exit)
 
-  const cardShadowOpacity = p < 0.12 
-    ? interpolate(p, 0.00, 0.12, 0, 0.7)
-    : p < 0.40 
+  const cardShadowOpacity = p < 0.10 
+    ? interpolate(p, 0.00, 0.10, 0, 0.7)
+    : p < 0.35 
       ? 0.7 
-      : interpolate(p, 0.40, 0.55, 0.7, 0);
+      : interpolate(p, 0.35, 0.45, 0.7, 0);
 
-  // Phase 3: Information Reveal Telemetry Elements (Layer 2 parallax ~0.7x speed)
-  const infoParallaxY = interpolate(p, 0.15, 0.45, 0, -18); // vh
+  // Information Reveal Telemetry Elements (Exits by 0.45)
+  const infoParallaxY = interpolate(p, 0.10, 0.40, 0, -18); // vh
 
-  const tag1Opacity = interpolate(p, 0.14, 0.22, 0, 1);
-  const tag1Y = interpolate(p, 0.14, 0.22, 20, 0);
-  const tag1Blur = interpolate(p, 0.14, 0.22, 6, 0);
+  const tag1Opacity = interpolate(p, 0.12, 0.18, 0, 1);
+  const tag1Y = interpolate(p, 0.12, 0.18, 20, 0);
+  const tag1Blur = interpolate(p, 0.12, 0.18, 6, 0);
 
-  const tag2Opacity = interpolate(p, 0.19, 0.27, 0, 1);
-  const tag2Y = interpolate(p, 0.19, 0.27, 20, 0);
-  const tag2Blur = interpolate(p, 0.19, 0.27, 6, 0);
+  const tag2Opacity = interpolate(p, 0.15, 0.21, 0, 1);
+  const tag2Y = interpolate(p, 0.15, 0.21, 20, 0);
+  const tag2Blur = interpolate(p, 0.15, 0.21, 6, 0);
 
-  const tag3Opacity = interpolate(p, 0.24, 0.32, 0, 1);
-  const tag3Y = interpolate(p, 0.24, 0.32, 20, 0);
-  const tag3Blur = interpolate(p, 0.24, 0.32, 6, 0);
+  const tag3Opacity = interpolate(p, 0.18, 0.24, 0, 1);
+  const tag3Y = interpolate(p, 0.18, 0.24, 20, 0);
+  const tag3Blur = interpolate(p, 0.18, 0.24, 6, 0);
 
-  const tag4Opacity = interpolate(p, 0.29, 0.37, 0, 1);
-  const tag4Y = interpolate(p, 0.29, 0.37, 20, 0);
-  const tag4Blur = interpolate(p, 0.29, 0.37, 6, 0);
+  const tag4Opacity = interpolate(p, 0.21, 0.27, 0, 1);
+  const tag4Y = interpolate(p, 0.21, 0.27, 20, 0);
+  const tag4Blur = interpolate(p, 0.21, 0.27, 6, 0);
 
-  const infoGroupOpacity = p > 0.38 ? interpolate(p, 0.38, 0.52, 1, 0) : 1;
+  const infoGroupOpacity = p > 0.35 ? interpolate(p, 0.35, 0.45, 1, 0) : 1;
 
-  // Phase 4: Translucent Glassbox Layer (~0.7x parallax differential)
-  const glassOpacity = p < 0.20 
-    ? interpolate(p, 0.16, 0.24, 0, 1)
-    : p < 0.45 
+  // Translucent Glassbox Layer
+  const glassOpacity = p < 0.15 
+    ? interpolate(p, 0.10, 0.15, 0, 1)
+    : p < 0.35 
       ? 1 
-      : interpolate(p, 0.45, 0.58, 1, 0);
+      : interpolate(p, 0.35, 0.45, 1, 0);
 
-  const glassY = interpolate(p, 0.16, 0.58, 12, -22); // vh
+  const glassY = interpolate(p, 0.10, 0.45, 12, -22); // vh
 
-  // Phase 6 & 7: Payment Success PNG Transforms (Enters cleanly as Card exits)
-  const paymentY = p < 0.62
-    ? interpolate(p, 0.32, 0.62, 100, 0) // vh (100vh -> 0vh)
-    : 0; // Lock centered at Phase 7 (0.62 -> 1.00)
+  // Payment Success (Enters at 0.55 -> 0.65, stays locked 0.65 -> 1.00)
+  const paymentY = p < 0.65
+    ? interpolate(p, 0.55, 0.65, 100, 0) // vh (100vh -> 0vh)
+    : 0; 
 
-  const paymentScale = p < 0.62
-    ? interpolate(p, 0.32, 0.62, 0.88, 1.0)
+  const paymentScale = p < 0.65
+    ? interpolate(p, 0.55, 0.65, 0.85, 1.0)
     : 1.0;
 
-  const paymentOpacity = p < 0.32 
+  const paymentOpacity = p < 0.55 
     ? 0 
-    : p < 0.52 
-      ? interpolate(p, 0.32, 0.52, 0, 1) 
+    : p < 0.60 
+      ? interpolate(p, 0.55, 0.60, 0, 1) 
       : 1;
 
-  // Phase 7 Final CTAs
-  const ctaOpacity = interpolate(p, 0.62, 0.75, 0, 1);
-  const ctaY = interpolate(p, 0.62, 0.75, 20, 0);
+  // Final CTAs
+  const ctaOpacity = interpolate(p, 0.65, 0.72, 0, 1);
+  const ctaY = interpolate(p, 0.65, 0.72, 20, 0);
 
-  // Scroll Hint Prompt
-  const scrollPromptOpacity = interpolate(p, 0.00, 0.08, 1, 0);
+  const scrollPromptOpacity = interpolate(p, 0.00, 0.05, 1, 0);
 
   return (
     <section 
       ref={containerRef} 
-      className="relative w-full bg-white select-none overflow-hidden" 
-      style={{ height: '350vh' }}
+      className="relative w-full bg-white select-none" 
+      style={{ height: '500vh' }}
     >
-      {/* Sticky Viewport Stage (100vh pinned) */}
       <div className="sticky top-0 w-full h-screen bg-white overflow-hidden flex items-center justify-center">
         
-        {/* Crisp minimal background grid pattern */}
         <div 
           className="absolute inset-0 pointer-events-none opacity-[0.035]"
           style={{
@@ -163,9 +166,9 @@ export default function GlassboxHero() {
           }}
         />
 
-        {/* Floating Header Intro (Phase 1) */}
+        {/* Floating Header Intro */}
         <div 
-          className="absolute top-[8vh] z-10 text-center px-4 transition-transform ease-out pointer-events-none"
+          className="absolute top-[10vh] z-10 text-center px-4 pointer-events-none"
           style={{
             opacity: introOpacity,
             transform: `translate3d(0, ${introY}px, 0)`,
@@ -197,9 +200,9 @@ export default function GlassboxHero() {
           </div>
         </div>
 
-        {/* LAYER 2: Translucent Vertical Glass Pane (Phase 4) */}
+        {/* Translucent Vertical Glass Pane */}
         <div
-          className="absolute z-15 w-[92%] max-w-[540px] h-[360px] md:h-[400px] rounded-3xl pointer-events-none transition-all duration-75"
+          className="absolute z-15 w-[92%] max-w-[540px] h-[360px] md:h-[400px] rounded-3xl pointer-events-none"
           style={{
             opacity: glassOpacity,
             transform: `translate3d(0, ${glassY}vh, 0)`,
@@ -217,7 +220,7 @@ export default function GlassboxHero() {
           </div>
         </div>
 
-        {/* LAYER 2: Information Reveal Telemetry Elements (Phase 3) */}
+        {/* Information Reveal Telemetry Elements */}
         <div 
           className="absolute z-20 flex flex-col items-center gap-3 pointer-events-none w-full max-w-[420px] px-6"
           style={{
@@ -285,16 +288,15 @@ export default function GlassboxHero() {
           </div>
         </div>
 
-        {/* LAYER 3: Razorpay Card Asset (`razorpay-card.png`) */}
+        {/* Razorpay Card Asset (`razorpay-card.png`) */}
         <div
-          className="absolute z-30 pointer-events-none flex flex-col items-center justify-center transition-transform ease-out"
+          className="absolute z-30 pointer-events-none flex flex-col items-center justify-center"
           style={{
             opacity: cardOpacity,
             transform: `translate3d(0, ${cardY}vh, 0) scale(${cardScale})`,
             display: cardOpacity <= 0.005 ? 'none' : 'flex'
           }}
         >
-          {/* Physical card drop shadow */}
           <div 
             className="absolute -bottom-6 w-[80%] h-8 bg-[#032676]/25 rounded-full blur-xl transition-opacity"
             style={{ opacity: cardShadowOpacity }}
@@ -303,31 +305,32 @@ export default function GlassboxHero() {
           <img 
             src="/razorpay-card.png" 
             alt="Razorpay Card"
-            className="w-[85vw] max-w-[420px] md:max-w-[480px] h-auto object-contain drop-shadow-2xl"
+            className="w-[85vw] max-w-[480px] md:max-w-[560px] h-auto object-contain drop-shadow-2xl"
             loading="eager"
           />
         </div>
 
-        {/* LAYER 4: Payment Success Asset (`payment-success.png`) (Phase 6 & 7) */}
+        {/* Payment Success Asset (`payment-success.png`) */}
         <div
-          className="absolute z-40 flex flex-col items-center justify-center transition-transform ease-out"
+          className="absolute z-40 flex flex-col items-center justify-center"
           style={{
             opacity: paymentOpacity,
             transform: `translate3d(0, ${paymentY}vh, 0) scale(${paymentScale})`,
-            visibility: paymentOpacity <= 0.001 ? 'hidden' : 'visible',
+            display: paymentOpacity <= 0.005 ? 'none' : 'flex',
             pointerEvents: paymentOpacity > 0.8 ? 'auto' : 'none'
           }}
         >
+          {/* Increased size: w-[95vw] and max-w to 800/900px to keep it full size */}
           <img 
             src="/payment-success.png" 
             alt="Payment Successful"
-            className="w-[90vw] max-w-[460px] md:max-w-[520px] h-auto object-contain drop-shadow-xl"
+            className="w-[95vw] max-w-[800px] md:max-w-[900px] h-auto object-contain drop-shadow-xl"
             loading="eager"
           />
 
-          {/* Phase 7 Final Hero CTAs */}
+          {/* Final Hero CTAs */}
           <div 
-            className="mt-6 flex flex-col sm:flex-row items-center gap-3.5 pointer-events-auto"
+            className="mt-8 flex flex-col sm:flex-row items-center gap-4 pointer-events-auto"
             style={{
               opacity: ctaOpacity,
               transform: `translate3d(0, ${ctaY}px, 0)`
@@ -335,13 +338,13 @@ export default function GlassboxHero() {
           >
             <Link 
               to={user ? '/checkout' : '/login'} 
-              className="px-8 py-3.5 rounded-full bg-[#0149ae] hover:bg-[#032676] text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+              className="px-8 py-3.5 rounded-full bg-[#0149ae] hover:bg-[#032676] text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 text-center"
             >
               {user ? 'Open Checkout Cockpit' : 'Start Live Demo'}
             </Link>
             <Link 
               to="/register" 
-              className="px-7 py-3.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-sm transition-all border border-slate-200"
+              className="px-7 py-3.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-sm transition-all border border-slate-200 text-center"
             >
               Create Account
             </Link>
