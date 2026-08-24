@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { GhibliRobotHero } from '../components/ui/ghibli-robot-hero';
+import GlassboxHero from '../components/GlassboxHero';
 import ScrollVelocity from '../components/ScrollVelocity';
 import Navbar from '../components/Navbar';
 
@@ -20,33 +20,7 @@ export default function LandingPage() {
     <div className="min-h-screen w-full bg-[var(--color-bg-warm)] flex flex-col">
       <Navbar />
 
-      <GhibliRobotHero
-        title={<span className="uppercase tracking-widest font-bold">Glassbox</span>}
-        subtitle={
-          <div className="flex flex-col items-center gap-6 mt-4">
-            <span className="text-2xl md:text-3xl font-light text-[var(--color-primary-light)]">
-              The Trust Layer for Agentic Commerce
-            </span>
-            <span className="max-w-2xl mx-auto text-base md:text-lg opacity-80">
-              Merchants become AI-buyer-ready. Every money decision stays explainable, bounded, and auditable.
-            </span>
-          </div>
-        }
-        note=""
-        scrim={0}
-      >
-        <div className="mt-6 flex gap-4 flex-wrap justify-center">
-          <Link to={user ? '/checkout' : '/login'} className="btn-primary" style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}>
-            {user ? 'Open Checkout Cockpit' : 'Start Demo'}
-          </Link>
-          <Link to="/register" className="btn-ghost" style={{ fontSize: '1rem', padding: '0.75rem 1.75rem', background: 'rgba(255,255,255,0.85)' }}>
-            Create Account
-          </Link>
-        </div>
-        <p style={{ marginTop: '1.5rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', maxWidth: '560px', textAlign: 'center' }}>
-          "Every other agentic commerce demo asks you to trust a black box. GLASSBOX is the one where you can watch the AI think."
-        </p>
-      </GhibliRobotHero>
+      <GlassboxHero />
 
       {/* Scroll strip */}
       <div className="w-full py-10 relative z-0 bg-[var(--color-bg-warm)] overflow-hidden">
