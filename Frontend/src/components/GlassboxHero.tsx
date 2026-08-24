@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -70,9 +70,6 @@ export default function GlassboxHero() {
   // 0.45 -> 0.55: GAP (Empty white space)
   // 0.55 -> 0.65: Payment Success Enters
   // 0.65 -> 1.00: Payment Success Locked Centered
-
-  const introOpacity = interpolate(p, 0.00, 0.05, 1, 0);
-  const introY = interpolate(p, 0.00, 0.05, 0, -20);
 
   // 1. Razorpay Card Transforms: Primary Hero element at p=0
   const cardScale = p < 0.14 
@@ -165,8 +162,6 @@ export default function GlassboxHero() {
   // Final CTAs
   const ctaOpacity = interpolate(p, 0.65, 0.72, 0, 1);
   const ctaY = interpolate(p, 0.65, 0.72, 20, 0);
-
-  const scrollPromptOpacity = interpolate(p, 0.00, 0.05, 1, 0);
 
   return (
     <section 
