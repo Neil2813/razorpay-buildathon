@@ -400,17 +400,17 @@ def run(state: TransactionState) -> TransactionState:
             else:
                 intent["needs_clarification"] = True
                 intent["clarification_reason"] = (
-                    "Do you want me to handle this completely on my own (**autonomous**), "
-                    "or would you like to guide me — for example, by telling me which site to check? "
-                    "Reply **'autonomous'** to let me decide, or **'guided'** to specify a site."
+                    "Would you like to run in **Autonomous Mode** (let me find & buy automatically) "
+                    "or **Guided Mode** (tell me which site to check)? "
+                    "Please select your preferred mode below."
                 )
                 intent["missing_parameters"] = ["autonomy_mode"]
                 state["intent"] = intent
                 audit_event(
                     state, agent="concierge",
-                    decision_reason="Autonomy mode unknown — asking user.",
+                    decision_reason="Autonomy mode unknown — asking user to choose mode.",
                     inputs_summary={"message": state["user_message"]},
-                    output_summary={"autonomy_mode": None},
+                    output_summary={"missing_parameters": ["autonomy_mode"], "autonomy_mode": None},
                 )
                 return state
 

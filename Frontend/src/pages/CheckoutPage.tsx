@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter } from 'lucide-react';
+import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
@@ -202,6 +202,80 @@ function ClarificationCard({
 }
 
 // ---------------------------------------------------------------------------
+// Mode Selection Card Component
+// ---------------------------------------------------------------------------
+function ModeSelectionCard({
+  onSelectMode,
+  disabled,
+}: {
+  onSelectMode: (mode: 'autonomous' | 'guided') => void;
+  disabled: boolean;
+}) {
+  return (
+    <div style={{
+      marginTop: '0.75rem',
+      padding: '1.1rem 1.25rem',
+      background: '#f8fafc',
+      borderRadius: '10px',
+      border: '1px solid rgba(1,73,174,0.2)',
+      borderLeft: '4px solid #0149ae',
+    }}>
+      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#032676', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Select Execution Mode
+      </div>
+      <p style={{ fontSize: '0.8rem', color: 'rgba(30,30,30,0.7)', marginBottom: '0.85rem', lineHeight: 1.45 }}>
+        How would you like the agent to execute your request?
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelectMode('autonomous')}
+          style={{
+            padding: '0.9rem',
+            borderRadius: '8px',
+            border: '1.5px solid rgba(92,45,184,0.3)',
+            background: 'linear-gradient(135deg, rgba(92,45,184,0.05) 0%, #ffffff 100%)',
+            textAlign: 'left',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#5c2db8', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Play size={14} /> Autonomous Mode
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'rgba(30,30,30,0.65)', lineHeight: 1.4 }}>
+            Let AI discover & buy automatically across vetted stores. Requires Size, Colour, Floor & Ceiling budget.
+          </div>
+        </button>
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelectMode('guided')}
+          style={{
+            padding: '0.9rem',
+            borderRadius: '8px',
+            border: '1.5px solid rgba(1,73,174,0.3)',
+            background: 'linear-gradient(135deg, rgba(1,73,174,0.05) 0%, #ffffff 100%)',
+            textAlign: 'left',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0149ae', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Globe size={14} /> Guided Mode
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'rgba(30,30,30,0.65)', lineHeight: 1.4 }}>
+            You specify the exact store URL, brand, rating cap, size, colour, floor & ceiling budget before searching.
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Star Rating Display
 // ---------------------------------------------------------------------------
 function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -231,7 +305,7 @@ export default function CheckoutPage() {
   const [completedAgents, setCompletedAgents] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided'>('autonomous');
+  const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided' | null>(null);
   const [requestedSitesInput, setRequestedSitesInput] = useState('');
   const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 9)}`);
   const [isRunning, setIsRunning] = useState(false);
@@ -288,9 +362,13 @@ export default function CheckoutPage() {
         // Check for missing parameters (clarification required)
         if (data.agent === 'concierge' && data.output_summary?.missing_parameters?.length > 0) {
           const missing: string[] = data.output_summary.missing_parameters;
-          const mode = data.inputs_summary?.mode || autonomyMode;
-          const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
-          missingParams = allParams.filter(p => missing.includes(p.key));
+          if (missing.includes('autonomy_mode')) {
+            missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
+          } else {
+            const mode = data.inputs_summary?.mode || autonomyMode || 'autonomous';
+            const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
+            missingParams = allParams.filter(p => missing.includes(p.key));
+          }
           setAwaitingClarification(true);
         }
 
@@ -385,7 +463,7 @@ export default function CheckoutPage() {
     return () => ws.close();
   }, [sessionId]);
 
-  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided', siteOverride?: string) => {
+  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, siteOverride?: string) => {
     const query = queryOverride || input;
     if (!query.trim() || isRunning) return;
 
@@ -401,7 +479,7 @@ export default function CheckoutPage() {
     setAwaitingClarification(false);
 
     try {
-      await api.post('/transaction/run', {
+      const res = await api.post('/transaction/run', {
         user_message: query,
         tenant_id: user?.tenant_id || 'demo_tenant',
         session_id: sessionId,
@@ -409,9 +487,51 @@ export default function CheckoutPage() {
         autonomy_mode: modeToUse,
         requested_sites: sitesToUse,
       });
+
+      const data = res.data;
+      if (data) {
+        setPaymentStatus(data.payment_status || 'pending');
+        if (data.escalation_message) setEscalationMessage(data.escalation_message);
+        if (data.guardrail_ceiling) setGuardrailCeiling(data.guardrail_ceiling);
+        if (data.chosen_product) setChosenProduct(data.chosen_product);
+        if (data.risk_score !== undefined) setRiskScore(data.risk_score);
+        if (data.risk_features) setRiskFeatures(data.risk_features);
+        if (data.audit_log) setAuditLog(data.audit_log);
+        if (data.trust_override) setTrustOverrideActive(true);
+
+        // If WS didn't receive messages yet, populate messages from response
+        const conciergeEvent = data.audit_log?.find((e: any) => e.agent === 'concierge');
+        if (conciergeEvent?.output_summary?.missing_parameters?.length > 0) {
+          const missing: string[] = conciergeEvent.output_summary.missing_parameters;
+          let missingParams: MissingParam[] = [];
+          if (missing.includes('autonomy_mode')) {
+            missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
+          } else {
+            const mode = modeToUse || 'autonomous';
+            const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
+            missingParams = allParams.filter(p => missing.includes(p.key));
+          }
+          setAwaitingClarification(true);
+
+          setMessages(prev => {
+            const hasClarificationMsg = prev.some(m => m.missingParams && m.missingParams.length > 0);
+            if (!hasClarificationMsg) {
+              return [...prev, {
+                role: 'agent',
+                agent: 'concierge',
+                content: conciergeEvent.output_summary.clarification || conciergeEvent.decision_reason || 'Please provide the missing details:',
+                missingParams,
+                clarificationMode: modeToUse || undefined,
+              }];
+            }
+            return prev;
+          });
+        }
+      }
     } catch (err) {
       console.error(err);
       setMessages(prev => [...prev, { role: 'agent', content: 'Transaction error. Please try again.' }]);
+    } finally {
       setIsRunning(false);
     }
   };
@@ -571,14 +691,24 @@ export default function CheckoutPage() {
                         }}>
                           <div style={{ fontWeight: 500 }}>{msg.content}</div>
 
-                          {/* ---- Clarification Card ---- */}
+                          {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (
-                            <ClarificationCard
-                              missing={msg.missingParams}
-                              mode={msg.clarificationMode || autonomyMode}
-                              onSubmit={handleClarificationSubmit}
-                              disabled={isRunning}
-                            />
+                            msg.missingParams.some(p => p.key === 'autonomy_mode') ? (
+                              <ModeSelectionCard
+                                onSelectMode={(selectedMode) => {
+                                  setAutonomyMode(selectedMode);
+                                  handleSend(`I want to run in ${selectedMode} mode.`, selectedMode);
+                                }}
+                                disabled={isRunning}
+                              />
+                            ) : (
+                              <ClarificationCard
+                                missing={msg.missingParams}
+                                mode={msg.clarificationMode || autonomyMode || 'autonomous'}
+                                onSubmit={handleClarificationSubmit}
+                                disabled={isRunning}
+                              />
+                            )
                           )}
 
                           {/* ---- Site Trust Warning ---- */}
