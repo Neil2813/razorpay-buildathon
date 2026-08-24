@@ -135,6 +135,32 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "color": "red",
             "review_summary": "4.2 ★ — Great for casual outings, thick flannel.",
         },
+        {
+            "product_id": "DG-T05",
+            "source_site": "demo-store.glassbox.dev",
+            "name": "Obsidian Black Slim Denim Shirt",
+            "category": "shirt",
+            "price": 2999.0,
+            "brand": "UrbanWear",
+            "rating": 4.6,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL", "XXL"],
+            "color": "black",
+            "review_summary": "4.6 ★ — Premium stretch black denim, rich color retention.",
+        },
+        {
+            "product_id": "DG-T06",
+            "source_site": "demo-store.glassbox.dev",
+            "name": "Midnight Edition Formal Black Shirt",
+            "category": "shirt",
+            "price": 3499.0,
+            "brand": "ClassicWear",
+            "rating": 4.8,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL", "XXL"],
+            "color": "black",
+            "review_summary": "4.8 ★ — Ultra-smooth satin finish black formal shirt.",
+        },
     ],
     "shop.glassbox-demo.in": [
         {
@@ -458,9 +484,15 @@ def _run_autonomous(state: TransactionState) -> TransactionState:
         if rejected > 0 else ""
     )
 
+    decision_note = (
+        f"Autonomous discovery complete: found {len(candidates)} candidate product(s).{skipped_note}"
+        if candidates else
+        f"Autonomous discovery complete: no products matched all criteria (size, color, price range).{skipped_note}"
+    )
+
     audit_event(
         state, agent="discovery",
-        decision_reason=f"Autonomous discovery complete.{skipped_note}",
+        decision_reason=decision_note,
         inputs_summary={"pre_approved_sites": _PRE_APPROVED_SITES, "intent": intent},
         output_summary={
             "candidate_count": len(candidates),

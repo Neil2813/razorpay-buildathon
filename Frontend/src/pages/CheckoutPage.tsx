@@ -84,6 +84,38 @@ const AUTONOMOUS_PARAMS: MissingParam[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Live Agent Progress Indicator Component (V2)
+// ---------------------------------------------------------------------------
+function LiveAgentProgress() {
+  return (
+    <div style={{
+      margin: '0.75rem 0',
+      padding: '1rem 1.25rem',
+      background: 'linear-gradient(135deg, rgba(1,73,174,0.06) 0%, rgba(92,45,184,0.06) 100%)',
+      borderRadius: '12px',
+      border: '1.5px solid rgba(1,73,174,0.25)',
+      boxShadow: '0 4px 14px rgba(3,38,118,0.08)',
+      animation: 'slide-in-up 0.3s ease-out',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+        <RefreshCw size={16} color="#0149ae" style={{ animation: 'spin 1.2s linear infinite' }} />
+        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Autonomous Pipeline Executing…
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: '#1e1e1e' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#0149ae' }}>
+          <Globe size={13} /> Discovery Agent Triggered: Searching store catalogs & live web for matching items…
+        </div>
+        <div style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.6)', paddingLeft: '1.2rem', lineHeight: 1.4 }}>
+          Evaluating candidates against spend guardrails, deterministic site trust, and ML risk model…
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Clarification Card Component (Clean State)
 // ---------------------------------------------------------------------------
 function ClarificationCard({
@@ -1046,6 +1078,7 @@ export default function CheckoutPage() {
                     </div>
                   );
                 })}
+                {isRunning && <LiveAgentProgress />}
                 <div ref={messagesEndRef} />
               </>
             )}
