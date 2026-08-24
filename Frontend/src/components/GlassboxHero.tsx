@@ -74,63 +74,92 @@ export default function GlassboxHero() {
   const introOpacity = interpolate(p, 0.00, 0.05, 1, 0);
   const introY = interpolate(p, 0.00, 0.05, 0, -20);
 
-  // Razorpay Card Transforms (Exits by 0.45)
-  const cardScale = p < 0.10 
-    ? interpolate(p, 0.00, 0.10, 0.82, 1.0)
-    : p < 0.30 
-      ? interpolate(p, 0.10, 0.30, 1.0, 0.92)
-      : interpolate(p, 0.30, 0.45, 0.92, 0.82);
+  // 1. Razorpay Card Transforms: Primary Hero element at p=0
+  const cardScale = p < 0.18 
+    ? interpolate(p, 0.00, 0.18, 1.0, 0.90)
+    : interpolate(p, 0.18, 0.32, 0.90, 0.75);
 
-  const cardOpacity = p < 0.05 
-    ? interpolate(p, 0.00, 0.05, 0.0, 1.0)
-    : p < 0.35 
-      ? 1.0 
-      : interpolate(p, 0.35, 0.45, 1.0, 0.0);
+  const cardOpacity = p < 0.18 
+    ? 1.0 
+    : interpolate(p, 0.18, 0.32, 1.0, 0.0);
 
-  const cardY = p < 0.10
-    ? interpolate(p, 0.00, 0.10, 4, 0) // vh
-    : p < 0.30
-      ? interpolate(p, 0.10, 0.30, 0, -35) // vh
-      : interpolate(p, 0.30, 0.45, -35, -120); // vh (Exit)
+  const cardY = p < 0.18
+    ? interpolate(p, 0.00, 0.18, 0, -10) // vh
+    : interpolate(p, 0.18, 0.32, -10, -90); // vh (Exit)
 
-  const cardShadowOpacity = p < 0.10 
-    ? interpolate(p, 0.00, 0.10, 0, 0.7)
-    : p < 0.35 
-      ? 0.7 
-      : interpolate(p, 0.35, 0.45, 0.7, 0);
+  const cardShadowOpacity = p < 0.20 
+    ? 0.7 
+    : interpolate(p, 0.20, 0.32, 0.7, 0);
 
-  // Multi-Agent Architecture Diagram (`/Agents.png`)
-  const agentsOpacity = p < 0.05
-    ? interpolate(p, 0.00, 0.05, 0.0, 1.0)
-    : p < 0.35
-      ? 1.0
-      : interpolate(p, 0.35, 0.45, 1.0, 0.0);
+  // 2. Multi-Agent Architecture Diagram (`/Agents.png`): Enters ON SCROLL (p=0.18 -> 0.44)
+  const agentsOpacity = p < 0.18
+    ? 0.0
+    : p < 0.24
+      ? interpolate(p, 0.18, 0.24, 0.0, 1.0)
+      : p < 0.36
+        ? 1.0
+        : interpolate(p, 0.36, 0.44, 1.0, 0.0);
 
-  const agentsY = p < 0.10
-    ? interpolate(p, 0.00, 0.10, 8, 0) // vh
-    : p < 0.30
-      ? interpolate(p, 0.10, 0.30, 0, -25) // vh
-      : interpolate(p, 0.30, 0.45, -25, -110); // vh (Exit)
+  const agentsY = p < 0.18
+    ? 40 // vh
+    : p < 0.24
+      ? interpolate(p, 0.18, 0.24, 40, 0) // vh
+      : p < 0.36
+        ? interpolate(p, 0.24, 0.36, 0, -15) // vh
+        : interpolate(p, 0.36, 0.44, -15, -90); // vh (Exit)
 
-  const agentsScale = p < 0.10
-    ? interpolate(p, 0.00, 0.10, 0.85, 1.0)
-    : p < 0.30
-      ? interpolate(p, 0.10, 0.30, 1.0, 0.95)
-      : interpolate(p, 0.30, 0.45, 0.95, 0.85);
+  const agentsScale = p < 0.18
+    ? 0.85
+    : p < 0.24
+      ? interpolate(p, 0.18, 0.24, 0.85, 1.0)
+      : p < 0.36
+        ? 1.0
+        : interpolate(p, 0.36, 0.44, 1.0, 0.90);
 
-  // Payment Success (Enters at 0.55 -> 0.65, stays locked 0.65 -> 1.00)
+  // 3. Kinetic Typography Watermark Layer: Enters right BEFORE Payment Success (p=0.40 -> 0.60)
+  const typographyOpacity = p < 0.40
+    ? 0.0
+    : p < 0.46
+      ? interpolate(p, 0.40, 0.46, 0.0, 1.0)
+      : p < 0.54
+        ? 1.0
+        : interpolate(p, 0.54, 0.62, 1.0, 0.0);
+
+  const typographyY = p < 0.40
+    ? 30 // vh
+    : p < 0.46
+      ? interpolate(p, 0.40, 0.46, 30, 0) // vh
+      : p < 0.54
+        ? interpolate(p, 0.46, 0.54, 0, -10) // vh
+        : interpolate(p, 0.54, 0.62, -10, -70); // vh
+
+  const typographyScale = p < 0.40
+    ? 0.9
+    : p < 0.46
+      ? interpolate(p, 0.40, 0.46, 0.9, 1.0)
+      : p < 0.54
+        ? 1.0
+        : interpolate(p, 0.54, 0.62, 1.0, 0.95);
+
+  // Scroll-triggered opposing horizontal row movements
+  const row1X = interpolate(p, 0.38, 0.62, -220, 140);
+  const row2X = interpolate(p, 0.38, 0.62, 140, -220);
+  const row3X = interpolate(p, 0.38, 0.62, -180, 180);
+  const row4X = interpolate(p, 0.38, 0.62, 180, -180);
+
+  // 4. Payment Success (Enters at 0.58 -> 0.65, stays locked 0.65 -> 1.00)
   const paymentY = p < 0.65
-    ? interpolate(p, 0.55, 0.65, 100, 0) // vh (100vh -> 0vh)
+    ? interpolate(p, 0.58, 0.65, 100, 0) // vh (100vh -> 0vh)
     : 0; 
 
   const paymentScale = p < 0.65
-    ? interpolate(p, 0.55, 0.65, 0.85, 1.0)
+    ? interpolate(p, 0.58, 0.65, 0.85, 1.0)
     : 1.0;
 
-  const paymentOpacity = p < 0.55 
+  const paymentOpacity = p < 0.58 
     ? 0 
-    : p < 0.60 
-      ? interpolate(p, 0.55, 0.60, 0, 1) 
+    : p < 0.62 
+      ? interpolate(p, 0.58, 0.62, 0, 1) 
       : 1;
 
   // Final CTAs
@@ -204,6 +233,62 @@ export default function GlassboxHero() {
             className="w-[92vw] max-w-[850px] md:max-w-[1000px] h-auto object-contain drop-shadow-2xl rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-2 md:p-3 shadow-xl"
             loading="eager"
           />
+        </div>
+
+        {/* Kinetic Typography Watermark Layer (Enters right before payment success) */}
+        <div
+          className="absolute z-25 pointer-events-none flex flex-col items-center justify-center w-full overflow-hidden select-none"
+          style={{
+            opacity: typographyOpacity,
+            transform: `translate3d(0, ${typographyY}vh, 0) scale(${typographyScale})`,
+            display: typographyOpacity <= 0.005 ? 'none' : 'flex'
+          }}
+        >
+          <div className="w-full flex flex-col items-center justify-center gap-1.5 sm:gap-3 md:gap-4 py-8 overflow-hidden">
+            {/* Row 1: Agentic Commerce */}
+            <div 
+              className="whitespace-nowrap flex gap-10 text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter text-[#0149ae]/15 font-sans leading-none"
+              style={{ transform: `translate3d(${row1X}px, 0, 0)` }}
+            >
+              <span>Agentic Commerce</span>
+              <span>Agentic Commerce</span>
+              <span>Agentic Commerce</span>
+              <span>Agentic Commerce</span>
+            </div>
+
+            {/* Row 2: Explainable AI */}
+            <div 
+              className="whitespace-nowrap flex gap-10 text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter text-[#0149ae]/20 font-sans leading-none"
+              style={{ transform: `translate3d(${row2X}px, 0, 0)` }}
+            >
+              <span>Explainable AI</span>
+              <span>Explainable AI</span>
+              <span>Explainable AI</span>
+              <span>Explainable AI</span>
+            </div>
+
+            {/* Row 3: Auditable Decisions */}
+            <div 
+              className="whitespace-nowrap flex gap-10 text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter text-[#0149ae]/15 font-sans leading-none"
+              style={{ transform: `translate3d(${row3X}px, 0, 0)` }}
+            >
+              <span>Auditable Decisions</span>
+              <span>Auditable Decisions</span>
+              <span>Auditable Decisions</span>
+              <span>Auditable Decisions</span>
+            </div>
+
+            {/* Row 4: Trust Layer */}
+            <div 
+              className="whitespace-nowrap flex gap-10 text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter text-[#0149ae]/25 font-sans leading-none"
+              style={{ transform: `translate3d(${row4X}px, 0, 0)` }}
+            >
+              <span>Trust Layer</span>
+              <span>Trust Layer</span>
+              <span>Trust Layer</span>
+              <span>Trust Layer</span>
+            </div>
+          </div>
         </div>
 
         {/* Razorpay Card Asset (`razorpay-card.png`) */}
