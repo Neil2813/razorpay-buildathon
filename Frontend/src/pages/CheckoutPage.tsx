@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Play } from 'lucide-react';
+import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
@@ -12,11 +12,23 @@ interface DiscoveredCandidate {
   product_id: string;
   name: string;
   price: number;
+  brand?: string;
+  rating?: number;
   source_site?: string;
   review_summary?: string;
   has_return_policy?: boolean;
   has_delivery_time?: boolean;
   trust_status?: string;
+  image_url?: string;
+  match_reason?: string;
+}
+
+interface MissingParam {
+  key: string;
+  label: string;
+  inputType: 'text' | 'number' | 'select';
+  options?: string[];
+  placeholder?: string;
 }
 
 interface Message {
@@ -30,6 +42,8 @@ interface Message {
   riskData?: RiskFeaturesData;
   guardrailData?: { ceiling: number; price: number; passed: boolean; productName?: string; };
   paymentAttempts?: PaymentAttempt[];
+  missingParams?: MissingParam[];
+  clarificationMode?: 'guided' | 'autonomous';
 }
 
 const AGENT_LABELS: Record<string, string> = {
@@ -43,8 +57,174 @@ const AGENT_LABELS: Record<string, string> = {
   ledger: 'Audit Ledger',
 };
 
+// Param definitions per mode for UI clarification cards
+const GUIDED_PARAMS: MissingParam[] = [
+  { key: 'budget_min', label: 'Floor Price (₹)', inputType: 'number', placeholder: 'e.g. 500' },
+  { key: 'budget_max', label: 'Ceiling Price (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
+  { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. Nike, or type "any"' },
+  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
+  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
+  { key: 'min_rating', label: 'Minimum Rating (out of 5)', inputType: 'select', options: ['any', '3', '3.5', '4', '4.5'] },
+  { key: 'requested_sites', label: 'Website to Shop From', inputType: 'text', placeholder: 'e.g. myntra.com' },
+];
 
+const AUTONOMOUS_PARAMS: MissingParam[] = [
+  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
+  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
+  { key: 'budget_max', label: 'Max Budget / Ceiling (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
+  { key: 'budget_min', label: 'Min Budget / Floor (₹)', inputType: 'number', placeholder: 'e.g. 500' },
+];
 
+// ---------------------------------------------------------------------------
+// Clarification Card Component
+// ---------------------------------------------------------------------------
+function ClarificationCard({
+  missing,
+  mode,
+  onSubmit,
+  disabled,
+}: {
+  missing: MissingParam[];
+  mode: 'guided' | 'autonomous';
+  onSubmit: (values: Record<string, string>) => void;
+  disabled: boolean;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const allFilled = missing.every(p => {
+    const v = values[p.key];
+    return v !== undefined && v.trim() !== '';
+  });
+
+  const handleSubmit = () => {
+    if (allFilled) onSubmit(values);
+  };
+
+  const modeColor = mode === 'guided' ? '#0149ae' : '#5c2db8';
+  const modeLabel = mode === 'guided' ? 'Guided Mode' : 'Autonomous Mode';
+
+  return (
+    <div style={{
+      marginTop: '0.75rem',
+      padding: '1.1rem 1.25rem',
+      background: 'linear-gradient(135deg, rgba(1,73,174,0.04) 0%, rgba(92,45,184,0.04) 100%)',
+      borderRadius: '10px',
+      border: `1px solid ${modeColor}30`,
+      borderLeft: `4px solid ${modeColor}`,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+        <Filter size={15} color={modeColor} />
+        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: modeColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {modeLabel} — Provide Details to Search
+        </span>
+      </div>
+      <p style={{ fontSize: '0.8rem', color: 'rgba(30,30,30,0.65)', marginBottom: '0.85rem', lineHeight: 1.5 }}>
+        I need a few more details before I start searching for your perfect product:
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '0.85rem' }}>
+        {missing.map((param) => (
+          <div key={param.key}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: modeColor, display: 'block', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              {param.label}
+            </label>
+            {param.inputType === 'select' && param.options ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                {param.options.map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setValues(v => ({ ...v, [param.key]: opt }))}
+                    disabled={disabled}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: '99px',
+                      border: `1.5px solid ${values[param.key] === opt ? modeColor : 'rgba(1,73,174,0.2)'}`,
+                      background: values[param.key] === opt ? modeColor : '#fff',
+                      color: values[param.key] === opt ? '#fff' : 'rgba(30,30,30,0.7)',
+                      fontSize: '0.74rem',
+                      fontWeight: 600,
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <input
+                type={param.inputType}
+                placeholder={param.placeholder}
+                value={values[param.key] || ''}
+                onChange={e => setValues(v => ({ ...v, [param.key]: e.target.value }))}
+                disabled={disabled}
+                style={{
+                  width: '100%',
+                  padding: '0.45rem 0.75rem',
+                  border: `1px solid ${values[param.key] ? modeColor : 'rgba(1,73,174,0.2)'}`,
+                  borderRadius: '6px',
+                  fontSize: '0.83rem',
+                  outline: 'none',
+                  background: '#ffffff',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.15s',
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!allFilled || disabled}
+        style={{
+          padding: '0.55rem 1.25rem',
+          borderRadius: '7px',
+          background: allFilled && !disabled ? `linear-gradient(135deg, ${modeColor}, #032676)` : 'rgba(0,0,0,0.08)',
+          color: allFilled && !disabled ? '#fff' : 'rgba(0,0,0,0.35)',
+          border: 'none',
+          fontWeight: 700,
+          fontSize: '0.82rem',
+          cursor: allFilled && !disabled ? 'pointer' : 'not-allowed',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+        }}
+      >
+        <Send size={13} /> Search Now
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Star Rating Display
+// ---------------------------------------------------------------------------
+function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+      {Array.from({ length: max }).map((_, i) => (
+        <Star
+          key={i}
+          size={10}
+          fill={i < Math.round(rating) ? '#f59e0b' : 'transparent'}
+          color={i < Math.round(rating) ? '#f59e0b' : 'rgba(0,0,0,0.2)'}
+        />
+      ))}
+      <span style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.6)', marginLeft: '0.2rem', fontWeight: 600 }}>
+        {rating.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 export default function CheckoutPage() {
   const { user } = useAuth();
   const [activeAgent, setActiveAgent] = useState('concierge');
@@ -64,6 +244,7 @@ export default function CheckoutPage() {
   const [riskScore, setRiskScore] = useState<number | null>(null);
   const [riskFeatures, setRiskFeatures] = useState<Record<string, any> | null>(null);
   const [trustOverrideActive, setTrustOverrideActive] = useState<boolean>(false);
+  const [awaitingClarification, setAwaitingClarification] = useState<boolean>(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -78,11 +259,18 @@ export default function CheckoutPage() {
         const currentAgentKey = data.agent === 'catalog' ? 'discovery' : data.agent;
         setActiveAgent(currentAgentKey);
         setCompletedAgents(prev => {
-          const order = ['concierge','site_trust','discovery','negotiation','risk','payment','ledger'];
+          const order = ['concierge', 'site_trust', 'discovery', 'negotiation', 'risk', 'payment', 'ledger'];
           const idx = order.indexOf(currentAgentKey);
           return order.slice(0, idx).filter(a => !prev.includes(a)).concat(prev);
         });
-        setAuditLog(prev => [...prev, { event_id: data.event_id, timestamp: data.timestamp, agent: data.agent, decision_reason: data.decision_reason, inputs_summary: data.inputs_summary, output_summary: data.output_summary }]);
+        setAuditLog(prev => [...prev, {
+          event_id: data.event_id,
+          timestamp: data.timestamp,
+          agent: data.agent,
+          decision_reason: data.decision_reason,
+          inputs_summary: data.inputs_summary,
+          output_summary: data.output_summary,
+        }]);
 
         let riskData: RiskFeaturesData | undefined;
         let guardrailData: Message['guardrailData'];
@@ -91,9 +279,19 @@ export default function CheckoutPage() {
         let siteTrustData: Message['siteTrustData'];
         let trustWarningPrompt: Message['trustWarningPrompt'];
         let sitesRejectedCount: number | undefined;
+        let missingParams: MissingParam[] | undefined;
 
         if (data.output_summary?.trust_override) {
           setTrustOverrideActive(true);
+        }
+
+        // Check for missing parameters (clarification required)
+        if (data.agent === 'concierge' && data.output_summary?.missing_parameters?.length > 0) {
+          const missing: string[] = data.output_summary.missing_parameters;
+          const mode = data.inputs_summary?.mode || autonomyMode;
+          const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
+          missingParams = allParams.filter(p => missing.includes(p.key));
+          setAwaitingClarification(true);
         }
 
         if (data.agent === 'site_trust' && data.output_summary) {
@@ -106,6 +304,7 @@ export default function CheckoutPage() {
           if (data.output_summary.sites_rejected_count) {
             sitesRejectedCount = data.output_summary.sites_rejected_count;
           }
+          if (candidates?.length) setAwaitingClarification(false);
         } else if (data.agent === 'risk' && data.output_summary) {
           const s = data.output_summary;
           setRiskScore(s.risk_score);
@@ -120,7 +319,6 @@ export default function CheckoutPage() {
           paymentAttempts = data.output_summary.payment_attempts;
         }
 
-        // Check if halted on a site trust warning in guided mode
         if (data.decision_reason && (data.decision_reason.includes('safety check') || data.decision_reason.includes('untrusted'))) {
           trustWarningPrompt = {
             site: data.output_summary?.site || data.inputs_summary?.requested_sites?.[0] || 'amaz0n-deals.com',
@@ -128,10 +326,23 @@ export default function CheckoutPage() {
           };
         }
 
-        setMessages(prev => [...prev, { role: 'agent', agent: currentAgentKey, content: data.decision_reason, candidates, siteTrustData, trustWarningPrompt, sitesRejectedCount, riskData, guardrailData, paymentAttempts }]);
+        setMessages(prev => [...prev, {
+          role: 'agent',
+          agent: currentAgentKey,
+          content: data.decision_reason,
+          candidates,
+          siteTrustData,
+          trustWarningPrompt,
+          sitesRejectedCount,
+          riskData,
+          guardrailData,
+          paymentAttempts,
+          missingParams,
+          clarificationMode: data.inputs_summary?.mode || autonomyMode,
+        }]);
       } else if (data.type === 'transaction_complete') {
         setActiveAgent('ledger');
-        setCompletedAgents(['concierge','site_trust','discovery','negotiation','risk','payment']);
+        setCompletedAgents(['concierge', 'site_trust', 'discovery', 'negotiation', 'risk', 'payment']);
         setPaymentStatus(data.state.payment_status);
         setEscalationMessage(data.state.escalation_message);
         setIsRunning(false);
@@ -141,6 +352,11 @@ export default function CheckoutPage() {
         if (data.state.risk_features) setRiskFeatures(data.state.risk_features);
         if (data.state.audit_log) setAuditLog(data.state.audit_log);
         if (data.state.trust_override) setTrustOverrideActive(true);
+
+        // If escalated on clarification, keep awaitingClarification
+        const isParamHalt = data.state.payment_status === 'escalated' &&
+          (data.state.escalation_message || '').includes('detail');
+        if (!isParamHalt) setAwaitingClarification(false);
 
         let finalRiskData: RiskFeaturesData | undefined;
         if (data.state?.risk_features) {
@@ -174,12 +390,15 @@ export default function CheckoutPage() {
     if (!query.trim() || isRunning) return;
 
     const modeToUse = forceMode || autonomyMode;
-    const sitesToUse = siteOverride !== undefined ? (siteOverride ? [siteOverride] : null) : (requestedSitesInput.trim() ? [requestedSitesInput.trim()] : null);
+    const sitesToUse = siteOverride !== undefined
+      ? (siteOverride ? [siteOverride] : null)
+      : (requestedSitesInput.trim() ? [requestedSitesInput.trim()] : null);
 
     setMessages(prev => [...prev, { role: 'user', content: query }]);
     if (!queryOverride) setInput('');
     setActiveAgent('concierge'); setCompletedAgents([]); setAuditLog([]);
     setPaymentStatus('pending'); setEscalationMessage(null); setIsRunning(true);
+    setAwaitingClarification(false);
 
     try {
       await api.post('/transaction/run', {
@@ -197,7 +416,28 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleClarificationSubmit = async (values: Record<string, string>) => {
+    // Build a natural language continuation message from the filled fields
+    const parts: string[] = [];
+    if (values.size && values.size !== 'any') parts.push(`size ${values.size}`);
+    if (values.color && values.color !== 'any') parts.push(`${values.color} colour`);
+    if (values.brand && values.brand.toLowerCase() !== 'any') parts.push(`brand ${values.brand}`);
+    if (values.budget_min) parts.push(`minimum budget ₹${values.budget_min}`);
+    if (values.budget_max) parts.push(`maximum budget ₹${values.budget_max}`);
+    if (values.min_rating && values.min_rating !== 'any') parts.push(`minimum rating ${values.min_rating} stars`);
+    if (values.requested_sites) parts.push(`from ${values.requested_sites}`);
 
+    const clarificationMsg = parts.length > 0
+      ? `I want: ${parts.join(', ')}.`
+      : Object.entries(values).map(([k, v]) => `${k}: ${v}`).join(', ');
+
+    // For guided mode with requested_sites, update the site input
+    if (values.requested_sites) {
+      setRequestedSitesInput(values.requested_sites);
+    }
+
+    await handleSend(clarificationMsg, autonomyMode, values.requested_sites || requestedSitesInput || undefined);
+  };
 
   const handleRestartSession = () => {
     const newSess = `sess_${Math.random().toString(36).substring(2, 9)}`;
@@ -208,6 +448,7 @@ export default function CheckoutPage() {
     setEscalationMessage(null);
     setTrustOverrideActive(false);
     setRequestedSitesInput('');
+    setAwaitingClarification(false);
   };
 
   return (
@@ -218,11 +459,17 @@ export default function CheckoutPage() {
 
         {/* Conversation Canvas */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '10px', border: '1px solid rgba(1,73,174,0.12)', overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,38,118,0.04)', minHeight: '450px' }}>
+
           {/* Canvas Header */}
           <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid rgba(1,73,174,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#032676', fontFamily: "'Antonio', sans-serif" }}>Agentic Checkout Cockpit</span>
               {isRunning && <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(1,73,174,0.1)', color: '#0149ae', animation: 'pulse-ring 1.4s ease-out infinite' }}>LIVE</span>}
+              {awaitingClarification && !isRunning && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  NEEDS DETAILS
+                </span>
+              )}
               {trustOverrideActive && (
                 <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(3,38,118,0.15)', color: '#032676', border: '1px solid rgba(3,38,118,0.3)' }}>
                   TRUST OVERRIDDEN
@@ -261,8 +508,6 @@ export default function CheckoutPage() {
                   Guided Mode
                 </button>
               </div>
-
-
             </div>
           </div>
 
@@ -273,9 +518,31 @@ export default function CheckoutPage() {
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: '#0149ae', opacity: 0.18, fontFamily: "'Antonio', sans-serif", fontWeight: 700 }}>GB</div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#032676' }}>GLASSBOX Agentic Commerce Cockpit</h3>
                 <p style={{ fontSize: '0.875rem', maxWidth: '560px', margin: '0 auto 1.5rem auto', lineHeight: 1.6, color: 'rgba(30,30,30,0.6)' }}>
-                  Autonomous buyer agent featuring <strong>Deterministic Site Trust Verification</strong> and <strong>Spend Guardrails</strong>. Ask to discover products across web sources, negotiate, evaluate ML risk, and execute payments.
+                  Autonomous buyer agent with <strong>Smart Parameter Verification</strong>, <strong>Deterministic Site Trust</strong>, and <strong>Spend Guardrails</strong>.
+                  Just describe what you want — the agent will ask for all the details it needs before searching!
                 </p>
-
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {['Buy me a shirt of ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => setInput(suggestion)}
+                      style={{
+                        padding: '0.45rem 0.9rem',
+                        borderRadius: '99px',
+                        border: '1px solid rgba(1,73,174,0.25)',
+                        background: 'rgba(1,73,174,0.04)',
+                        color: '#0149ae',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <>
@@ -289,12 +556,32 @@ export default function CheckoutPage() {
                           {(msg.agent || 'A')[0].toUpperCase()}
                         </div>
                       )}
-                      <div style={{ maxWidth: '85%', minWidth: 0 }}>
+                      <div style={{ maxWidth: '88%', minWidth: 0 }}>
                         {!isUser && label && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>{label}</div>}
-                        <div style={{ padding: '0.85rem 1.1rem', borderRadius: isUser ? '12px 4px 12px 12px' : '4px 12px 12px 12px', background: isUser ? 'linear-gradient(135deg, #0149ae 0%, #032676 100%)' : '#f5f5f5', color: isUser ? '#ffffff' : '#1e1e1e', border: isUser ? 'none' : '1px solid rgba(1,73,174,0.1)', borderLeft: isUser ? 'none' : '3px solid #0149ae', fontSize: '0.875rem', lineHeight: 1.55, boxShadow: isUser ? '0 2px 8px rgba(1,73,174,0.2)' : '0 1px 4px rgba(3,38,118,0.04)' }}>
+                        <div style={{
+                          padding: '0.85rem 1.1rem',
+                          borderRadius: isUser ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                          background: isUser ? 'linear-gradient(135deg, #0149ae 0%, #032676 100%)' : '#f5f5f5',
+                          color: isUser ? '#ffffff' : '#1e1e1e',
+                          border: isUser ? 'none' : '1px solid rgba(1,73,174,0.1)',
+                          borderLeft: isUser ? 'none' : '3px solid #0149ae',
+                          fontSize: '0.875rem',
+                          lineHeight: 1.55,
+                          boxShadow: isUser ? '0 2px 8px rgba(1,73,174,0.2)' : '0 1px 4px rgba(3,38,118,0.04)',
+                        }}>
                           <div style={{ fontWeight: 500 }}>{msg.content}</div>
 
-                          {/* Site Trust Warning Alert Card (Guided Mode Halt) */}
+                          {/* ---- Clarification Card ---- */}
+                          {msg.missingParams && msg.missingParams.length > 0 && (
+                            <ClarificationCard
+                              missing={msg.missingParams}
+                              mode={msg.clarificationMode || autonomyMode}
+                              onSubmit={handleClarificationSubmit}
+                              disabled={isRunning}
+                            />
+                          )}
+
+                          {/* ---- Site Trust Warning ---- */}
                           {msg.trustWarningPrompt && (
                             <div style={{ marginTop: '0.85rem', padding: '1rem 1.15rem', background: '#fff5f5', borderRadius: '8px', border: '1px solid rgba(3,38,118,0.25)', borderLeft: '4px solid #032676', color: '#032676', animation: 'slide-in-up 0.3s ease-out' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', color: '#032676', marginBottom: '0.4rem' }}>
@@ -330,7 +617,7 @@ export default function CheckoutPage() {
                             </div>
                           )}
 
-                          {/* Autonomous Skipped Banner */}
+                          {/* ---- Autonomous Skipped Banner ---- */}
                           {msg.sitesRejectedCount !== undefined && msg.sitesRejectedCount > 0 && (
                             <div style={{ marginTop: '0.65rem', padding: '0.45rem 0.75rem', background: 'rgba(1,73,174,0.06)', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)', fontSize: '0.78rem', color: '#0149ae', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               <Globe size={14} />
@@ -338,27 +625,61 @@ export default function CheckoutPage() {
                             </div>
                           )}
 
-                          {/* Discovered Product Candidates */}
+                          {/* ---- Discovered Product Candidates ---- */}
                           {msg.candidates && msg.candidates.length > 0 && (
-                            <div style={{ marginTop: '0.85rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.65rem' }}>
+                            <div style={{ marginTop: '0.85rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
                               {msg.candidates.map((item, idx) => (
-                                <div key={idx} style={{ background: '#ffffff', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(1,73,174,0.15)', boxShadow: '0 1px 4px rgba(3,38,118,0.04)' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                                    <span style={{ fontSize: '0.62rem', color: 'rgba(30,30,30,0.4)', fontWeight: 800, textTransform: 'uppercase' }}>Option {idx + 1}</span>
+                                <div key={idx} style={{
+                                  background: '#ffffff',
+                                  padding: '0.85rem',
+                                  borderRadius: '10px',
+                                  border: '1px solid rgba(1,73,174,0.15)',
+                                  boxShadow: '0 2px 6px rgba(3,38,118,0.06)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '0.3rem',
+                                  transition: 'box-shadow 0.2s',
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.6rem', color: 'rgba(30,30,30,0.4)', fontWeight: 800, textTransform: 'uppercase' }}>Option {idx + 1}</span>
                                     {item.source_site && (
-                                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: trustOverrideActive ? 'rgba(3,38,118,0.12)' : 'rgba(1,73,174,0.08)', color: trustOverrideActive ? '#032676' : '#0149ae' }}>
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(1,73,174,0.08)', color: '#0149ae', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {item.source_site}
                                       </span>
                                     )}
                                   </div>
-                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e1e1e', marginBottom: '0.25rem' }}>{item.name}</div>
-                                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0149ae' }}>&#8377;{item.price.toLocaleString()}</div>
+
+                                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e1e1e', lineHeight: 1.3 }}>{item.name}</div>
+
+                                  {/* Brand */}
+                                  {item.brand && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <Tag size={10} color="rgba(30,30,30,0.4)" />
+                                      <span style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.55)', fontWeight: 600 }}>{item.brand}</span>
+                                    </div>
+                                  )}
+
+                                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0149ae' }}>&#8377;{item.price.toLocaleString()}</div>
+
+                                  {/* Star Rating */}
+                                  {item.rating !== undefined && item.rating !== null && (
+                                    <StarRating rating={item.rating} />
+                                  )}
+
                                   {item.review_summary && (
-                                    <div style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.6)', marginTop: '0.3rem', lineHeight: 1.3 }}>
+                                    <div style={{ fontSize: '0.71rem', color: 'rgba(30,30,30,0.6)', lineHeight: 1.3, marginTop: '0.1rem' }}>
                                       {item.review_summary}
                                     </div>
                                   )}
-                                  <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+
+                                  {/* Match reason */}
+                                  {(item as any).match_reason && (
+                                    <div style={{ fontSize: '0.68rem', color: '#0149ae', fontStyle: 'italic', marginTop: '0.2rem', lineHeight: 1.3 }}>
+                                      {(item as any).match_reason}
+                                    </div>
+                                  )}
+
+                                  <div style={{ marginTop: '0.3rem', display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                                     <span className={`pill ${item.has_return_policy !== false ? 'pill-success' : 'pill-danger'}`}>
                                       {item.has_return_policy !== false ? 'Returns' : 'No Returns'}
                                     </span>
@@ -369,7 +690,7 @@ export default function CheckoutPage() {
                             </div>
                           )}
 
-                          {/* Spend Guardrail Lock */}
+                          {/* ---- Spend Guardrail Lock ---- */}
                           {msg.guardrailData && (
                             <div className={`guardrail-lock ${msg.guardrailData.passed ? 'passed' : 'blocked'}`}>
                               <Lock size={16} style={{ flexShrink: 0 }} />
@@ -381,7 +702,7 @@ export default function CheckoutPage() {
                             </div>
                           )}
 
-                          {/* Payment Attempts */}
+                          {/* ---- Payment Attempts ---- */}
                           {msg.paymentAttempts && msg.paymentAttempts.length > 0 && (
                             <div style={{ marginTop: '0.85rem', padding: '1rem', background: 'rgba(3,38,118,0.05)', borderRadius: '8px', border: '1px solid rgba(3,38,118,0.15)', color: '#032676' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, marginBottom: '0.6rem', fontSize: '0.82rem' }}>
@@ -414,14 +735,14 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Guided Mode Site Input Bar (if Guided Mode Active) */}
+          {/* Guided Mode Site Input Bar */}
           {autonomyMode === 'guided' && (
             <div style={{ padding: '0.5rem 1.1rem', background: 'rgba(1,73,174,0.04)', borderTop: '1px solid rgba(1,73,174,0.08)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <Globe size={15} color="#0149ae" />
               <span style={{ fontSize: '0.78rem', color: '#0149ae', fontWeight: 700 }}>Target Site URL / Domain:</span>
               <input
                 type="text"
-                placeholder="e.g. nike.com or amaz0n-deals.com"
+                placeholder="e.g. myntra.com or amaz0n-deals.com"
                 value={requestedSitesInput}
                 onChange={e => setRequestedSitesInput(e.target.value)}
                 disabled={isRunning}
@@ -433,17 +754,31 @@ export default function CheckoutPage() {
           {/* Input Bar */}
           <div style={{ padding: '0.85rem 1.1rem', borderTop: '1px solid rgba(1,73,174,0.08)', background: '#ffffff' }}>
             <div style={{ display: 'flex', gap: '0.6rem' }}>
-              <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder={autonomyMode === 'guided' ? "Enter search item (e.g. Find running shoes under ₹4,000)…" : "E.g. Find me running shoes under ₹4,000, size 9…"} disabled={isRunning}
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                placeholder={
+                  awaitingClarification
+                    ? 'Fill in the details above or type a reply…'
+                    : autonomyMode === 'guided'
+                      ? 'E.g. Buy me a shirt of 4000 rupees…'
+                      : 'E.g. Find me running shoes under ₹4,000…'
+                }
+                disabled={isRunning}
                 style={{ flex: 1, padding: '0.75rem 1rem', border: '1px solid rgba(1,73,174,0.15)', borderRadius: '8px', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', opacity: isRunning ? 0.6 : 1, background: '#ffffff', color: '#1e1e1e' }}
                 onFocus={e => e.target.style.borderColor = '#0149ae'}
                 onBlur={e => e.target.style.borderColor = 'rgba(1,73,174,0.15)'}
               />
-              <button className="btn-primary" onClick={() => handleSend()} disabled={isRunning || !input.trim()}
+              <button
+                className="btn-primary"
+                onClick={() => handleSend()}
+                disabled={isRunning || !input.trim()}
                 style={{ padding: '0.75rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: (isRunning || !input.trim()) ? 0.5 : 1, cursor: (isRunning || !input.trim()) ? 'not-allowed' : 'pointer' }}>
                 <Send size={15} /> Send
               </button>
             </div>
-
           </div>
         </div>
 
