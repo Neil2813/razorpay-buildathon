@@ -10,6 +10,24 @@ from uuid import uuid4
 PaymentStatus = Literal["pending", "success", "failed", "escalated"]
 
 
+# ---------------------------------------------------------------------------
+# Intent sub-schema (kept as a plain dict[str, Any] in state for flexibility,
+# but documented here for reference):
+#
+#   category       : str | None         — e.g. "shirt", "shoe"
+#   budget_min     : float | None       — floor price (₹)
+#   budget_max     : float | None       — ceiling price (₹)
+#   brand          : str | None         — e.g. "Nike"
+#   color          : str | None         — e.g. "blue"
+#   size           : str | None         — e.g. "M", "9"
+#   min_rating     : float | None       — minimum star rating (0–5)
+#   deadline       : str | None
+#   needs_clarification : bool
+#   clarification_reason: str | None
+#   missing_parameters  : list[str]     — params still to be collected
+# ---------------------------------------------------------------------------
+
+
 class TransactionState(TypedDict, total=False):
     tenant_id: str
     session_id: str
