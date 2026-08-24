@@ -14,7 +14,6 @@ export default function GlassboxHero() {
   const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Smooth scroll progress tracking state
   const [progress, setProgress] = useState(0);
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
@@ -29,17 +28,15 @@ export default function GlassboxHero() {
 
       if (totalScrollableHeight <= 0) return;
 
-      // Calculate progress clamp [0, 1] relative to container top
       const scrollOffset = -rect.top;
       const rawProgress = scrollOffset / totalScrollableHeight;
       targetProgressRef.current = Math.max(0, Math.min(1, rawProgress));
     };
 
     const updatePhysics = () => {
-      // Direct lerp for ultra-smooth 60/120fps physics interpolation
       const diff = targetProgressRef.current - currentProgressRef.current;
       if (Math.abs(diff) > 0.0001) {
-        currentProgressRef.current += diff * 0.15;
+        currentProgressRef.current += diff * 0.18; // Responsive lerp
       } else {
         currentProgressRef.current = targetProgressRef.current;
       }
@@ -65,79 +62,88 @@ export default function GlassboxHero() {
 
   const p = progress;
 
-  // --- PHASE CALCULATIONS ---
+  // --- INTERACTION PHASE MATH ---
 
-  // Intro Heading (fades out early)
+  // Intro Header (Phase 1 start -> fades out)
   const introOpacity = interpolate(p, 0.00, 0.12, 1, 0);
-  const introY = interpolate(p, 0.00, 0.12, 0, -25); // px
+  const introY = interpolate(p, 0.00, 0.12, 0, -20);
 
   // Phase 1, 2, 5: Razorpay Card Transforms
-  const cardScale = p < 0.18 
-    ? interpolate(p, 0.00, 0.18, 0.82, 1.0)
+  const cardScale = p < 0.15 
+    ? interpolate(p, 0.00, 0.15, 0.82, 1.0)
+    : p < 0.45 
+      ? interpolate(p, 0.15, 0.45, 1.0, 0.92)
+      : interpolate(p, 0.45, 0.68, 0.92, 0.82);
+
+  const cardOpacity = p < 0.08 
+    ? interpolate(p, 0.00, 0.08, 0.0, 1.0)
     : p < 0.48 
-      ? interpolate(p, 0.18, 0.48, 1.0, 0.92)
-      : interpolate(p, 0.48, 0.72, 0.92, 0.82);
-
-  const cardOpacity = p < 0.12 
-    ? interpolate(p, 0.00, 0.10, 0.0, 1.0)
-    : p < 0.52 
       ? 1.0 
-      : interpolate(p, 0.52, 0.70, 1.0, 0.0);
+      : interpolate(p, 0.48, 0.65, 1.0, 0.0);
 
-  const cardY = p < 0.18
-    ? interpolate(p, 0.00, 0.18, 4, 0) // vh (initial reveal move)
-    : p < 0.48
-      ? interpolate(p, 0.18, 0.48, 0, -35) // vh (parallax elevation)
-      : interpolate(p, 0.48, 0.72, -35, -120); // vh (card exit)
+  const cardY = p < 0.15
+    ? interpolate(p, 0.00, 0.15, 3, 0) // vh
+    : p < 0.45
+      ? interpolate(p, 0.15, 0.45, 0, -32) // vh (parallax elevation)
+      : interpolate(p, 0.45, 0.68, -32, -115); // vh (card exit)
 
-  const cardShadowOpacity = p < 0.18 
-    ? interpolate(p, 0.00, 0.18, 0, 0.8)
+  const cardShadowOpacity = p < 0.15 
+    ? interpolate(p, 0.00, 0.15, 0, 0.7)
+    : p < 0.50 
+      ? 0.7 
+      : interpolate(p, 0.50, 0.65, 0.7, 0);
+
+  // Phase 3: Information Reveal Tags (Layer 2 parallax ~0.7x speed)
+  const infoParallaxY = interpolate(p, 0.18, 0.52, 2, -16); // vh
+
+  const tag1Opacity = interpolate(p, 0.18, 0.26, 0, 1);
+  const tag1Y = interpolate(p, 0.18, 0.26, 20, 0);
+  const tag1Blur = interpolate(p, 0.18, 0.26, 6, 0);
+
+  const tag2Opacity = interpolate(p, 0.24, 0.32, 0, 1);
+  const tag2Y = interpolate(p, 0.24, 0.32, 20, 0);
+  const tag2Blur = interpolate(p, 0.24, 0.32, 6, 0);
+
+  const tag3Opacity = interpolate(p, 0.30, 0.38, 0, 1);
+  const tag3Y = interpolate(p, 0.30, 0.38, 20, 0);
+  const tag3Blur = interpolate(p, 0.30, 0.38, 6, 0);
+
+  const tag4Opacity = interpolate(p, 0.36, 0.44, 0, 1);
+  const tag4Y = interpolate(p, 0.36, 0.44, 20, 0);
+  const tag4Blur = interpolate(p, 0.36, 0.44, 6, 0);
+
+  const infoGroupOpacity = p > 0.48 ? interpolate(p, 0.48, 0.62, 1, 0) : 1;
+
+  // Phase 4: Translucent Glassbox Layer (~0.7x parallax differential)
+  const glassOpacity = p < 0.25 
+    ? interpolate(p, 0.20, 0.28, 0, 1)
     : p < 0.55 
-      ? 0.8 
-      : interpolate(p, 0.55, 0.70, 0.8, 0);
-
-  // Phase 3: Information Reveal Tags (Layer 2 parallax ~0.7x speed differential)
-  const infoParallaxY = interpolate(p, 0.18, 0.55, 0, -18); // vh
-
-  const tag1Opacity = interpolate(p, 0.20, 0.28, 0, 1);
-  const tag1Y = interpolate(p, 0.20, 0.28, 25, 0);
-  const tag1Blur = interpolate(p, 0.20, 0.28, 8, 0);
-
-  const tag2Opacity = interpolate(p, 0.26, 0.34, 0, 1);
-  const tag2Y = interpolate(p, 0.26, 0.34, 25, 0);
-  const tag2Blur = interpolate(p, 0.26, 0.34, 8, 0);
-
-  const tag3Opacity = interpolate(p, 0.32, 0.40, 0, 1);
-  const tag3Y = interpolate(p, 0.32, 0.40, 25, 0);
-  const tag3Blur = interpolate(p, 0.32, 0.40, 8, 0);
-
-  const tag4Opacity = interpolate(p, 0.38, 0.46, 0, 1);
-  const tag4Y = interpolate(p, 0.38, 0.46, 25, 0);
-  const tag4Blur = interpolate(p, 0.38, 0.46, 8, 0);
-
-  // General opacity for info group when exiting
-  const infoGroupOpacity = p > 0.52 ? interpolate(p, 0.52, 0.65, 1, 0) : 1;
-
-  // Phase 4: Glassbox Layer (Parallax Layer 2 ~0.7x differential)
-  const glassOpacity = p < 0.28 
-    ? interpolate(p, 0.24, 0.32, 0, 1)
-    : p < 0.60 
       ? 1 
-      : interpolate(p, 0.60, 0.72, 1, 0);
+      : interpolate(p, 0.55, 0.68, 1, 0);
 
-  const glassY = interpolate(p, 0.24, 0.70, 20, -30); // vh parallax drift
+  const glassY = interpolate(p, 0.20, 0.65, 12, -22); // vh
 
   // Phase 6 & 7: Payment Success PNG Transforms (Parallax Layer 4 ~0.85x speed)
-  const paymentY = interpolate(p, 0.54, 0.82, 100, 0); // vh (100vh -> 0vh)
-  const paymentScale = interpolate(p, 0.54, 0.82, 0.88, 1.0);
-  const paymentOpacity = interpolate(p, 0.54, 0.72, 0, 1);
+  const paymentY = p < 0.78
+    ? interpolate(p, 0.50, 0.78, 90, 0) // vh (90vh -> 0vh)
+    : 0; // Lock centered at Phase 7
 
-  // Phase 7 CTAs & Lock Info
-  const ctaOpacity = interpolate(p, 0.80, 0.90, 0, 1);
-  const ctaY = interpolate(p, 0.80, 0.90, 25, 0); // px
+  const paymentScale = p < 0.78
+    ? interpolate(p, 0.50, 0.78, 0.88, 1.0)
+    : 1.0;
 
-  // Scroll Indicator Hint
-  const scrollPromptOpacity = interpolate(p, 0.00, 0.10, 1, 0);
+  const paymentOpacity = p < 0.50 
+    ? 0 
+    : p < 0.72 
+      ? interpolate(p, 0.50, 0.72, 0, 1) 
+      : 1;
+
+  // Phase 7 Final CTAs
+  const ctaOpacity = interpolate(p, 0.78, 0.88, 0, 1);
+  const ctaY = interpolate(p, 0.78, 0.88, 20, 0);
+
+  // Scroll Hint Prompt
+  const scrollPromptOpacity = interpolate(p, 0.00, 0.08, 1, 0);
 
   return (
     <section 
@@ -148,44 +154,44 @@ export default function GlassboxHero() {
       {/* Sticky Viewport Stage (100vh pinned) */}
       <div className="sticky top-0 w-full h-screen bg-white overflow-hidden flex items-center justify-center">
         
-        {/* Subtle background grid pattern for high-end fintech depth */}
+        {/* Crisp minimal background grid pattern */}
         <div 
-          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          className="absolute inset-0 pointer-events-none opacity-[0.035]"
           style={{
             backgroundImage: `radial-gradient(#032676 1px, transparent 1px)`,
-            backgroundSize: '32px 32px'
+            backgroundSize: '28px 28px'
           }}
         />
 
-        {/* Floating Minimal Header Intro (Phase 1) */}
+        {/* Floating Header Intro (Phase 1) */}
         <div 
-          className="absolute top-[12vh] z-20 text-center px-4 transition-transform ease-out pointer-events-none"
+          className="absolute top-[8vh] z-10 text-center px-4 transition-transform ease-out pointer-events-none"
           style={{
             opacity: introOpacity,
             transform: `translate3d(0, ${introY}px, 0)`,
-            display: introOpacity <= 0.01 ? 'none' : 'block'
+            display: introOpacity <= 0.005 ? 'none' : 'block'
           }}
         >
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0149ae]/[0.06] border border-[#0149ae]/15 mb-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0149ae]/[0.06] border border-[#0149ae]/15 mb-2.5">
             <span className="w-2 h-2 rounded-full bg-[#0149ae] animate-pulse" />
             <span className="text-[11px] font-semibold tracking-widest text-[#0149ae] uppercase font-mono">
-              GLASSBOX · TRUST LAYER
+              GLASSBOX · SCROLL INTERACTION
             </span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[#032676] uppercase">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-[#032676] uppercase">
             GLASSBOX
           </h1>
-          <p className="mt-2 text-base md:text-lg text-slate-500 max-w-lg mx-auto font-light">
-            Scroll to observe agentic payment authorization in real time.
+          <p className="mt-1.5 text-sm md:text-base text-slate-500 max-w-md mx-auto font-light">
+            Scroll down to experience the continuous payment authorization stage.
           </p>
         </div>
 
         {/* Scroll Indicator Prompt */}
         <div 
-          className="absolute bottom-[6vh] z-20 flex flex-col items-center gap-2 pointer-events-none text-[#0149ae]"
+          className="absolute bottom-[5vh] z-10 flex flex-col items-center gap-2 pointer-events-none text-[#0149ae]"
           style={{ opacity: scrollPromptOpacity }}
         >
-          <span className="text-[10px] uppercase font-mono tracking-widest text-slate-400">Scroll to Explore</span>
+          <span className="text-[10px] uppercase font-mono tracking-widest text-slate-400">Scroll to Reveal</span>
           <div className="w-5 h-8 border-2 border-slate-300 rounded-full flex justify-center p-1">
             <div className="w-1 h-2 bg-[#0149ae] rounded-full animate-bounce" />
           </div>
@@ -193,27 +199,26 @@ export default function GlassboxHero() {
 
         {/* LAYER 2: Translucent Vertical Glass Pane (Phase 4) */}
         <div
-          className="absolute z-10 w-[90%] max-w-[580px] h-[340px] md:h-[400px] rounded-3xl pointer-events-none transition-all duration-75"
+          className="absolute z-15 w-[92%] max-w-[540px] h-[360px] md:h-[400px] rounded-3xl pointer-events-none transition-all duration-75"
           style={{
             opacity: glassOpacity,
             transform: `translate3d(0, ${glassY}vh, 0)`,
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(240, 246, 255, 0.35) 100%)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(1, 73, 174, 0.12)',
-            boxShadow: '0 20px 50px rgba(1, 73, 174, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(240, 246, 255, 0.40) 100%)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+            border: '1px solid rgba(1, 73, 174, 0.15)',
+            boxShadow: '0 20px 50px rgba(1, 73, 174, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
           }}
         >
-          {/* Specular highlight border sheen */}
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-transparent via-white/40 to-transparent pointer-events-none" />
-          <div className="absolute top-4 right-6 text-[10px] font-mono text-[#0149ae]/40 uppercase tracking-widest">
-            PARALLAX GLASS STAGE
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-transparent via-white/30 to-transparent pointer-events-none" />
+          <div className="absolute top-3.5 right-5 text-[9px] font-mono text-[#0149ae]/50 uppercase tracking-widest">
+            PARALLAX GLASS SURFACE
           </div>
         </div>
 
         {/* LAYER 2: Information Reveal Telemetry Elements (Phase 3) */}
         <div 
-          className="absolute z-15 flex flex-col items-center gap-3.5 pointer-events-none w-full max-w-[460px] px-6"
+          className="absolute z-20 flex flex-col items-center gap-3 pointer-events-none w-full max-w-[420px] px-6"
           style={{
             opacity: infoGroupOpacity,
             transform: `translate3d(0, ${infoParallaxY}vh, 0)`
@@ -221,59 +226,59 @@ export default function GlassboxHero() {
         >
           {/* Tag 1: AUTHORIZED */}
           <div 
-            className="w-full bg-white/90 backdrop-blur-md border border-emerald-500/20 shadow-sm rounded-xl py-2.5 px-5 flex items-center justify-between"
+            className="w-full bg-white/95 backdrop-blur-md border border-emerald-500/25 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
             style={{
               opacity: tag1Opacity,
               transform: `translate3d(0, ${tag1Y}px, 0)`,
               filter: `blur(${tag1Blur}px)`
             }}
           >
-            <span className="text-xs font-mono tracking-widest text-slate-400 uppercase">STATE</span>
+            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">STATE</span>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-xs font-semibold tracking-wider text-emerald-600 font-mono">AUTHORIZED</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold tracking-wider text-emerald-600 font-mono">AUTHORIZED</span>
             </div>
           </div>
 
           {/* Tag 2: ₹4,000 LIMIT */}
           <div 
-            className="w-full bg-white/90 backdrop-blur-md border border-[#0149ae]/15 shadow-sm rounded-xl py-2.5 px-5 flex items-center justify-between"
+            className="w-full bg-white/95 backdrop-blur-md border border-[#0149ae]/20 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
             style={{
               opacity: tag2Opacity,
               transform: `translate3d(0, ${tag2Y}px, 0)`,
               filter: `blur(${tag2Blur}px)`
             }}
           >
-            <span className="text-xs font-mono tracking-widest text-slate-400 uppercase">CEILING</span>
+            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">CEILING</span>
             <span className="text-sm font-bold tracking-tight text-[#032676]">₹4,000 LIMIT</span>
           </div>
 
           {/* Tag 3: RISK CHECK */}
           <div 
-            className="w-full bg-white/90 backdrop-blur-md border border-slate-200 shadow-sm rounded-xl py-2.5 px-5 flex items-center justify-between"
+            className="w-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
             style={{
               opacity: tag3Opacity,
               transform: `translate3d(0, ${tag3Y}px, 0)`,
               filter: `blur(${tag3Blur}px)`
             }}
           >
-            <span className="text-xs font-mono tracking-widest text-slate-400 uppercase">RISK ENGINE</span>
+            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">RISK ENGINE</span>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 text-[#0149ae] font-medium">PASSED 0.02</span>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-50 text-[#0149ae] font-semibold">PASSED (0.02)</span>
               <span className="text-xs font-semibold text-slate-700 font-mono">RISK CHECK</span>
             </div>
           </div>
 
           {/* Tag 4: PAYMENT */}
           <div 
-            className="w-full bg-white/90 backdrop-blur-md border border-[#0149ae]/20 shadow-sm rounded-xl py-2.5 px-5 flex items-center justify-between"
+            className="w-full bg-white/95 backdrop-blur-md border border-[#0149ae]/25 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
             style={{
               opacity: tag4Opacity,
               transform: `translate3d(0, ${tag4Y}px, 0)`,
               filter: `blur(${tag4Blur}px)`
             }}
           >
-            <span className="text-xs font-mono tracking-widest text-slate-400 uppercase">GATEWAY</span>
+            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">GATEWAY</span>
             <span className="text-xs font-bold tracking-widest text-[#0149ae] font-mono">PAYMENT ROUTED</span>
           </div>
         </div>
@@ -287,7 +292,7 @@ export default function GlassboxHero() {
             display: cardOpacity <= 0.005 ? 'none' : 'flex'
           }}
         >
-          {/* Subtle minimal drop shadow underneath the physical card asset */}
+          {/* Physical card drop shadow */}
           <div 
             className="absolute -bottom-6 w-[80%] h-8 bg-[#032676]/25 rounded-full blur-xl transition-opacity"
             style={{ opacity: cardShadowOpacity }}
@@ -296,7 +301,7 @@ export default function GlassboxHero() {
           <img 
             src="/razorpay-card.png" 
             alt="Razorpay Card"
-            className="w-[85vw] max-w-[440px] md:max-w-[500px] h-auto object-contain drop-shadow-2xl"
+            className="w-[85vw] max-w-[420px] md:max-w-[480px] h-auto object-contain drop-shadow-2xl"
             loading="eager"
           />
         </div>
@@ -313,13 +318,13 @@ export default function GlassboxHero() {
           <img 
             src="/payment-success.png" 
             alt="Payment Successful"
-            className="w-[90vw] max-w-[480px] md:max-w-[540px] h-auto object-contain drop-shadow-xl"
+            className="w-[90vw] max-w-[460px] md:max-w-[520px] h-auto object-contain drop-shadow-xl"
             loading="eager"
           />
 
-          {/* Phase 7 Final Hero CTAs (fades in cleanly when centered) */}
+          {/* Phase 7 Final Hero CTAs */}
           <div 
-            className="mt-8 flex flex-col sm:flex-row items-center gap-4 pointer-events-auto"
+            className="mt-6 flex flex-col sm:flex-row items-center gap-3.5 pointer-events-auto"
             style={{
               opacity: ctaOpacity,
               transform: `translate3d(0, ${ctaY}px, 0)`
