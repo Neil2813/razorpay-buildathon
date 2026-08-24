@@ -398,10 +398,12 @@ def _run_guided(state: TransactionState) -> TransactionState:
         inputs_summary={"sites": sites, "intent": intent},
         output_summary={
             "candidate_count": len(candidates),
+            "discovered_candidates": candidates,  # full objects for frontend display
             "candidates": [
                 {"product_id": c.get("product_id"), "name": c.get("name"),
                  "price": c.get("price"), "rating": c.get("rating"),
-                 "source_site": c.get("source_site")}
+                 "source_site": c.get("source_site"), "image_url": c.get("image_url"),
+                 "source_url": c.get("source_url"), "match_reason": c.get("match_reason")}
                 for c in candidates
             ],
         },
@@ -463,10 +465,12 @@ def _run_autonomous(state: TransactionState) -> TransactionState:
         output_summary={
             "candidate_count": len(candidates),
             "sites_rejected_count": rejected,
+            "discovered_candidates": candidates,  # full objects for frontend display
             "candidates": [
                 {"product_id": c.get("product_id"), "name": c.get("name"),
                  "price": c.get("price"), "rating": c.get("rating"),
-                 "source_site": c.get("source_site")}
+                 "source_site": c.get("source_site"), "image_url": c.get("image_url"),
+                 "source_url": c.get("source_url"), "match_reason": c.get("match_reason")}
                 for c in candidates
             ],
         },
