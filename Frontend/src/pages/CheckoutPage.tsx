@@ -860,78 +860,143 @@ export default function CheckoutPage() {
 
                           {/* ---- Discovered Product Candidates ---- */}
                           {msg.candidates && msg.candidates.length > 0 && (
-                            <div style={{ marginTop: '0.85rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.65rem' }}>
-                              {msg.candidates.map((item, idx) => (
-                                <div key={idx} style={{
-                                  background: '#ffffff',
-                                  padding: '0.85rem',
-                                  borderRadius: '10px',
-                                  border: '1px solid rgba(1,73,174,0.15)',
-                                  boxShadow: '0 2px 6px rgba(3,38,118,0.06)',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '0.3rem',
-                                  transition: 'box-shadow 0.2s',
-                                }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.6rem', color: 'rgba(30,30,30,0.4)', fontWeight: 800, textTransform: 'uppercase' }}>Option {idx + 1}</span>
-                                    {item.source_site && (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(1,73,174,0.08)', color: '#0149ae', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {item.source_site}
-                                      </span>
+                            <div style={{ marginTop: '1rem' }}>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Filter size={12} /> {msg.candidates.length} product{msg.candidates.length !== 1 ? 's' : ''} found — all match your filters
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                {msg.candidates.map((item, idx) => (
+                                  <div key={idx} style={{
+                                    background: '#ffffff',
+                                    borderRadius: '12px',
+                                    border: '1px solid rgba(1,73,174,0.15)',
+                                    boxShadow: '0 2px 8px rgba(3,38,118,0.07)',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    transition: 'box-shadow 0.2s, transform 0.15s',
+                                  }}>
+                                    {/* Product Image */}
+                                    {(item as any).image_url ? (
+                                      <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f0f4ff', flexShrink: 0 }}>
+                                        <img
+                                          src={(item as any).image_url}
+                                          alt={item.name}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div style={{ width: '100%', height: '80px', background: 'linear-gradient(135deg, rgba(1,73,174,0.08) 0%, rgba(3,38,118,0.12) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <span style={{ fontSize: '2rem' }}>🛍️</span>
+                                      </div>
                                     )}
+
+                                    <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+                                      {/* Option badge + site */}
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.58rem', color: '#0149ae', fontWeight: 800, textTransform: 'uppercase', background: 'rgba(1,73,174,0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Option {idx + 1}</span>
+                                        {item.source_site && (
+                                          <span style={{ fontSize: '0.6rem', fontWeight: 600, color: 'rgba(30,30,30,0.45)', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.source_site}</span>
+                                        )}
+                                      </div>
+
+                                      {/* Product Name */}
+                                      <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#1e1e1e', lineHeight: 1.3 }}>{item.name}</div>
+
+                                      {/* Brand */}
+                                      {item.brand && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <Tag size={10} color="rgba(30,30,30,0.35)" />
+                                          <span style={{ fontSize: '0.68rem', color: 'rgba(30,30,30,0.5)', fontWeight: 600 }}>{item.brand}</span>
+                                        </div>
+                                      )}
+
+                                      {/* Price */}
+                                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0149ae' }}>&#8377;{item.price.toLocaleString()}</div>
+
+                                      {/* Star Rating */}
+                                      {item.rating != null && <StarRating rating={item.rating} />}
+
+                                      {/* Match Reason */}
+                                      {(item as any).match_reason && (
+                                        <div style={{ fontSize: '0.67rem', color: '#0149ae', fontStyle: 'italic', lineHeight: 1.3, padding: '0.3rem 0.5rem', background: 'rgba(1,73,174,0.05)', borderRadius: '5px', borderLeft: '2px solid #0149ae' }}>
+                                          {(item as any).match_reason}
+                                        </div>
+                                      )}
+
+                                      {/* Review Summary */}
+                                      {item.review_summary && (
+                                        <div style={{ fontSize: '0.67rem', color: 'rgba(30,30,30,0.55)', lineHeight: 1.3 }}>
+                                          {item.review_summary}
+                                        </div>
+                                      )}
+
+                                      {/* View Link */}
+                                      {(item as any).source_url && (
+                                        <a
+                                          href={(item as any).source_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ marginTop: 'auto', paddingTop: '0.4rem', fontSize: '0.68rem', fontWeight: 700, color: '#0149ae', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                        >
+                                          <Globe size={11} /> View Product ↗
+                                        </a>
+                                      )}
+                                    </div>
                                   </div>
-
-                                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e1e1e', lineHeight: 1.3 }}>{item.name}</div>
-
-                                  {/* Brand */}
-                                  {item.brand && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      <Tag size={10} color="rgba(30,30,30,0.4)" />
-                                      <span style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.55)', fontWeight: 600 }}>{item.brand}</span>
-                                    </div>
-                                  )}
-
-                                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0149ae' }}>&#8377;{item.price.toLocaleString()}</div>
-
-                                  {/* Star Rating */}
-                                  {item.rating !== undefined && item.rating !== null && (
-                                    <StarRating rating={item.rating} />
-                                  )}
-
-                                  {item.review_summary && (
-                                    <div style={{ fontSize: '0.71rem', color: 'rgba(30,30,30,0.6)', lineHeight: 1.3, marginTop: '0.1rem' }}>
-                                      {item.review_summary}
-                                    </div>
-                                  )}
-
-                                  {/* Match reason */}
-                                  {(item as any).match_reason && (
-                                    <div style={{ fontSize: '0.68rem', color: '#0149ae', fontStyle: 'italic', marginTop: '0.2rem', lineHeight: 1.3 }}>
-                                      {(item as any).match_reason}
-                                    </div>
-                                  )}
-
-                                  <div style={{ marginTop: '0.3rem', display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                                    <span className={`pill ${item.has_return_policy !== false ? 'pill-success' : 'pill-danger'}`}>
-                                      {item.has_return_policy !== false ? 'Returns' : 'No Returns'}
-                                    </span>
-                                    {item.has_delivery_time !== false && <span className="pill pill-blue">ETA</span>}
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           )}
 
-                          {/* ---- Spend Guardrail Lock ---- */}
+                          {/* ---- Spend Guardrail Lock + Chosen Product ---- */}
                           {msg.guardrailData && (
-                            <div className={`guardrail-lock ${msg.guardrailData.passed ? 'passed' : 'blocked'}`}>
-                              <Lock size={16} style={{ flexShrink: 0 }} />
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Non-Negotiable Spend Guardrail</div>
-                                <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', opacity: 0.8 }}>Ceiling: &#8377;{msg.guardrailData.ceiling.toLocaleString()} · Item: &#8377;{msg.guardrailData.price.toLocaleString()}</div>
+                            <div style={{ marginTop: '0.85rem' }}>
+                              {/* Chosen Product Card */}
+                              {msg.guardrailData.chosenProduct && (
+                                <div style={{ marginBottom: '0.75rem', padding: '0.9rem 1rem', background: 'linear-gradient(135deg, rgba(1,73,174,0.06) 0%, rgba(3,38,118,0.08) 100%)', borderRadius: '10px', border: '2px solid rgba(1,73,174,0.25)' }}>
+                                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <CheckCircle size={13} color="#0149ae" /> Agent Selected This Product
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                    {msg.guardrailData.chosenProduct.image_url ? (
+                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    ) : (
+                                      <div style={{ width: '64px', height: '64px', borderRadius: '8px', background: 'rgba(1,73,174,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.6rem' }}>🛍️</div>
+                                    )}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e1e1e', lineHeight: 1.3 }}>{msg.guardrailData.chosenProduct.name}</div>
+                                      {msg.guardrailData.chosenProduct.brand && (
+                                        <div style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.5)', marginTop: '0.15rem' }}>{msg.guardrailData.chosenProduct.brand}</div>
+                                      )}
+                                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0149ae', marginTop: '0.2rem' }}>&#8377;{Number(msg.guardrailData.price).toLocaleString()}</div>
+                                      {msg.guardrailData.chosenProduct.rating != null && <StarRating rating={msg.guardrailData.chosenProduct.rating} />}
+                                      {msg.guardrailData.chosenProduct.source_url && (
+                                        <a href={msg.guardrailData.chosenProduct.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0149ae', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem' }}>
+                                          <Globe size={11} /> View on {msg.guardrailData.chosenProduct.source_site || 'store'} ↗
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* WHY WE CHOSE THIS */}
+                                  {msg.guardrailData.selectionReason && (
+                                    <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid rgba(1,73,174,0.15)', borderLeft: '4px solid #0149ae' }}>
+                                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Why we chose this</div>
+                                      <div style={{ fontSize: '0.78rem', color: '#1e1e1e', lineHeight: 1.5 }}>{msg.guardrailData.selectionReason}</div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {/* Guardrail Lock Bar */}
+                              <div className={`guardrail-lock ${msg.guardrailData.passed ? 'passed' : 'blocked'}`}>
+                                <Lock size={16} style={{ flexShrink: 0 }} />
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Non-Negotiable Spend Guardrail</div>
+                                  <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', opacity: 0.8 }}>Ceiling: &#8377;{msg.guardrailData.ceiling.toLocaleString()} · Item: &#8377;{msg.guardrailData.price.toLocaleString()}</div>
+                                </div>
+                                <span className={`pill ${msg.guardrailData.passed ? 'pill-success' : 'pill-danger'}`}>{msg.guardrailData.passed ? 'PASSED' : 'BLOCKED'}</span>
                               </div>
-                              <span className={`pill ${msg.guardrailData.passed ? 'pill-success' : 'pill-danger'}`}>{msg.guardrailData.passed ? 'PASSED' : 'BLOCKED'}</span>
                             </div>
                           )}
 
