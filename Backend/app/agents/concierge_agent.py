@@ -60,11 +60,11 @@ _CURRENCY_RE = re.compile(
     re.I,
 )
 _CURRENCY_RANGE_RE = re.compile(
-    r"(?:between|from)\s*([\d,]+)\s*(?:to|and|-)\s*([\d,]+)",
+    r"(?:between|from)\s*(?:₹|rs\.?\s*|inr\s*)?([ \d,]+)\s*(?:to|and|-)\s*(?:₹|rs\.?\s*|inr\s*)?([ \d,]+)",
     re.I,
 )
 _FLOOR_RE = re.compile(
-    r"(?:above|over|min(?:imum)?|floor|atleast|at least|starting|from)\s*([\d,]+(?:\.\d+)?)",
+    r"(?:above|over|min(?:imum)?|floor|atleast|at least|starting|from)\s*(?:₹|rs\.?\s*|inr\s*)?([\d,]+(?:\.\d+)?)",
     re.I,
 )
 _SIZE_RE = re.compile(r"\b(?:size\s*)?(xxs|xs|s|m|l|xl|xxl|\d{1,2})\b", re.I)
