@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Play } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import AgentRail from '../components/AgentRail';
 import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
 import { api } from '../api/client';
@@ -44,12 +43,7 @@ const AGENT_LABELS: Record<string, string> = {
   ledger: 'Audit Ledger',
 };
 
-const SUGGESTION_CHIPS = [
-  { label: 'Autonomous Pitch Demo (§2.5)', query: 'Find me running shoes under Rs. 4000, size 9', mode: 'autonomous' as const, isPitch: true },
-  { label: 'Guided Untrusted Site Warning (Demo)', query: 'Check amaz0n-deals.com for running shoes under Rs. 4000', mode: 'guided' as const, requestedSite: 'amaz0n-deals.com', isPitch: false },
-  { label: 'Guided Trusted Site (nike.com)', query: 'Check nike.com for running shoes under Rs. 4000', mode: 'guided' as const, requestedSite: 'nike.com', isPitch: false },
-  { label: 'Training tee under ₹2,000', query: 'Find me a synthetic training tee under Rs. 2000', mode: 'autonomous' as const, isPitch: false },
-];
+
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -203,15 +197,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleChipClick = (chip: typeof SUGGESTION_CHIPS[0]) => {
-    setAutonomyMode(chip.mode);
-    if (chip.requestedSite) {
-      setRequestedSitesInput(chip.requestedSite);
-    } else {
-      setRequestedSitesInput('');
-    }
-    handleSend(chip.query, chip.mode, chip.requestedSite);
-  };
+
 
   const handleRestartSession = () => {
     const newSess = `sess_${Math.random().toString(36).substring(2, 9)}`;
@@ -227,7 +213,6 @@ export default function CheckoutPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
       <Navbar />
-      <AgentRail activeAgent={activeAgent} onSelectAgent={setActiveAgent} completedAgents={completedAgents} />
 
       <div className="container" style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
 
@@ -291,15 +276,6 @@ export default function CheckoutPage() {
                   Autonomous buyer agent featuring <strong>Deterministic Site Trust Verification</strong> and <strong>Spend Guardrails</strong>. Ask to discover products across web sources, negotiate, evaluate ML risk, and execute payments.
                 </p>
 
-                {/* Preset Chips */}
-                <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '750px' }}>
-                  {SUGGESTION_CHIPS.map(chip => (
-                    <button key={chip.query} onClick={() => handleChipClick(chip)} style={{ fontSize: '0.8rem', padding: '0.5rem 0.9rem', borderRadius: '99px', border: chip.isPitch ? '1px solid #0149ae' : '1px solid rgba(1,73,174,0.2)', background: chip.isPitch ? 'rgba(1,73,174,0.07)' : '#f5f5f5', color: chip.isPitch ? '#0149ae' : 'rgba(30,30,30,0.7)', fontWeight: chip.isPitch ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Play size={12} color={chip.isPitch ? '#0149ae' : '#032676'} />
-                      {chip.label}
-                    </button>
-                  ))}
-                </div>
               </div>
             ) : (
               <>
@@ -468,16 +444,6 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Quick Demo Chips */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.68rem', color: 'rgba(30,30,30,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Try:</span>
-              {SUGGESTION_CHIPS.map(chip => (
-                <button key={chip.query} onClick={() => handleChipClick(chip)} disabled={isRunning}
-                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.7rem', borderRadius: '99px', border: chip.isPitch ? '1px solid #0149ae' : '1px solid rgba(1,73,174,0.15)', background: chip.isPitch ? 'rgba(1,73,174,0.07)' : '#f5f5f5', color: chip.isPitch ? '#0149ae' : 'rgba(30,30,30,0.6)', cursor: isRunning ? 'not-allowed' : 'pointer', fontWeight: chip.isPitch ? 700 : 500, opacity: isRunning ? 0.5 : 1 }}>
-                  {chip.label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
