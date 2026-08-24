@@ -84,7 +84,7 @@ const AUTONOMOUS_PARAMS: MissingParam[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Live Agent Progress Indicator Component (V2)
+// Live Agent Progress Indicator Component (V3 - Root Binding)
 // ---------------------------------------------------------------------------
 function LiveAgentProgress() {
   return (
@@ -560,106 +560,128 @@ export default function CheckoutPage() {
         if (data.audit_log) setAuditLog(data.audit_log);
         if (data.trust_override) setTrustOverrideActive(true);
 
-        // Find the start index of the latest turn (last concierge event in this response)
-        const auditLog: any[] = data.audit_log;
+        // Aggregate turn result message from response data
+        const auditLog: any[] = data.audit_log || [];
         const lastConciergeIdx = auditLog.map(e => e.agent).lastIndexOf('concierge');
         const currentTurnEvents = lastConciergeIdx !== -1 ? auditLog.slice(lastConciergeIdx) : auditLog;
 
         const newTurnMessages: Message[] = [];
 
-        for (const event of currentTurnEvents) {
-          const currentAgentKey = event.agent === 'catalog' ? 'discovery' : event.agent;
-          let missingParams: MissingParam[] | undefined;
-          let candidates: Message['candidates'];
-          let siteTrustData: Message['siteTrustData'];
-          let trustWarningPrompt: Message['trustWarningPrompt'];
-          let sitesRejectedCount: number | undefined;
-          let riskData: RiskFeaturesData | undefined;
-          let guardrailData: Message['guardrailData'];
-          let paymentAttempts: PaymentAttempt[] | undefined;
+        // Check if concierge is asking for missing parameters
+        const conciergeEvent = currentTurnEvents.find(e => e.agent === 'concierge' && e.output_summary?.missing_parameters?.length > 0);
+        let missingParams: MissingParam[] | undefined;
 
-          if (event.agent === 'concierge' && event.output_summary?.missing_parameters?.length > 0) {
-            const missing: string[] = event.output_summary.missing_parameters;
-            // If the user already chose a mode (autonomyMode is set), never re-show mode selection
-            if (missing.includes('autonomy_mode') && modeToUse) {
-              // mode is already known — skip this card, backend will handle it next turn
-              setAwaitingClarification(false);
-            } else if (missing.includes('autonomy_mode')) {
-              missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
-              setAwaitingClarification(true);
-            } else {
-              const mode = event.inputs_summary?.mode || modeToUse || 'autonomous';
-              const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
-              missingParams = allParams.filter(p => missing.includes(p.key));
-              setAwaitingClarification(true);
-            }
-          }
-
-          if (event.agent === 'site_trust' && event.output_summary) {
-            const s = event.output_summary;
-            siteTrustData = { site: s.site || 'candidate site', status: s.status, reason: s.reason, trustOverride: s.user_overrode_trust_warning || s.trust_override };
-          } else if ((event.agent === 'discovery' || event.agent === 'catalog') && event.output_summary) {
-            candidates = event.output_summary.discovered_candidates || event.output_summary.candidates || data.discovered_candidates;
-            sitesRejectedCount = event.output_summary.sites_rejected_count || data.sites_rejected_count;
-            if (candidates?.length) setAwaitingClarification(false);
-          } else if (event.agent === 'risk' && event.output_summary) {
-            const s = event.output_summary;
-            riskData = {
-              risk_score: s.risk_score ?? data.risk_score ?? 0.01,
-              risk_level: s.risk_level,
-              threshold: s.threshold ?? 0.8,
-              top_features: s.top_features || data.risk_features?.top_features || [],
-              explanation: s.explanation || data.risk_features?.explanation,
-              model: s.model_source === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
-            };
-          } else if (event.agent === 'negotiation' && event.output_summary) {
-            const s = event.output_summary;
-            guardrailData = {
-              ceiling: s.ceiling || data.guardrail_ceiling || 5000,
-              price: s.price || 0,
-              passed: s.guardrail_passed !== false,
-              productName: s.product_id,
-              chosenProduct: s.chosen_product || data.chosen_product,
-              selectionReason: s.selection_reason,
-            };
-          } else if (event.agent === 'payment' && (event.output_summary?.payment_attempts || data.payment_attempts)) {
-            paymentAttempts = event.output_summary?.payment_attempts || data.payment_attempts;
-          }
-
-          if (event.decision_reason && (event.decision_reason.includes('safety check') || event.decision_reason.includes('untrusted'))) {
-            trustWarningPrompt = {
-              site: event.output_summary?.site || event.inputs_summary?.requested_sites?.[0] || 'amaz0n-deals.com',
-              reason: event.decision_reason,
-            };
-          }
-
-          // Skip ledger banner on clarification halts
-          if (event.agent === 'ledger') {
-            const isParamHalt = data.payment_status === 'escalated' &&
-              (data.intent?.needs_clarification || (data.escalation_message || '').includes('detail') || (data.escalation_message || '').includes('search') || (data.escalation_message || '').includes('mode'));
-            if (isParamHalt) continue;
-          }
-
-          // Skip events that have no useful content to render
-          if (!event.decision_reason && !missingParams?.length && !candidates?.length && !riskData && !guardrailData && !paymentAttempts?.length && !siteTrustData && !trustWarningPrompt) {
-            continue;
+        if (conciergeEvent) {
+          const missing: string[] = conciergeEvent.output_summary.missing_parameters;
+          if (missing.includes('autonomy_mode') && modeToUse) {
+            setAwaitingClarification(false);
+          } else if (missing.includes('autonomy_mode')) {
+            missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
+            setAwaitingClarification(true);
+          } else {
+            const mode = conciergeEvent.inputs_summary?.mode || modeToUse || 'autonomous';
+            const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
+            missingParams = allParams.filter(p => missing.includes(p.key));
+            setAwaitingClarification(true);
           }
 
           newTurnMessages.push({
             role: 'agent',
-            agent: currentAgentKey,
-            content: event.agent === 'concierge' && missingParams?.length
-              ? (event.output_summary?.clarification || event.decision_reason)
-              : event.decision_reason,
-            candidates,
-            siteTrustData,
-            trustWarningPrompt,
-            sitesRejectedCount,
-            riskData,
-            guardrailData,
-            paymentAttempts,
+            agent: 'concierge',
+            content: conciergeEvent.output_summary?.clarification || conciergeEvent.decision_reason || 'Please provide required parameters.',
             missingParams,
-            clarificationMode: event.inputs_summary?.mode || modeToUse || undefined,
+            clarificationMode: conciergeEvent.inputs_summary?.mode || modeToUse || undefined,
+          });
+        } else {
+          setAwaitingClarification(false);
+          // Parameter check passed — full pipeline executed. Push synthesized turn results.
+
+          // 1. Discovery Products Message (if candidates found)
+          const discovered = (data.discovered_candidates && data.discovered_candidates.length > 0)
+            ? data.discovered_candidates
+            : (data.catalog_candidates && data.catalog_candidates.length > 0 ? data.catalog_candidates : undefined);
+
+          const discoveryEvent = currentTurnEvents.find(e => e.agent === 'discovery' || e.agent === 'catalog');
+          const discoveryNote = discoveryEvent?.decision_reason ||
+            (discovered?.length ? `Autonomous discovery complete: found ${discovered.length} candidate product(s).` : 'Autonomous discovery complete.');
+
+          if (discovered?.length || discoveryEvent) {
+            newTurnMessages.push({
+              role: 'agent',
+              agent: 'discovery',
+              content: discoveryNote,
+              candidates: discovered,
+              sitesRejectedCount: data.sites_rejected_count,
+            });
+          }
+
+          // 2. Negotiation / Selection & Guardrail Message
+          if (data.chosen_product || data.guardrail_ceiling) {
+            const chosen = data.chosen_product;
+            const negEvent = currentTurnEvents.find(e => e.agent === 'negotiation');
+            const selectionReason = chosen?.selection_reason ||
+              negEvent?.output_summary?.selection_reason ||
+              'Best match for your specified requirements.';
+
+            newTurnMessages.push({
+              role: 'agent',
+              agent: 'negotiation',
+              content: negEvent?.decision_reason || 'Code compared selected product price against tenant ceiling.',
+              guardrailData: {
+                ceiling: data.guardrail_ceiling || 5000,
+                price: chosen?.price || 0,
+                passed: data.guardrail_passed !== false,
+                productName: chosen?.product_id || chosen?.name,
+                chosenProduct: chosen,
+                selectionReason,
+              },
+            });
+          }
+
+          // 3. Risk Assessment Message
+          if (data.risk_score !== undefined || data.risk_features) {
+            const rf = data.risk_features || {};
+            const riskEvent = currentTurnEvents.find(e => e.agent === 'risk');
+            newTurnMessages.push({
+              role: 'agent',
+              agent: 'risk',
+              content: riskEvent?.decision_reason || 'ML Risk Engine evaluated transaction features.',
+              riskData: {
+                risk_score: data.risk_score ?? 0.01,
+                risk_level: data.risk_score ? (data.risk_score > 0.8 ? 'HIGH' : 'LOW') : 'LOW',
+                threshold: 0.8,
+                top_features: rf.top_features || [],
+                explanation: rf.explanation,
+                model: rf.model === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
+              },
+            });
+          }
+
+          // 4. Payment Execution & Gateway Attempts Message
+          if (data.payment_attempts && data.payment_attempts.length > 0) {
+            const payEvent = currentTurnEvents.find(e => e.agent === 'payment');
+            newTurnMessages.push({
+              role: 'agent',
+              agent: 'payment',
+              content: payEvent?.decision_reason || 'Razorpay Gateway charge processing complete.',
+              paymentAttempts: data.payment_attempts,
+            });
+          }
+
+          // 5. Audit Ledger Finalization Message
+          const isTrustHalt = data.payment_status === 'escalated' && (data.escalation_message || '').includes('safety check');
+          const trustEvent = currentTurnEvents.find(e => e.agent === 'site_trust' || (e.decision_reason || '').includes('safety check'));
+
+          newTurnMessages.push({
+            role: 'agent',
+            agent: 'ledger',
+            content: isTrustHalt
+              ? `Transaction paused on Site Trust Warning — awaiting user action (Restart or Continue with trust_override).`
+              : `Transaction complete: ${data.payment_status.toUpperCase()}${data.escalation_message ? ` — ${data.escalation_message}` : ''}`,
+            trustWarningPrompt: isTrustHalt ? {
+              site: trustEvent?.output_summary?.site || data.requested_sites?.[0] || 'requested site',
+              reason: data.escalation_message || 'Site failed safety check: Typosquatting / domain age flag',
+            } : undefined,
           });
         }
 
