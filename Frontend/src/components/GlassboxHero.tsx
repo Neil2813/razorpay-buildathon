@@ -99,35 +99,24 @@ export default function GlassboxHero() {
       ? 0.7 
       : interpolate(p, 0.35, 0.45, 0.7, 0);
 
-  // Information Reveal Telemetry Elements (Exits by 0.45)
-  const infoParallaxY = interpolate(p, 0.10, 0.40, 0, -18); // vh
+  // Multi-Agent Architecture Diagram (`/Agents.png`)
+  const agentsOpacity = p < 0.05
+    ? interpolate(p, 0.00, 0.05, 0.0, 1.0)
+    : p < 0.35
+      ? 1.0
+      : interpolate(p, 0.35, 0.45, 1.0, 0.0);
 
-  const tag1Opacity = interpolate(p, 0.12, 0.18, 0, 1);
-  const tag1Y = interpolate(p, 0.12, 0.18, 20, 0);
-  const tag1Blur = interpolate(p, 0.12, 0.18, 6, 0);
+  const agentsY = p < 0.10
+    ? interpolate(p, 0.00, 0.10, 8, 0) // vh
+    : p < 0.30
+      ? interpolate(p, 0.10, 0.30, 0, -25) // vh
+      : interpolate(p, 0.30, 0.45, -25, -110); // vh (Exit)
 
-  const tag2Opacity = interpolate(p, 0.15, 0.21, 0, 1);
-  const tag2Y = interpolate(p, 0.15, 0.21, 20, 0);
-  const tag2Blur = interpolate(p, 0.15, 0.21, 6, 0);
-
-  const tag3Opacity = interpolate(p, 0.18, 0.24, 0, 1);
-  const tag3Y = interpolate(p, 0.18, 0.24, 20, 0);
-  const tag3Blur = interpolate(p, 0.18, 0.24, 6, 0);
-
-  const tag4Opacity = interpolate(p, 0.21, 0.27, 0, 1);
-  const tag4Y = interpolate(p, 0.21, 0.27, 20, 0);
-  const tag4Blur = interpolate(p, 0.21, 0.27, 6, 0);
-
-  const infoGroupOpacity = p > 0.35 ? interpolate(p, 0.35, 0.45, 1, 0) : 1;
-
-  // Translucent Glassbox Layer
-  const glassOpacity = p < 0.15 
-    ? interpolate(p, 0.10, 0.15, 0, 1)
-    : p < 0.35 
-      ? 1 
-      : interpolate(p, 0.35, 0.45, 1, 0);
-
-  const glassY = interpolate(p, 0.10, 0.45, 12, -22); // vh
+  const agentsScale = p < 0.10
+    ? interpolate(p, 0.00, 0.10, 0.85, 1.0)
+    : p < 0.30
+      ? interpolate(p, 0.10, 0.30, 1.0, 0.95)
+      : interpolate(p, 0.30, 0.45, 0.95, 0.85);
 
   // Payment Success (Enters at 0.55 -> 0.65, stays locked 0.65 -> 1.00)
   const paymentY = p < 0.65
@@ -200,92 +189,21 @@ export default function GlassboxHero() {
           </div>
         </div>
 
-        {/* Translucent Vertical Glass Pane */}
+        {/* Multi-Agent Architecture Diagram (`/Agents.png`) */}
         <div
-          className="absolute z-15 w-[92%] max-w-[540px] h-[360px] md:h-[400px] rounded-3xl pointer-events-none"
+          className="absolute z-20 pointer-events-none flex flex-col items-center justify-center px-4"
           style={{
-            opacity: glassOpacity,
-            transform: `translate3d(0, ${glassY}vh, 0)`,
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(240, 246, 255, 0.40) 100%)',
-            backdropFilter: 'blur(16px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-            border: '1px solid rgba(1, 73, 174, 0.15)',
-            boxShadow: '0 20px 50px rgba(1, 73, 174, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
-            display: glassOpacity <= 0.005 ? 'none' : 'block'
+            opacity: agentsOpacity,
+            transform: `translate3d(0, ${agentsY}vh, 0) scale(${agentsScale})`,
+            display: agentsOpacity <= 0.005 ? 'none' : 'flex'
           }}
         >
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-transparent via-white/30 to-transparent pointer-events-none" />
-          <div className="absolute top-3.5 right-5 text-[9px] font-mono text-[#0149ae]/50 uppercase tracking-widest">
-            PARALLAX GLASS SURFACE
-          </div>
-        </div>
-
-        {/* Information Reveal Telemetry Elements */}
-        <div 
-          className="absolute z-20 flex flex-col items-center gap-3 pointer-events-none w-full max-w-[420px] px-6"
-          style={{
-            opacity: infoGroupOpacity,
-            transform: `translate3d(0, ${infoParallaxY}vh, 0)`,
-            display: infoGroupOpacity <= 0.005 ? 'none' : 'flex'
-          }}
-        >
-          {/* Tag 1: AUTHORIZED */}
-          <div 
-            className="w-full bg-white/95 backdrop-blur-md border border-emerald-500/25 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
-            style={{
-              opacity: tag1Opacity,
-              transform: `translate3d(0, ${tag1Y}px, 0)`,
-              filter: `blur(${tag1Blur}px)`
-            }}
-          >
-            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">STATE</span>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-bold tracking-wider text-emerald-600 font-mono">AUTHORIZED</span>
-            </div>
-          </div>
-
-          {/* Tag 2: ₹4,000 LIMIT */}
-          <div 
-            className="w-full bg-white/95 backdrop-blur-md border border-[#0149ae]/20 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
-            style={{
-              opacity: tag2Opacity,
-              transform: `translate3d(0, ${tag2Y}px, 0)`,
-              filter: `blur(${tag2Blur}px)`
-            }}
-          >
-            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">CEILING</span>
-            <span className="text-sm font-bold tracking-tight text-[#032676]">₹4,000 LIMIT</span>
-          </div>
-
-          {/* Tag 3: RISK CHECK */}
-          <div 
-            className="w-full bg-white/95 backdrop-blur-md border border-slate-200 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
-            style={{
-              opacity: tag3Opacity,
-              transform: `translate3d(0, ${tag3Y}px, 0)`,
-              filter: `blur(${tag3Blur}px)`
-            }}
-          >
-            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">RISK ENGINE</span>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-50 text-[#0149ae] font-semibold">PASSED (0.02)</span>
-              <span className="text-xs font-semibold text-slate-700 font-mono">RISK CHECK</span>
-            </div>
-          </div>
-
-          {/* Tag 4: PAYMENT */}
-          <div 
-            className="w-full bg-white/95 backdrop-blur-md border border-[#0149ae]/25 shadow-sm rounded-xl py-2.5 px-4 flex items-center justify-between"
-            style={{
-              opacity: tag4Opacity,
-              transform: `translate3d(0, ${tag4Y}px, 0)`,
-              filter: `blur(${tag4Blur}px)`
-            }}
-          >
-            <span className="text-[11px] font-mono tracking-widest text-slate-400 uppercase">GATEWAY</span>
-            <span className="text-xs font-bold tracking-widest text-[#0149ae] font-mono">PAYMENT ROUTED</span>
-          </div>
+          <img 
+            src="/Agents.png" 
+            alt="GlassBox Multi-Agent Architecture"
+            className="w-[92vw] max-w-[850px] md:max-w-[1000px] h-auto object-contain drop-shadow-2xl rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-2 md:p-3 shadow-xl"
+            loading="eager"
+          />
         </div>
 
         {/* Razorpay Card Asset (`razorpay-card.png`) */}
