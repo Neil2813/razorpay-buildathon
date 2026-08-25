@@ -33,9 +33,14 @@ from .web_scraper import scrape_products, build_search_query
 # Pre-approved autonomous candidate sites
 # ---------------------------------------------------------------------------
 _PRE_APPROVED_SITES: list[str] = [
-    "https://demo-store.glassbox.dev",    # pre-vetted clean mock store
-    "https://shop.glassbox-demo.in",      # pre-vetted clean mock store
-    "https://amaz0n-deals.com",           # deliberately planted suspicious site (§6)
+    "https://www.amazon.in/",
+    "https://www.flipkart.com/",
+    "https://www.meesho.com/",
+    "https://www.nykaa.com/",
+    "https://www.zudio.com/",
+    "https://www.snitch.com/",
+    "https://www.ajio.com/",
+    "https://www.myntra.com/",
 ]
 
 
@@ -43,10 +48,10 @@ _PRE_APPROVED_SITES: list[str] = [
 # Mock catalog (fallback when live scraping unavailable)
 # ---------------------------------------------------------------------------
 _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
-    "demo-store.glassbox.dev": [
+    "amazon.in": [
         {
-            "product_id": "DG-001",
-            "source_site": "demo-store.glassbox.dev",
+            "product_id": "AMZ-001",
+            "source_site": "amazon.in",
             "name": "RunFlex Pro Sneakers",
             "category": "shoe",
             "price": 2999.0,
@@ -58,47 +63,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "review_summary": "4.4 ★ — Customers love the cushioning and durability; minor complaints about narrow fit.",
         },
         {
-            "product_id": "DG-002",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "UrbanStep Canvas Shoes",
-            "category": "shoe",
-            "price": 1799.0,
-            "brand": "UrbanStep",
-            "rating": 4.1,
-            "in_stock": True,
-            "sizes": ["6", "7", "8", "9", "10"],
-            "color": "white",
-            "review_summary": "4.1 ★ — Praised for style; some note sole wear after 6 months.",
-        },
-        {
-            "product_id": "DG-003",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "FormalEdge Oxford Lace-Up",
-            "category": "shoe",
-            "price": 4200.0,
-            "brand": "FormalEdge",
-            "rating": 4.7,
-            "in_stock": False,
-            "sizes": ["8", "9", "10"],
-            "color": "brown",
-            "review_summary": "4.7 ★ — Premium leather; excellent build quality. Currently out of stock.",
-        },
-        {
-            "product_id": "DG-T01",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "SlimFit Cotton Polo",
-            "category": "shirt",
-            "price": 899.0,
-            "brand": "SlimFit",
-            "rating": 4.3,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL"],
-            "color": "blue",
-            "review_summary": "4.3 ★ — Good fabric quality and consistent sizing.",
-        },
-        {
-            "product_id": "DG-T02",
-            "source_site": "demo-store.glassbox.dev",
+            "product_id": "AMZ-002",
+            "source_site": "amazon.in",
             "name": "Classic Oxford Formal Shirt",
             "category": "shirt",
             "price": 1499.0,
@@ -108,64 +74,13 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL", "XXL"],
             "color": "white",
             "review_summary": "4.5 ★ — Crisp collar, breathable cotton blend.",
-        },
-        {
-            "product_id": "DG-T03",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "Premium Linen Casual Shirt",
-            "category": "shirt",
-            "price": 2199.0,
-            "brand": "LuxeLinen",
-            "rating": 4.6,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL"],
-            "color": "beige",
-            "review_summary": "4.6 ★ — Excellent summer shirt, wrinkle-resistant.",
-        },
-        {
-            "product_id": "DG-T04",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "Bold Checks Flannel Shirt",
-            "category": "shirt",
-            "price": 3199.0,
-            "brand": "UrbanWear",
-            "rating": 4.2,
-            "in_stock": True,
-            "sizes": ["M", "L", "XL", "XXL"],
-            "color": "red",
-            "review_summary": "4.2 ★ — Great for casual outings, thick flannel.",
-        },
-        {
-            "product_id": "DG-T05",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "Obsidian Black Slim Denim Shirt",
-            "category": "shirt",
-            "price": 2999.0,
-            "brand": "UrbanWear",
-            "rating": 4.6,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL", "XXL"],
-            "color": "black",
-            "review_summary": "4.6 ★ — Premium stretch black denim, rich color retention.",
-        },
-        {
-            "product_id": "DG-T06",
-            "source_site": "demo-store.glassbox.dev",
-            "name": "Midnight Edition Formal Black Shirt",
-            "category": "shirt",
-            "price": 3499.0,
-            "brand": "ClassicWear",
-            "rating": 4.8,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL", "XXL"],
-            "color": "black",
-            "review_summary": "4.8 ★ — Ultra-smooth satin finish black formal shirt.",
-        },
+        }
     ],
-    "shop.glassbox-demo.in": [
+    "www.amazon.in": [],  # Will be mapped to amazon.in dynamically below
+    "flipkart.com": [
         {
-            "product_id": "GB-101",
-            "source_site": "shop.glassbox-demo.in",
+            "product_id": "FK-001",
+            "source_site": "flipkart.com",
             "name": "AeroLite Running Shoes",
             "category": "shoe",
             "price": 3499.0,
@@ -177,8 +92,53 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "review_summary": "4.6 ★ — Lightweight with excellent grip; true to size.",
         },
         {
-            "product_id": "GB-102",
-            "source_site": "shop.glassbox-demo.in",
+            "product_id": "FK-002",
+            "source_site": "flipkart.com",
+            "name": "UrbanStep Canvas Shoes",
+            "category": "shoe",
+            "price": 1799.0,
+            "brand": "UrbanStep",
+            "rating": 4.1,
+            "in_stock": True,
+            "sizes": ["6", "7", "8", "9", "10"],
+            "color": "white",
+            "review_summary": "4.1 ★ — Praised for style; some note sole wear after 6 months.",
+        }
+    ],
+    "www.flipkart.com": [],
+    "myntra.com": [
+        {
+            "product_id": "MY-001",
+            "source_site": "myntra.com",
+            "name": "Premium Linen Casual Shirt",
+            "category": "shirt",
+            "price": 2199.0,
+            "brand": "LuxeLinen",
+            "rating": 4.6,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL"],
+            "color": "beige",
+            "review_summary": "4.6 ★ — Excellent summer shirt, wrinkle-resistant.",
+        },
+        {
+            "product_id": "MY-002",
+            "source_site": "myntra.com",
+            "name": "Obsidian Black Slim Denim Shirt",
+            "category": "shirt",
+            "price": 2999.0,
+            "brand": "UrbanWear",
+            "rating": 4.6,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL", "XXL"],
+            "color": "black",
+            "review_summary": "4.6 ★ — Premium stretch black denim, rich color retention.",
+        }
+    ],
+    "www.myntra.com": [],
+    "ajio.com": [
+        {
+            "product_id": "AJ-001",
+            "source_site": "ajio.com",
             "name": "Classic Leather Loafer",
             "category": "shoe",
             "price": 2499.0,
@@ -190,34 +150,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "review_summary": "4.2 ★ — Comfortable for daily wear; slight break-in period.",
         },
         {
-            "product_id": "GB-T01",
-            "source_site": "shop.glassbox-demo.in",
-            "name": "Premium Linen Shirt",
-            "category": "shirt",
-            "price": 1299.0,
-            "brand": "LuxeLinen",
-            "rating": 4.5,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL", "XXL"],
-            "color": "white",
-            "review_summary": "4.5 ★ — Breathable fabric, great for summer.",
-        },
-        {
-            "product_id": "GB-T02",
-            "source_site": "shop.glassbox-demo.in",
-            "name": "Slim Fit Stretch Shirt",
-            "category": "shirt",
-            "price": 1799.0,
-            "brand": "StretchFit",
-            "rating": 4.0,
-            "in_stock": True,
-            "sizes": ["S", "M", "L", "XL"],
-            "color": "navy",
-            "review_summary": "4.0 ★ — Great fit for formal occasions.",
-        },
-        {
-            "product_id": "GB-T03",
-            "source_site": "shop.glassbox-demo.in",
+            "product_id": "AJ-002",
+            "source_site": "ajio.com",
             "name": "Casual Printed Shirt",
             "category": "shirt",
             "price": 999.0,
@@ -227,9 +161,84 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["M", "L", "XL", "XXL"],
             "color": "blue",
             "review_summary": "3.9 ★ — Fun casual style, vibrant print.",
-        },
+        }
     ],
+    "www.ajio.com": [],
+    "meesho.com": [
+        {
+            "product_id": "ME-001",
+            "source_site": "meesho.com",
+            "name": "SlimFit Cotton Polo",
+            "category": "shirt",
+            "price": 899.0,
+            "brand": "SlimFit",
+            "rating": 4.3,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL"],
+            "color": "blue",
+            "review_summary": "4.3 ★ — Good fabric quality and consistent sizing.",
+        }
+    ],
+    "www.meesho.com": [],
+    "nykaa.com": [
+        {
+            "product_id": "NY-001",
+            "source_site": "nykaa.com",
+            "name": "FormalEdge Oxford Lace-Up",
+            "category": "shoe",
+            "price": 4200.0,
+            "brand": "FormalEdge",
+            "rating": 4.7,
+            "in_stock": True,
+            "sizes": ["8", "9", "10"],
+            "color": "brown",
+            "review_summary": "4.7 ★ — Premium leather; excellent build quality.",
+        }
+    ],
+    "www.nykaa.com": [],
+    "zudio.com": [
+        {
+            "product_id": "ZD-001",
+            "source_site": "zudio.com",
+            "name": "Bold Checks Flannel Shirt",
+            "category": "shirt",
+            "price": 3199.0,
+            "brand": "UrbanWear",
+            "rating": 4.2,
+            "in_stock": True,
+            "sizes": ["M", "L", "XL", "XXL"],
+            "color": "red",
+            "review_summary": "4.2 ★ — Great for casual outings, thick flannel.",
+        }
+    ],
+    "www.zudio.com": [],
+    "snitch.com": [
+        {
+            "product_id": "SN-001",
+            "source_site": "snitch.com",
+            "name": "Midnight Edition Formal Black Shirt",
+            "category": "shirt",
+            "price": 3499.0,
+            "brand": "ClassicWear",
+            "rating": 4.8,
+            "in_stock": True,
+            "sizes": ["S", "M", "L", "XL", "XXL"],
+            "color": "black",
+            "review_summary": "4.8 ★ — Ultra-smooth satin finish black formal shirt.",
+        }
+    ],
+    "www.snitch.com": [],
 }
+
+# Automatically map www. hostnames to root hostnames for robustness
+_MOCK_CATALOG["www.amazon.in"] = _MOCK_CATALOG["amazon.in"]
+_MOCK_CATALOG["www.flipkart.com"] = _MOCK_CATALOG["flipkart.com"]
+_MOCK_CATALOG["www.myntra.com"] = _MOCK_CATALOG["myntra.com"]
+_MOCK_CATALOG["www.ajio.com"] = _MOCK_CATALOG["ajio.com"]
+_MOCK_CATALOG["www.meesho.com"] = _MOCK_CATALOG["meesho.com"]
+_MOCK_CATALOG["www.nykaa.com"] = _MOCK_CATALOG["nykaa.com"]
+_MOCK_CATALOG["www.zudio.com"] = _MOCK_CATALOG["zudio.com"]
+_MOCK_CATALOG["www.snitch.com"] = _MOCK_CATALOG["snitch.com"]
 
 
 # ---------------------------------------------------------------------------
@@ -328,15 +337,39 @@ def _rank_and_explain(
     candidates.sort(key=_sort_key)
 
     for c in candidates:
-        phrasing = complete_json(
-            model=FAST_MODEL,
-            system='Write JSON: {"reason": string}. Explain a product match using only supplied facts. Be concise (1-2 sentences).',
-            user=str({"intent": intent, "product": {k: c.get(k) for k in ("name", "brand", "price", "rating", "color", "sizes")}}),
-        )
+        parts = []
+        if c.get("brand"):
+            parts.append(f"Brand: {c['brand']}")
+        if c.get("rating"):
+            parts.append(f"Rating: {c['rating']}★")
+        if c.get("in_stock"):
+            parts.append("In Stock: Yes")
+        else:
+            parts.append("In Stock: No")
+        
+        match_desc = ", ".join(parts)
+        
+        # Add specifications from user intent
+        color = intent.get("color")
+        size = intent.get("size")
+        category = intent.get("category")
+        budget_max = intent.get("budget_max")
+        budget_min = intent.get("budget_min")
+        
+        spec = []
+        if color and color.lower() != "any":
+            spec.append(color)
+        if size and size.lower() != "any":
+            spec.append(f"size {size}")
+        if category:
+            spec.append(category)
+            
+        spec_str = " ".join(spec)
+        budget_str = f"budget (₹{budget_min or 0:,.0f} - ₹{budget_max or 5000:,.0f})"
+        
         c["match_reason"] = (
-            phrasing.get("reason", "Matches required attributes.")
-            if isinstance(phrasing, dict)
-            else "Matches required attributes."
+            f"{match_desc}. Matches {spec_str} within {budget_str}."
+            if spec_str else f"{match_desc}. Matches criteria within {budget_str}."
         )
     return candidates
 

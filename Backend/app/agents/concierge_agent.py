@@ -46,7 +46,7 @@ _PARAM_LABELS: dict[str, str] = {
 }
 
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "size", "min_rating", "requested_sites"]
-_AUTONOMOUS_REQUIRED: list[str] = ["budget_max"]
+_AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min", "min_rating"]
 
 
 # ---------------------------------------------------------------------------
@@ -396,18 +396,7 @@ def run(state: TransactionState) -> TransactionState:
         if state.get("requested_sites"):
             intent["requested_sites"] = state["requested_sites"]
 
-    # Autonomous discovery can safely search broad requests.  Do this before
-    # validation so missing preferences do not short-circuit the graph to the
-    # ledger.  Guided mode remains explicit because the buyer chose the site.
-    if mode == "autonomous" and intent.get("budget_max") is not None:
-        if not intent.get("size"):
-            intent["size"] = "any"
-        if not intent.get("color"):
-            intent["color"] = "any"
-        if intent.get("budget_min") is None:
-            intent["budget_min"] = 0.0
-        if not intent.get("brand"):
-            intent["brand"] = "any"
+
 
     missing_params = _find_missing_params(intent, mode, state=state)
 

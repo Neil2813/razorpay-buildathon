@@ -24,11 +24,14 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
     proposal = complete_json(
         model=REASONING_MODEL,
         system=(
-            "You are a shopping agent. Choose the single best product from the candidates that best "
-            "satisfies the buyer's intent. Return JSON: "
-            '{"product_id": string, "selection_reason": string}. '
-            "selection_reason must be 1-2 sentences explaining: why this product was chosen over others "
-            "(mention specific attributes like rating, price, colour, brand). Be specific, not generic."
+            "You are an autonomous shopping agent. Select the single best product from the candidates list. "
+            "Primary Selection Criteria: Combine the user's specific choice preferences (color, size, brand, price range) "
+            "with the highest product rating and review count (most stars and votes).\n\n"
+            "Return JSON: {\"product_id\": string, \"selection_reason\": string}.\n"
+            "selection_reason MUST be 2-3 sentences explaining exactly why this product was chosen, and "
+            "explicitly compare it with the other candidate options (for example, explain that you chose it "
+            "over Option X because of its higher rating of Y★ or better price compatibility). Mention specific names, "
+            "brands, ratings, and prices of the rejected options to justify the choice. Be specific, clear, and trace-backed."
         ),
         user=str({"intent": state["intent"], "candidates": candidates}),
     )

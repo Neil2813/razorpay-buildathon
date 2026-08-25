@@ -23,16 +23,32 @@ from . import concierge_agent, decision_agent, discovery_agent, ledger_agent, pa
 from .state import TransactionState, new_transaction_state
 
 
+_AGENT_SEQUENCE = ["concierge", "discovery", "negotiation", "risk", "payment", "ledger"]
+
+def _should_skip_node(state: TransactionState, node_agent: str) -> bool:
+    current = state.get("current_agent")
+    if current and current in _AGENT_SEQUENCE:
+        mapped_current = "discovery" if current == "catalog" else current
+        mapped_node = "discovery" if node_agent == "catalog" else node_agent
+        if _AGENT_SEQUENCE.index(mapped_current) > _AGENT_SEQUENCE.index(mapped_node):
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # LangGraph Node Functions
 # ---------------------------------------------------------------------------
 
 def concierge_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Concierge Agent node: Parse natural language intent."""
+    if _should_skip_node(state, "concierge"):
+        return dict(state)
     concierge_agent.run(state)
     if state.get("intent", {}).get("needs_clarification"):
         state["payment_status"] = "escalated"
         state["escalation_message"] = state["intent"].get("clarification_reason")
+    else:
+        state["current_agent"] = "concierge"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -41,6 +57,8 @@ def concierge_node(state: TransactionState, config: RunnableConfig) -> dict[str,
 
 def discovery_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Discovery Agent node: multi-source, trust-gated product discovery."""
+    if _should_skip_node(state, "discovery"):
+        return dict(state)
     discovery_agent.run(state)
     # discovery_agent sets payment_status="escalated" on trust-warning halt (guided mode).
     # Only set the generic "no results" escalation if NOT already escalated for another reason.
@@ -50,6 +68,8 @@ def discovery_node(state: TransactionState, config: RunnableConfig) -> dict[str,
     ):
         state["payment_status"] = "escalated"
         state["escalation_message"] = "I couldn't find an in-stock item matching those requirements."
+    else:
+        state["current_agent"] = "discovery"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -58,8 +78,12 @@ def discovery_node(state: TransactionState, config: RunnableConfig) -> dict[str,
 
 def negotiation_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Negotiation/Decision Agent node: Choose product & evaluate spend ceiling."""
+    if _should_skip_node(state, "negotiation"):
+        return dict(state)
     guardrail_ceiling = config.get("configurable", {}).get("guardrail_ceiling", 5000.0)
     decision_agent.run(state, guardrail_ceiling=guardrail_ceiling)
+    if state.get("payment_status") != "escalated":
+        state["current_agent"] = "negotiation"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -68,11 +92,15 @@ def negotiation_node(state: TransactionState, config: RunnableConfig) -> dict[st
 
 def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Risk Agent node: ML risk evaluation & threshold check."""
+    if _should_skip_node(state, "risk"):
+        return dict(state)
     transaction = config.get("configurable", {}).get("transaction", {})
     product = state.get("chosen_product") or {}
     if product.get("price"):
         transaction["amount"] = float(product["price"])
     risk_agent.run(state, transaction)
+    if state.get("payment_status") != "escalated":
+        state["current_agent"] = "risk"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -81,6 +109,8 @@ def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]
 
 def payment_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Payment Execution Agent node: Razorpay charge with single retry policy."""
+    if _should_skip_node(state, "payment"):
+        return dict(state)
     gateway = config.get("configurable", {}).get("gateway")
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if gateway is None:
@@ -96,6 +126,8 @@ def payment_node(state: TransactionState, config: RunnableConfig) -> dict[str, A
         before_first_charge=checkpoint_cb,
         after_attempt=checkpoint_cb,
     )
+    if state.get("payment_status") != "escalated":
+        state["current_agent"] = "payment"
     if checkpoint_cb:
         checkpoint_cb(state)
     return dict(state)
@@ -103,7 +135,10 @@ def payment_node(state: TransactionState, config: RunnableConfig) -> dict[str, A
 
 def ledger_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
     """Audit/Ledger Agent node: Finalize and lock state."""
+    if _should_skip_node(state, "ledger"):
+        return dict(state)
     ledger_agent.finalize(state)
+    state["current_agent"] = "ledger"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -226,11 +261,12 @@ def run_transaction(
         if state.get("payment_status") == "success":
             return state
 
-        # If resuming an escalated or pending session with a new user message:
+        is_clarification = state.get("payment_status") == "escalated"
         state["user_message"] = user_message
         state["payment_status"] = "pending"
         state["escalation_message"] = None
-        state["current_agent"] = ""
+        if is_clarification or not state.get("current_agent"):
+            state["current_agent"] = ""
         if autonomy_mode:
             state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
         if requested_sites:

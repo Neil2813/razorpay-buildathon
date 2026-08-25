@@ -89,19 +89,20 @@ def test_guided_mode_generalised_message_asks_all_params():
 # ---------------------------------------------------------------------------
 
 def test_autonomous_mode_generalised_message_uses_broad_search_defaults():
-    """An autonomous broad request should not stop merely for preferences."""
+    """An autonomous broad request should stop to collect full parameters before purchase."""
     with patch.object(concierge_agent, "complete_json", return_value={}):
         state = new_transaction_state(tenant_id="test", user_message="buy me a shirt of 4000 rupees")
         state["autonomy_mode"] = "autonomous"
         concierge_agent.run(state)
 
     intent = state["intent"]
-    assert intent["needs_clarification"] is False
-    assert intent["size"] == "any"
-    assert intent["color"] == "any"
-    assert intent["budget_min"] == 0.0
-    assert "budget_max" not in _find_missing_params(intent, "autonomous")
-    print("  ✓ Autonomous mode uses broad-search defaults after extracting a price ceiling.")
+    assert intent["needs_clarification"] is True, "Should ask for full info in autonomous mode."
+    missing = intent["missing_parameters"]
+    assert "size" in missing
+    assert "color" in missing
+    assert "budget_min" in missing
+    assert "min_rating" in missing
+    print("  ✓ Autonomous mode asks for missing parameters (size, color, floor price, rating).")
 
 
 def test_resumed_turn_preserves_original_category():
