@@ -18,7 +18,7 @@ import json
 import re
 import time
 import logging
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import quote_plus, urlparse
 
 logger = logging.getLogger(__name__)
@@ -322,6 +322,7 @@ def scrape_products(
     *,
     site: str | None = None,
     max_results: int = _MAX_PRODUCT_PAGES,
+    url_filter: Callable[[str], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Search for products matching `query`, optionally restricted to `site`.
@@ -347,6 +348,9 @@ def scrape_products(
         for url in urls:
             if len(products) >= max_results:
                 break
+            if url_filter and not url_filter(url):
+                logger.warning("Skipping URL %s — failed pre-fetch trust check.", url)
+                continue
             result = _fetch_and_parse(client, url)
             if result:
                 if result.get("price") is None:

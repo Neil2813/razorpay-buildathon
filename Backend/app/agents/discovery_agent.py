@@ -349,10 +349,19 @@ def _live_scrape_and_filter(
     query: str,
     intent: dict[str, Any],
     site: str | None = None,
+    state: TransactionState | None = None,
 ) -> list[dict[str, Any]]:
     """Attempt live scraping; filter results; return qualifying products."""
+    def _is_trusted_url(url: str) -> bool:
+        if state is not None:
+            trust_res = trust_check(state, url)
+            if trust_res.get("status") in ("suspicious", "blocked"):
+                if not state.get("trust_override", False):
+                    return False
+        return True
+
     try:
-        raw_products = scrape_products(query, site=site, max_results=8)
+        raw_products = scrape_products(query, site=site, max_results=8, url_filter=_is_trusted_url)
     except Exception as exc:
         import logging
         logging.getLogger(__name__).warning("Live scrape failed: %s", exc)
