@@ -70,13 +70,15 @@ _RATING_RE = re.compile(r"([\d.]+)\s*(?:out of\s*5|/\s*5|★|stars?|\*)", re.I)
 
 
 # ---------------------------------------------------------------------------
-# Multi-Engine Web Search (Bing Search HTML + direct target fetch)
+# Multi-Engine Web Search (DuckDuckGo, then Bing, plus direct target fetch)
 # ---------------------------------------------------------------------------
 
 def _search_urls(query: str, site: str | None = None, max_results: int = 8) -> list[str]:
     """
     Perform a live web search for product URLs matching query and optional site.
-    Uses Bing Search HTML parsing (returns 200 OK without API key requirements).
+    DuckDuckGo is tried first, with Bing as a best-effort fallback. Search
+    engines can rate-limit automated traffic, so an empty result is a normal
+    outcome and callers must retain their deterministic catalog fallback.
     """
     if not HAS_HTTPX or not HAS_BS4:
         logger.warning("httpx/BeautifulSoup4 not available — skipping live search.")
@@ -92,33 +94,33 @@ def _search_urls(query: str, site: str | None = None, max_results: int = 8) -> l
         hostname = urlparse(site if "//" in site else "https://" + site).hostname or site
         search_query = f"{query} site:{hostname}"
 
-    url = f"https://www.bing.com/search?q={quote_plus(search_query)}"
+    search_urls = (
+        (f"https://html.duckduckgo.com/html/?q={quote_plus(search_query)}", ".result__a"),
+        (f"https://www.bing.com/search?q={quote_plus(search_query)}", "li.b_algo h2 a"),
+    )
     try:
         with httpx.Client(headers=_HEADERS, timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
-            resp = client.get(url)
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for li in soup.select("li.b_algo"):
-                    cite = li.find("cite")
-                    if cite:
-                        cite_text = cite.get_text(strip=True)
-                        raw_url = cite_text.replace(" › ", "/").replace(" ›", "/").replace(" ", "").strip()
-                        if raw_url and not raw_url.startswith(("http://", "https://")):
-                            raw_url = "https://" + raw_url
-                        if raw_url and raw_url.startswith("http"):
+            for url, selector in search_urls:
+                try:
+                    resp = client.get(url)
+                    if resp.status_code != 200:
+                        logger.info("Search provider returned HTTP %s for '%s'.", resp.status_code, search_query)
+                        continue
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    for anchor in soup.select(selector):
+                        raw_url = anchor.get("href")
+                        if raw_url and raw_url.startswith(("http://", "https://")) and raw_url not in links:
                             links.append(raw_url)
-                    else:
-                        h2 = li.find("h2")
-                        a = h2.find("a") if h2 else None
-                        if a and a.get("href") and a["href"].startswith("http"):
-                            links.append(a["href"])
+                        if len(links) >= max_results:
+                            break
                     if len(links) >= max_results:
                         break
+                except Exception as exc:
+                    logger.info("Search provider unavailable for '%s': %s", search_query, exc)
         logger.info("Live search '%s' returned %d URLs.", search_query, len(links))
-        return links
     except Exception as exc:
-        logger.warning("Live web search failed: %s", exc)
-        return links
+        logger.warning("Live web search setup failed: %s", exc)
+    return links
 
 
 # ---------------------------------------------------------------------------

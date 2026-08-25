@@ -4,7 +4,7 @@ Tests:
   1. Generalised message (e.g. 'buy me a shirt of 4000 rupees') in Guided mode
      → agent should halt and ask for ALL 7 missing parameters.
   2. Same message in Autonomous mode
-     → agent should halt and ask for the 4 mandatory parameters.
+     → agent should use broad-search defaults and proceed without clarification.
   3. Full prompt with ALL guided parameters provided
      → agent should proceed to discovery without asking for clarification.
   4. Full prompt with ALL autonomous parameters provided
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sys
 import os
+from unittest.mock import patch
 
 # Allow running from the tests directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -26,6 +27,7 @@ from app.agents.concierge_agent import (
     _GUIDED_REQUIRED,
     _AUTONOMOUS_REQUIRED,
 )
+from app.agents import concierge_agent
 from app.agents.state import new_transaction_state
 
 
@@ -86,21 +88,36 @@ def test_guided_mode_generalised_message_asks_all_params():
 # Test 2: Generalised autonomous message → should ask for 4 params
 # ---------------------------------------------------------------------------
 
-def test_autonomous_mode_generalised_message_asks_4_params():
-    """'buy me a shirt of 4000 rupees' in Autonomous should ask for size, colour, floor, ceiling."""
-    state = _run_concierge_with_mode("buy me a shirt of 4000 rupees", "autonomous")
-    intent = state["intent"]
+def test_autonomous_mode_generalised_message_uses_broad_search_defaults():
+    """An autonomous broad request should not stop merely for preferences."""
+    with patch.object(concierge_agent, "complete_json", return_value={}):
+        state = new_transaction_state(tenant_id="test", user_message="buy me a shirt of 4000 rupees")
+        state["autonomy_mode"] = "autonomous"
+        concierge_agent.run(state)
 
-    assert intent["needs_clarification"] is True, (
-        "Concierge should need clarification when size/colour/floor are missing."
-    )
-    missing = intent["missing_parameters"]
-    # budget_max might be extracted from '4000 rupees'
-    # but size, color, budget_min should definitely be missing
-    assert "size" in missing, "Size should be missing."
-    assert "color" in missing, "Colour should be missing."
-    assert "budget_min" in missing, "Floor price should be missing."
-    print(f"  ✓ Autonomous mode missing params: {missing}")
+    intent = state["intent"]
+    assert intent["needs_clarification"] is False
+    assert intent["size"] == "any"
+    assert intent["color"] == "any"
+    assert intent["budget_min"] == 0.0
+    assert "budget_max" not in _find_missing_params(intent, "autonomous")
+    print("  ✓ Autonomous mode uses broad-search defaults after extracting a price ceiling.")
+
+
+def test_resumed_turn_preserves_original_category():
+    """A clarification reply must augment, not replace, the original intent."""
+    with patch.object(concierge_agent, "complete_json", return_value={}):
+        state = new_transaction_state(tenant_id="test", user_message="buy me a shirt under ₹4000")
+        state["autonomy_mode"] = "autonomous"
+        concierge_agent.run(state)
+
+        state["user_message"] = "size M, black colour, minimum budget ₹500"
+        concierge_agent.run(state)
+
+    assert state["intent"]["category"] == "shirt"
+    assert state["intent"]["size"] == "M"
+    assert state["intent"]["color"] == "black"
+    assert state["intent"]["budget_min"] == 500.0
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +156,7 @@ def test_guided_mode_complete_message_no_clarification():
 # ---------------------------------------------------------------------------
 
 def test_autonomous_mode_complete_message_no_clarification():
-    """Full autonomous prompt with all 4 required params should not need clarification."""
+    """A detailed autonomous prompt should proceed without clarification."""
     full_message = (
         "Find me a shirt, size M, blue colour, "
         "budget between ₹500 and ₹3500"
@@ -207,7 +224,8 @@ def test_clarification_message_is_readable():
 if __name__ == "__main__":
     tests = [
         test_guided_mode_generalised_message_asks_all_params,
-        test_autonomous_mode_generalised_message_asks_4_params,
+        test_autonomous_mode_generalised_message_uses_broad_search_defaults,
+        test_resumed_turn_preserves_original_category,
         test_guided_mode_complete_message_no_clarification,
         test_autonomous_mode_complete_message_no_clarification,
         test_parse_intent_extracts_budget_range,

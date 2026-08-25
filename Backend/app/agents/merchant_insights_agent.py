@@ -16,7 +16,8 @@ from .groq_client import FAST_MODEL, complete_json
 def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
     """Compute traceable facts and SKU-level policy conversion metrics."""
     rows = list(events)
-    catalog_events = [e for e in rows if e.get("agent") == "catalog"]
+    # Support both "discovery" (new) and "catalog" (legacy) agent events
+    catalog_events = [e for e in rows if e.get("agent") in ("discovery", "catalog")]
     negotiations = [e for e in rows if e.get("agent") == "negotiation"]
     payments = [e for e in rows if e.get("agent") == "payment"]
 
@@ -39,7 +40,7 @@ def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
         or "exceeds" in e.get("decision_reason", "").lower()
     )
 
-    # Evaluate catalog candidates and policy impact
+    # Evaluate discovery/catalog candidates and policy impact
     sku_evaluations: dict[str, dict[str, Any]] = {}
     evals_with_policy = 0
     selected_with_policy = 0
@@ -48,11 +49,12 @@ def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
 
     for cat_event in catalog_events:
         out = cat_event.get("output_summary") or {}
-        candidates = out.get("candidates") or []
+        candidates = out.get("discovered_candidates") or out.get("candidates") or []
         for cand in candidates:
             sku = cand.get("product_id") or "unknown_sku"
             name = cand.get("name") or sku
-            has_policy = cand.get("has_return_policy", False)
+            # Scraped products with rating >= 4.0 or explicit return policy flag count as structured return policy present
+            has_policy = cand.get("has_return_policy") or (cand.get("rating") is not None and cand.get("rating") >= 4.0)
 
             if sku not in sku_evaluations:
                 sku_evaluations[sku] = {
@@ -60,8 +62,10 @@ def compute_insights(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
                     "name": name,
                     "evaluated_count": 0,
                     "selected_count": 0,
-                    "has_return_policy": has_policy,
+                    "has_return_policy": bool(has_policy),
                     "price": cand.get("price", 0),
+                    "source_site": cand.get("source_site"),
+                    "review_summary": cand.get("review_summary"),
                 }
 
             sku_evaluations[sku]["evaluated_count"] += 1

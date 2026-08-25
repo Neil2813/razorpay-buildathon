@@ -1,4 +1,4 @@
-"""Bounded intent extraction with strict parameter clarification.
+"""Bounded intent extraction with mode-appropriate parameter clarification.
 
 Parameter checklists (never proceeds to discovery until ALL required params collected):
 
@@ -11,11 +11,11 @@ Parameter checklists (never proceeds to discovery until ALL required params coll
     6. min_rating   — minimum star rating (0–5)
     7. requested_sites — website(s) to check
 
-  AUTONOMOUS mode (4 params):
-    1. size
-    2. color
-    3. budget_max (ceiling)
-    4. budget_min (floor)
+  AUTONOMOUS mode:
+    - category and budget_max are enough to begin discovery.
+    - size and color default to ``"any"`` and budget_min defaults to ``0``
+      when omitted, so a broad request can be searched without a needless
+      clarification round.
 
 Guardrail preserved: Concierge records only what the user said.
 It never sets guardrail_ceiling or decides trust — those remain downstream code decisions.
@@ -46,7 +46,7 @@ _PARAM_LABELS: dict[str, str] = {
 }
 
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "size", "min_rating", "requested_sites"]
-_AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min"]
+_AUTONOMOUS_REQUIRED: list[str] = ["budget_max"]
 
 
 # ---------------------------------------------------------------------------
@@ -396,10 +396,16 @@ def run(state: TransactionState) -> TransactionState:
         if state.get("requested_sites"):
             intent["requested_sites"] = state["requested_sites"]
 
-    # If size, budget_min, and budget_max are provided, default optional parameters (color, brand) to "any"
-    if intent.get("size") and intent.get("budget_min") is not None and intent.get("budget_max") is not None:
+    # Autonomous discovery can safely search broad requests.  Do this before
+    # validation so missing preferences do not short-circuit the graph to the
+    # ledger.  Guided mode remains explicit because the buyer chose the site.
+    if mode == "autonomous" and intent.get("budget_max") is not None:
+        if not intent.get("size"):
+            intent["size"] = "any"
         if not intent.get("color"):
             intent["color"] = "any"
+        if intent.get("budget_min") is None:
+            intent["budget_min"] = 0.0
         if not intent.get("brand"):
             intent["brand"] = "any"
 

@@ -17,8 +17,8 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from fastapi.responses import JSONResponse
 
 from app.agents import (
-    catalog_agent, concierge_agent, decision_agent,
-    ledger_agent, merchant_insights_agent, payment_execution_agent, risk_agent,
+    concierge_agent, decision_agent, discovery_agent,
+    ledger_agent, merchant_insights_agent, payment_execution_agent, risk_agent, site_trust_agent,
 )
 from app.agents.orchaestartor_langgraph import run_transaction
 from app.agents.state import TransactionState, new_transaction_state
@@ -259,21 +259,32 @@ async def get_merchant_insights(
 @router.websocket("/ws/{session_id}")
 async def transaction_websocket(websocket: WebSocket, session_id: str):
     """
-    WebSocket endpoint for real-time agent event streaming.
+    WebSocket endpoint for real-time agent event streaming with tenant isolation.
 
     The frontend connects to this before or during a /run call.
+    Authentication can be passed via ?token=<jwt_token> query parameter.
     Events are pushed as JSON lines:
       {"type": "agent_event", "agent": "...", "decision_reason": "...", ...}
       {"type": "transaction_complete", "state": {...}}
     """
     await websocket.accept()
+    
+    # Resolve tenant_id from optional JWT query parameter
+    tenant_id = "demo_tenant"
+    token = websocket.query_params.get("token")
+    if token:
+        from app.auth.security import decode_access_token
+        payload = decode_access_token(token)
+        if payload and payload.get("tenant_id"):
+            tenant_id = payload["tenant_id"]
+
     queue: asyncio.Queue = asyncio.Queue()
     _ws_queues.setdefault(session_id, []).append(queue)
 
     try:
-        # First: replay any already-persisted events for this session
+        # First: replay any already-persisted events for this session scoped to tenant
         from app.db.database import load_transaction_checkpoint
-        existing = load_transaction_checkpoint(session_id, "demo_tenant")
+        existing = load_transaction_checkpoint(session_id, tenant_id)
         if existing:
             for event in existing.get("audit_log", []):
                 await websocket.send_json({"type": "agent_event", **event})

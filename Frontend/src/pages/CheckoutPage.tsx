@@ -177,7 +177,7 @@ function ClarificationCard({
                   <button
                     key={opt}
                     type="button"
-                    onClick={() => setValues(v => ({ ...v, [param.key]: opt }))}
+                    onClick={() => setValues((v: Record<string, string>) => ({ ...v, [param.key]: opt }))}
                     disabled={disabled}
                     style={{
                       padding: '0.3rem 0.7rem',
@@ -200,7 +200,7 @@ function ClarificationCard({
                 type={param.inputType}
                 placeholder={param.placeholder}
                 value={values[param.key] || ''}
-                onChange={e => setValues(v => ({ ...v, [param.key]: e.target.value }))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValues((v: Record<string, string>) => ({ ...v, [param.key]: e.target.value }))}
                 disabled={disabled}
                 style={{
                   width: '100%',
@@ -375,12 +375,12 @@ export default function CheckoutPage() {
       if (data.type === 'agent_event') {
         const currentAgentKey = data.agent === 'catalog' ? 'discovery' : data.agent;
         setActiveAgent(currentAgentKey);
-        setCompletedAgents(prev => {
+        setCompletedAgents((prev: string[]) => {
           const order = ['concierge', 'site_trust', 'discovery', 'negotiation', 'risk', 'payment', 'ledger'];
           const idx = order.indexOf(currentAgentKey);
           return order.slice(0, idx).filter(a => !prev.includes(a)).concat(prev);
         });
-        setAuditLog(prev => [...prev, {
+        setAuditLog((prev: AuditEvent[]) => [...prev, {
           event_id: data.event_id,
           timestamp: data.timestamp,
           agent: data.agent,
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
           };
         }
 
-        setMessages(prev => [...prev, {
+        setMessages((prev: Message[]) => [...prev, {
           role: 'agent',
           agent: currentAgentKey,
           content: data.decision_reason,
@@ -496,7 +496,7 @@ export default function CheckoutPage() {
 
         const isTrustHalt = data.state.payment_status === 'escalated' && (data.state.escalation_message || '').includes('safety check');
 
-        setMessages(prev => [...prev, {
+        setMessages((prev: Message[]) => [...prev, {
           role: 'agent',
           agent: 'ledger',
           content: isTrustHalt
@@ -528,7 +528,7 @@ export default function CheckoutPage() {
     // On fresh top-level sends, keep only prior user messages (wipe stale agent cards).
     if (queryOverride) {
       // Clarification / mode continuation: append user reply, don't reset history
-      setMessages(prev => [...prev, { role: 'user', content: query }]);
+      setMessages((prev: Message[]) => [...prev, { role: 'user', content: query }]);
     } else {
       // Fresh query: clear everything and start new
       setMessages([{ role: 'user', content: query }]);
@@ -685,15 +685,16 @@ export default function CheckoutPage() {
           });
         }
 
-        // Replace all prior agent messages with this turn's messages (user msgs preserved)
-        setMessages(prev => {
-          const userMsgsOnly = prev.filter(m => m.role === 'user');
-          return [...userMsgsOnly, ...newTurnMessages];
+        // Preserve streamed agent updates from this and earlier turns.  The REST
+        // response adds the durable turn summary; it must not erase WebSocket
+        // progress messages that may have arrived while scraping was running.
+        setMessages((prev: Message[]) => {
+          return [...prev, ...newTurnMessages];
         });
       }
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'agent', content: 'Transaction error. Please try again.' }]);
+      setMessages((prev: Message[]) => [...prev, { role: 'agent', content: 'Transaction error. Please try again.' }]);
     } finally {
       setIsRunning(false);
     }
@@ -841,7 +842,7 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <>
-                {messages.map((msg, i) => {
+                {messages.map((msg: Message, i: number) => {
                   const isUser = msg.role === 'user';
                   const label = msg.agent ? AGENT_LABELS[msg.agent] || msg.agent : '';
                   return (
@@ -868,7 +869,7 @@ export default function CheckoutPage() {
 
                           {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (
-                            msg.missingParams.some(p => p.key === 'autonomy_mode') ? (
+                            msg.missingParams.some((p: MissingParam) => p.key === 'autonomy_mode') ? (
                               <ModeSelectionCard
                                 onSelectMode={(selectedMode) => {
                                   setAutonomyMode(selectedMode);
@@ -937,7 +938,7 @@ export default function CheckoutPage() {
                                 <Filter size={12} /> {msg.candidates.length} product{msg.candidates.length !== 1 ? 's' : ''} found — all match your filters
                               </div>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                {msg.candidates.map((item, idx) => (
+                                {msg.candidates.map((item: DiscoveredCandidate, idx: number) => (
                                   <div key={idx} style={{
                                     background: '#ffffff',
                                     borderRadius: '12px',
@@ -955,7 +956,7 @@ export default function CheckoutPage() {
                                           src={(item as any).image_url}
                                           alt={item.name}
                                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                          onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
                                         />
                                       </div>
                                     ) : (
@@ -1033,7 +1034,7 @@ export default function CheckoutPage() {
                                   </div>
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                                     {msg.guardrailData.chosenProduct.image_url ? (
-                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                                     ) : (
                                       <div style={{ width: '64px', height: '64px', borderRadius: '8px', background: 'rgba(1,73,174,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.6rem' }}>🛍️</div>
                                     )}
