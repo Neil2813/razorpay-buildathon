@@ -420,7 +420,7 @@ def _run_guided(state: TransactionState) -> TransactionState:
             candidates.extend(p for p in raw if _qualifies(p, intent))
         else:
             # 2. Try live scraping from user-specified site
-            live = _live_scrape_and_filter(search_query, intent, site=url)
+            live = _live_scrape_and_filter(search_query, intent, site=url, state=state)
             candidates.extend(live)
             if not candidates:
                 # Fallback to catalog items matching criteria for reliable demo
@@ -482,11 +482,11 @@ def _run_autonomous(state: TransactionState) -> TransactionState:
             candidates.extend(p for p in raw if _qualifies(p, intent))
         else:
             # 2. Live scrape
-            live = _live_scrape_and_filter(search_query, intent, site=url)
+            live = _live_scrape_and_filter(search_query, intent, site=url, state=state)
             candidates.extend(live)
 
     # 3. Also do a general live web search (autonomous can explore beyond approved list)
-    general_live = _live_scrape_and_filter(search_query, intent, site=None)
+    general_live = _live_scrape_and_filter(search_query, intent, site=None, state=state)
     # Only add products not already in candidates (by name deduplication)
     existing_names = {c["name"].lower() for c in candidates}
     for p in general_live:
