@@ -7,7 +7,7 @@ import httpx, json
 token = create_access_token({'sub': 'usr_35967d60bff1', 'tenant_id': 'demo_tenant', 'role': 'user'})
 headers = {'Authorization': 'Bearer ' + token}
 
-session_id = 'diag_test_fresh_002'
+session_id = 'diag_test_fresh_008'
 
 print("=== TURN 1 ===")
 r1 = httpx.post('http://localhost:8000/api/transaction/run',
@@ -31,6 +31,8 @@ r2 = httpx.post('http://localhost:8000/api/transaction/run',
     headers=headers, timeout=30)
 
 data = r2.json()
+print('Full Response Data:')
+print(json.dumps({k: v for k, v in data.items() if k != 'audit_log'}, indent=2))
 print('Turn 2 payment_status:', data.get('payment_status'))
 print('Chosen product:', data.get('chosen_product', {}).get('name') if data.get('chosen_product') else None)
 
@@ -47,7 +49,7 @@ for e in data.get('audit_log', []):
             name = c.get("name")
             price = c.get("price")
             site = c.get("source_site")
-            match_reason = c.get("match_reason", "").replace("★", " stars")
+            match_reason = c.get("match_reason", "").replace("★", " stars").replace("₹", "INR ")
             print(f'    - {name} ({price}) [{site}] match_reason: {match_reason}')
     if 'selection_reason' in out:
         print(f'  selection_reason: {out["selection_reason"]}')

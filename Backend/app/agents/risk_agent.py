@@ -121,19 +121,32 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
 
     risk_score = result["risk_score"]
     state["risk_score"] = risk_score
+
+    # Determine threshold used by the prediction engine
+    actual_threshold = result.get("threshold", confirmation_threshold)
+
+    # Align the explanation text exactly with the evaluated threshold
+    flag_str = "[FLAGGED]" if risk_score > actual_threshold else "[CLEAR]"
+    explanation = (
+        f"{flag_str} - Risk score {risk_score:.2%} "
+        f"({'above' if risk_score > actual_threshold else 'below'} threshold {actual_threshold:.2%}). "
+        f"Top signal: {result['top_features'][0]['label']} = {result['top_features'][0]['value']:.2f}."
+    )
+
     state["risk_features"] = {
         "top_features": result["top_features"],
         "model": result["model"],
         "source": source,
-        "explanation": result.get("explanation"),
+        "explanation": explanation,
+        "threshold": actual_threshold,
     }
 
-    if risk_score > confirmation_threshold:
+    if risk_score > actual_threshold:
         state["requires_confirmation"] = True
         state["payment_status"] = "escalated"
         state["escalation_message"] = (
             f"This order needs confirmation: risk score {risk_score:.2%} "
-            f"exceeds the {confirmation_threshold:.0%} review threshold."
+            f"exceeds the {actual_threshold:.0%} review threshold."
         )
     else:
         state["requires_confirmation"] = False

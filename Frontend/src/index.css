@@ -574,3 +574,261 @@ h1, h2, h3, h4, h5, h6 {
   body { @apply bg-background text-foreground; }
   html { @apply font-sans; }
 }
+
+/* ─── Premium Minimalist Design System (Brutalist Typography) ─── */
+:root {
+  --minimal-bg: #faf9f6; /* Premium off-white warm canvas */
+  --minimal-fg: #111111; /* Stark charcoal/black */
+  --minimal-border: #d4d4d8; /* Light zinc border */
+  --minimal-border-focus: #111111; /* Focused border */
+  --minimal-primary: #0044ff; /* Premium Cobalt Blue */
+  --minimal-primary-hover: #0033cc;
+  --minimal-danger: #ef4444; /* Clean flat red */
+  --minimal-warning: #f97316; /* Clean flat orange */
+  --minimal-success: #10b981; /* Clean flat green */
+  --minimal-muted: #71717a; /* Muted gray text */
+  --minimal-card-bg: #ffffff;
+  --minimal-sidebar-bg: #ffffff;
+}
+
+/* Typography styles matching Brutalist voice */
+.brutalist-title {
+  font-family: 'Antonio', sans-serif !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--minimal-fg) !important;
+}
+
+.brutalist-subtitle {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 0.75rem !important;
+  color: var(--minimal-muted) !important;
+}
+
+.brutalist-text {
+  font-family: 'Space Grotesk', sans-serif !important;
+}
+
+.brutalist-mono {
+  font-family: monospace !important;
+  font-size: 0.78rem !important;
+}
+
+/* Minimal layout components */
+.minimal-body {
+  background-color: var(--minimal-bg) !important;
+  background-image: radial-gradient(rgba(17, 17, 17, 0.05) 1px, transparent 1px) !important;
+  background-size: 16px 16px !important;
+  background-position: 0 0 !important;
+  color: var(--minimal-fg) !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+}
+
+/* Custom Scrollbar for Premium Technical Console */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--minimal-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--minimal-border);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--minimal-fg);
+}
+
+.minimal-card {
+  background: var(--minimal-card-bg) !important;
+  border: 1px solid var(--minimal-border) !important;
+  border-radius: 2px !important; /* Sharp corners */
+  padding: 1.5rem !important;
+  box-shadow: none !important; /* No drop shadows */
+  transition: all 0.2s ease-in-out !important;
+  position: relative;
+}
+
+.minimal-card:hover {
+  border-color: var(--minimal-fg) !important;
+  box-shadow: 2px 2px 0px rgba(17, 17, 17, 0.05) !important;
+}
+
+/* Integrated Grid layout mesh helper */
+.minimal-grid-mesh {
+  display: grid;
+  background-color: var(--minimal-border);
+  gap: 1px; /* Emulates a connected single border layout */
+  border: 1px solid var(--minimal-border);
+}
+
+.minimal-grid-mesh-item {
+  background-color: #ffffff;
+  padding: 1.25rem 1.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.minimal-grid-mesh-item:hover {
+  background-color: var(--minimal-bg);
+}
+
+.minimal-btn {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.82rem !important;
+  padding: 0.65rem 1.25rem !important;
+  background-color: var(--minimal-fg) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--minimal-fg) !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.minimal-btn:hover {
+  background-color: #3f3f46 !important;
+  border-color: #3f3f46 !important;
+  transform: translateY(-1px);
+}
+
+.minimal-btn:active {
+  transform: translateY(0px);
+}
+
+.minimal-btn-primary {
+  background-color: var(--minimal-primary) !important;
+  border-color: var(--minimal-primary) !important;
+  color: #ffffff !important;
+}
+
+.minimal-btn-primary:hover {
+  background-color: var(--minimal-primary-hover) !important;
+  border-color: var(--minimal-primary-hover) !important;
+}
+
+.minimal-btn-ghost {
+  background-color: transparent !important;
+  color: var(--minimal-fg) !important;
+  border: 1px solid var(--minimal-border) !important;
+}
+
+.minimal-btn-ghost:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+  border-color: var(--minimal-fg) !important;
+}
+
+.minimal-btn-danger {
+  background-color: var(--minimal-danger) !important;
+  border-color: var(--minimal-danger) !important;
+  color: #ffffff !important;
+}
+
+.minimal-btn-danger:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.minimal-input {
+  font-family: 'Space Grotesk', sans-serif !important;
+  padding: 0.75rem 1rem !important;
+  background-color: #ffffff !important;
+  color: var(--minimal-fg) !important;
+  border: 1px solid var(--minimal-border) !important;
+  border-radius: 2px !important;
+  outline: none !important;
+  font-size: 0.9rem !important;
+  transition: all 0.15s ease-in-out !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.minimal-input:focus {
+  border-color: var(--minimal-primary) !important;
+  box-shadow: 2px 2px 0px rgba(0, 68, 255, 0.05) !important;
+}
+
+.minimal-pill {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 2px !important;
+  border: 1px solid var(--minimal-border) !important;
+  background-color: #ffffff !important;
+  color: var(--minimal-fg) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  line-height: 1 !important;
+}
+
+.minimal-pill-success {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: var(--minimal-success) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.minimal-pill-danger {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: var(--minimal-danger) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.minimal-pill-warning {
+  background-color: rgba(249, 115, 22, 0.08) !important;
+  color: var(--minimal-warning) !important;
+  border-color: rgba(249, 115, 22, 0.2) !important;
+}
+
+.minimal-pill-primary {
+  background-color: rgba(0, 68, 255, 0.08) !important;
+  color: var(--minimal-primary) !important;
+  border-color: rgba(0, 68, 255, 0.2) !important;
+}
+
+/* Animations */
+@keyframes minimal-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.92); }
+}
+
+.minimal-indicator-live {
+  width: 6px;
+  height: 6px;
+  background-color: var(--minimal-primary);
+  display: inline-block;
+  border-radius: 50%;
+  animation: minimal-blink 1.8s infinite ease-in-out;
+}
+
+.minimal-indicator-danger {
+  width: 6px;
+  height: 6px;
+  background-color: var(--minimal-danger);
+  display: inline-block;
+  border-radius: 50%;
+  animation: minimal-blink 1.2s infinite ease-in-out;
+}
+
+.minimal-indicator-success {
+  width: 6px;
+  height: 6px;
+  background-color: var(--minimal-success);
+  display: inline-block;
+  border-radius: 50%;
+  animation: minimal-blink 2s infinite ease-in-out;
+}

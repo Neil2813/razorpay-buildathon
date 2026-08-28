@@ -48,6 +48,8 @@ interface Message {
     productName?: string;
     chosenProduct?: DiscoveredCandidate;
     selectionReason?: string;
+    candidates?: DiscoveredCandidate[];
+    dialogue?: Array<{ agent: string; name: string; avatar: string; text: string }>;
   };
   paymentAttempts?: PaymentAttempt[];
   missingParams?: MissingParam[];
@@ -92,23 +94,23 @@ function LiveAgentProgress() {
     <div style={{
       margin: '0.75rem 0',
       padding: '1rem 1.25rem',
-      background: 'linear-gradient(135deg, rgba(1,73,174,0.06) 0%, rgba(92,45,184,0.06) 100%)',
-      borderRadius: '12px',
-      border: '1.5px solid rgba(1,73,174,0.25)',
-      boxShadow: '0 4px 14px rgba(3,38,118,0.08)',
+      background: '#ffffff',
+      borderRadius: '2px',
+      border: '1px solid #e4e4e7',
+      boxShadow: 'none',
       animation: 'slide-in-up 0.3s ease-out',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-        <RefreshCw size={16} color="#0149ae" style={{ animation: 'spin 1.2s linear infinite' }} />
-        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <RefreshCw size={16} color="#0044ff" style={{ animation: 'spin 1.2s linear infinite' }} />
+        <span className="brutalist-subtitle" style={{ color: '#0044ff' }}>
           Autonomous Pipeline Executing…
         </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: '#1e1e1e' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#0149ae' }}>
-          <Globe size={13} /> Discovery Agent Triggered: Searching store catalogs & live web for matching items…
+      <div className="brutalist-text" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: '#111111' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#0044ff' }}>
+          <Globe size={13} /> Discovery Agent Triggered: Searching catalogs & live web…
         </div>
-        <div style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.6)', paddingLeft: '1.2rem', lineHeight: 1.4 }}>
+        <div style={{ fontSize: '0.72rem', color: '#71717a', paddingLeft: '1.2rem', lineHeight: 1.4 }}>
           Evaluating candidates against spend guardrails, deterministic site trust, and ML risk model…
         </div>
       </div>
@@ -144,32 +146,32 @@ function ClarificationCard({
     onSubmit(finalValues);
   };
 
-  const modeColor = mode === 'guided' ? '#0149ae' : '#5c2db8';
+  const modeColor = mode === 'guided' ? '#0044ff' : '#7c3aed';
   const modeLabel = mode === 'guided' ? 'Guided Mode' : 'Autonomous Mode';
 
   return (
     <div style={{
       marginTop: '0.75rem',
       padding: '1.1rem 1.25rem',
-      background: 'linear-gradient(135deg, rgba(1,73,174,0.04) 0%, rgba(92,45,184,0.04) 100%)',
-      borderRadius: '10px',
-      border: `1px solid ${modeColor}30`,
+      background: '#ffffff',
+      borderRadius: '2px',
+      border: `1px solid #e4e4e7`,
       borderLeft: `4px solid ${modeColor}`,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
         <Filter size={15} color={modeColor} />
-        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: modeColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <span className="brutalist-subtitle" style={{ color: modeColor }}>
           {modeLabel} — Provide Details to Search
         </span>
       </div>
-      <p style={{ fontSize: '0.8rem', color: 'rgba(30,30,30,0.65)', marginBottom: '0.85rem', lineHeight: 1.5 }}>
+      <p className="brutalist-text" style={{ fontSize: '0.8rem', color: '#71717a', marginBottom: '0.85rem', lineHeight: 1.5 }}>
         I need a few more details before I start searching for your perfect product:
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '0.85rem' }}>
         {missing.map((param) => (
           <div key={param.key}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: modeColor, display: 'block', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <label className="brutalist-subtitle" style={{ color: modeColor, display: 'block', marginBottom: '0.3rem', fontSize: '0.7rem' }}>
               {param.label}
             </label>
             {param.inputType === 'select' && param.options ? (
@@ -182,12 +184,12 @@ function ClarificationCard({
                     disabled={disabled}
                     style={{
                       padding: '0.3rem 0.7rem',
-                      borderRadius: '99px',
-                      border: `1.5px solid ${values[param.key] === opt ? modeColor : 'rgba(1,73,174,0.2)'}`,
-                      background: values[param.key] === opt ? modeColor : '#fff',
-                      color: values[param.key] === opt ? '#fff' : 'rgba(30,30,30,0.7)',
+                      borderRadius: '2px',
+                      border: `1px solid ${values[param.key] === opt ? modeColor : '#e4e4e7'}`,
+                      background: values[param.key] === opt ? modeColor : '#ffffff',
+                      color: values[param.key] === opt ? '#ffffff' : '#71717a',
                       fontSize: '0.74rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: disabled ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s',
                     }}
@@ -203,17 +205,8 @@ function ClarificationCard({
                 value={values[param.key] || ''}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValues((v: Record<string, string>) => ({ ...v, [param.key]: e.target.value }))}
                 disabled={disabled}
-                style={{
-                  width: '100%',
-                  padding: '0.45rem 0.75rem',
-                  border: `1px solid ${values[param.key] ? modeColor : 'rgba(1,73,174,0.2)'}`,
-                  borderRadius: '6px',
-                  fontSize: '0.83rem',
-                  outline: 'none',
-                  background: '#ffffff',
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.15s',
-                }}
+                className="minimal-input"
+                style={{ padding: '0.45rem 0.75rem', fontSize: '0.83rem' }}
               />
             )}
           </div>
@@ -224,20 +217,8 @@ function ClarificationCard({
         type="button"
         onClick={handleSubmit}
         disabled={disabled}
-        style={{
-          padding: '0.55rem 1.25rem',
-          borderRadius: '7px',
-          background: !disabled ? `linear-gradient(135deg, ${modeColor}, #032676)` : 'rgba(0,0,0,0.08)',
-          color: !disabled ? '#fff' : 'rgba(0,0,0,0.35)',
-          border: 'none',
-          fontWeight: 700,
-          fontSize: '0.82rem',
-          cursor: !disabled ? 'pointer' : 'not-allowed',
-          transition: 'all 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.4rem',
-        }}
+        className="minimal-btn minimal-btn-primary"
+        style={{ padding: '0.55rem 1.25rem', fontSize: '0.8rem', borderRadius: '2px' }}
       >
         <Send size={13} /> Search Now
       </button>
@@ -259,15 +240,15 @@ function ModeSelectionCard({
     <div style={{
       marginTop: '0.75rem',
       padding: '1.1rem 1.25rem',
-      background: '#f8fafc',
-      borderRadius: '10px',
-      border: '1px solid rgba(1,73,174,0.2)',
-      borderLeft: '4px solid #0149ae',
+      background: '#ffffff',
+      borderRadius: '2px',
+      border: '1px solid #e4e4e7',
+      borderLeft: '4px solid #0044ff',
     }}>
-      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#032676', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <div className="brutalist-subtitle" style={{ color: '#111111', marginBottom: '0.4rem' }}>
         Select Execution Mode
       </div>
-      <p style={{ fontSize: '0.8rem', color: 'rgba(30,30,30,0.7)', marginBottom: '0.85rem', lineHeight: 1.45 }}>
+      <p className="brutalist-text" style={{ fontSize: '0.8rem', color: '#71717a', marginBottom: '0.85rem', lineHeight: 1.45 }}>
         How would you like the agent to execute your request?
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
@@ -277,18 +258,20 @@ function ModeSelectionCard({
           onClick={() => onSelectMode('autonomous')}
           style={{
             padding: '0.9rem',
-            borderRadius: '8px',
-            border: '1.5px solid rgba(92,45,184,0.3)',
-            background: 'linear-gradient(135deg, rgba(92,45,184,0.05) 0%, #ffffff 100%)',
+            borderRadius: '2px',
+            border: '1px solid #e4e4e7',
+            background: '#ffffff',
             textAlign: 'left',
             cursor: disabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
           }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = '#7c3aed'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = '#e4e4e7'}
         >
-          <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#5c2db8', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <div className="brutalist-subtitle" style={{ color: '#7c3aed', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Play size={14} /> Autonomous Mode
           </div>
-          <div style={{ fontSize: '0.74rem', color: 'rgba(30,30,30,0.65)', lineHeight: 1.4 }}>
+          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', lineHeight: 1.4 }}>
             Let AI discover & buy automatically across vetted stores. Requires Size, Colour, Floor & Ceiling budget.
           </div>
         </button>
@@ -299,18 +282,20 @@ function ModeSelectionCard({
           onClick={() => onSelectMode('guided')}
           style={{
             padding: '0.9rem',
-            borderRadius: '8px',
-            border: '1.5px solid rgba(1,73,174,0.3)',
-            background: 'linear-gradient(135deg, rgba(1,73,174,0.05) 0%, #ffffff 100%)',
+            borderRadius: '2px',
+            border: '1px solid #e4e4e7',
+            background: '#ffffff',
             textAlign: 'left',
             cursor: disabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
           }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = '#0044ff'}
+          onMouseLeave={e => e.currentTarget.style.borderColor = '#e4e4e7'}
         >
-          <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0149ae', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Globe size={14} /> Guided Mode
           </div>
-          <div style={{ fontSize: '0.74rem', color: 'rgba(30,30,30,0.65)', lineHeight: 1.4 }}>
+          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', lineHeight: 1.4 }}>
             You specify the exact store URL, brand, rating cap, size, colour, floor & ceiling budget before searching.
           </div>
         </button>
@@ -550,7 +535,7 @@ export default function CheckoutPage() {
         requested_sites: sitesToUse,
       });
 
-      const data = res.data;
+      const data = res;
       if (data && data.audit_log && data.audit_log.length > 0) {
         setPaymentStatus(data.payment_status || 'pending');
         if (data.escalation_message) setEscalationMessage(data.escalation_message);
@@ -624,6 +609,47 @@ export default function CheckoutPage() {
               negEvent?.output_summary?.selection_reason ||
               'Best match for your specified requirements.';
 
+            const conciergeEvt = data.audit_log?.find((e: any) => e.agent === 'concierge' && e.output_summary?.intent);
+            const intent = conciergeEvt?.output_summary?.intent || {};
+            const candidatesList = data.discovered_candidates?.length > 0
+              ? data.discovered_candidates
+              : (data.catalog_candidates || []);
+
+            // Generate dialogue bubbles representing negotiation
+            const dialogue = [];
+            const cat = intent.category || 'item';
+            
+            dialogue.push({
+              agent: 'concierge',
+              name: 'Concierge Agent',
+              avatar: 'C',
+              text: `Verified user intent: looking for ${intent.color || 'any'} ${cat}, size ${intent.size || 'any'}, price range ₹${intent.budget_min || 0} - ₹${intent.budget_max || 5000}, min rating ${intent.min_rating || 'any'} stars. Routing to Discovery...`
+            });
+
+            dialogue.push({
+              agent: 'discovery',
+              name: 'Discovery Agent',
+              avatar: 'D',
+              text: `Scanned pre-approved sites. Discovered ${candidatesList.length} matching candidates meeting safety and trust guidelines.`
+            });
+
+            if (chosen) {
+              dialogue.push({
+                agent: 'decision',
+                name: 'Decision Agent',
+                avatar: 'A',
+                text: `Evaluating candidates. Selected "${chosen.name}" (₹${chosen.price}) as the optimal choice. Reason: ${selectionReason}`
+              });
+
+              const passed = Number(chosen.price) <= (data.guardrail_ceiling || 5000);
+              dialogue.push({
+                agent: 'guardrail',
+                name: 'Deterministic Guardrail',
+                avatar: 'G',
+                text: `Running spend ceiling guardrail check. Item price ₹${chosen.price} ${passed ? '<=' : '>'} Ceiling Limit ₹${data.guardrail_ceiling || 5000}. Status: ${passed ? 'PASSED' : 'BLOCKED'}.`
+              });
+            }
+
             newTurnMessages.push({
               role: 'agent',
               agent: 'negotiation',
@@ -635,6 +661,8 @@ export default function CheckoutPage() {
                 productName: chosen?.product_id || chosen?.name,
                 chosenProduct: chosen,
                 selectionReason,
+                candidates: candidatesList,
+                dialogue: dialogue,
               },
             });
           }
@@ -649,8 +677,8 @@ export default function CheckoutPage() {
               content: riskEvent?.decision_reason || 'ML Risk Engine evaluated transaction features.',
               riskData: {
                 risk_score: data.risk_score ?? 0.01,
-                risk_level: data.risk_score ? (data.risk_score > 0.8 ? 'HIGH' : 'LOW') : 'LOW',
-                threshold: 0.8,
+                risk_level: data.risk_score ? (data.risk_score > (rf.threshold ?? 0.8) ? 'HIGH' : 'LOW') : 'LOW',
+                threshold: rf.threshold ?? 0.8,
                 top_features: rf.top_features || [],
                 explanation: rf.explanation,
                 model: rf.model === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
@@ -732,91 +760,171 @@ export default function CheckoutPage() {
     setPaymentStatus('pending');
     setEscalationMessage(null);
     setTrustOverrideActive(false);
-    setRequestedSitesInput('');
-    setAwaitingClarification(false);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
       <Navbar />
 
-      <div className="container" style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '360px 1fr', minHeight: 'calc(100vh - 60px)', background: '#ffffff' }}>
+        
+        {/* Left Side: Session Control Console */}
+        <div style={{ 
+          background: '#faf9f6', 
+          borderRight: '1px solid #111111', 
+          padding: '1.75rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '1.75rem', 
+          overflowY: 'auto'
+        }}>
 
-        {/* Conversation Canvas */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '10px', border: '1px solid rgba(1,73,174,0.12)', overflow: 'hidden', boxShadow: '0 2px 8px rgba(3,38,118,0.04)', minHeight: '450px' }}>
 
-          {/* Canvas Header */}
-          <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid rgba(1,73,174,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#032676', fontFamily: "'Antonio', sans-serif" }}>Agentic Checkout Cockpit</span>
-              {isRunning && <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(1,73,174,0.1)', color: '#0149ae', animation: 'pulse-ring 1.4s ease-out infinite' }}>LIVE</span>}
-              {awaitingClarification && !isRunning && (
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.3)' }}>
-                  NEEDS DETAILS
-                </span>
-              )}
-              {trustOverrideActive && (
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.55rem', borderRadius: '99px', background: 'rgba(3,38,118,0.15)', color: '#032676', border: '1px solid rgba(3,38,118,0.3)' }}>
-                  TRUST OVERRIDDEN
-                </span>
-              )}
+          {/* Section 2: Autonomy Level */}
+          <div>
+            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+              [02 // AUTONOMY CONTROL]
             </div>
-
-            {/* Autonomy Mode Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.5)', fontWeight: 600 }}>Autonomy Mode:</span>
-              <div style={{ display: 'flex', background: '#f5f5f5', padding: '2px', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (autonomyMode !== 'autonomous') {
-                      setAutonomyMode('autonomous');
-                      setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
-                      setMessages([]);
-                    }
-                  }}
-                  disabled={isRunning}
-                  style={{
-                    padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer',
-                    background: autonomyMode === 'autonomous' ? '#0149ae' : 'transparent',
-                    color: autonomyMode === 'autonomous' ? '#ffffff' : 'rgba(30,30,30,0.6)',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  Autonomous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (autonomyMode !== 'guided') {
-                      setAutonomyMode('guided');
-                      setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
-                      setMessages([]);
-                    }
-                  }}
-                  disabled={isRunning}
-                  style={{
-                    padding: '0.25rem 0.65rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px', border: 'none', cursor: 'pointer',
-                    background: autonomyMode === 'guided' ? '#0149ae' : 'transparent',
-                    color: autonomyMode === 'guided' ? '#ffffff' : 'rgba(30,30,30,0.6)',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  Guided Mode
-                </button>
-              </div>
+            
+            <div style={{ display: 'flex', background: '#ffffff', padding: '3px', borderRadius: '2px', border: '1px solid #e4e4e7' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (autonomyMode !== 'autonomous') {
+                    setAutonomyMode('autonomous');
+                    setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
+                    setMessages([]);
+                  }
+                }}
+                disabled={isRunning}
+                style={{
+                  flex: 1, padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', border: 'none', cursor: 'pointer',
+                  background: autonomyMode === 'autonomous' ? '#0044ff' : 'transparent',
+                  color: autonomyMode === 'autonomous' ? '#ffffff' : '#71717a',
+                  transition: 'all 0.15s',
+                  fontFamily: 'Space Grotesk'
+                }}
+              >
+                Autonomous
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (autonomyMode !== 'guided') {
+                    setAutonomyMode('guided');
+                    setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
+                    setMessages([]);
+                  }
+                }}
+                disabled={isRunning}
+                style={{
+                  flex: 1, padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', border: 'none', cursor: 'pointer',
+                  background: autonomyMode === 'guided' ? '#0044ff' : 'transparent',
+                  color: autonomyMode === 'guided' ? '#ffffff' : '#71717a',
+                  transition: 'all 0.15s',
+                  fontFamily: 'Space Grotesk'
+                }}
+              >
+                Guided Mode
+              </button>
             </div>
           </div>
 
-          {/* Messages Canvas */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Section 3: Live Exec Agents */}
+          <div>
+            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+              [03 // REAL-TIME EXECUTION AGENTS]
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#e4e4e7', border: '1px solid #e4e4e7', borderRadius: '2px', overflow: 'hidden' }}>
+              {[
+                { id: 'concierge', name: 'Concierge Agent' },
+                { id: 'site_trust', name: 'Site Trust Agent' },
+                { id: 'discovery', name: 'Discovery Agent' },
+                { id: 'negotiation', name: 'Decision Agent' },
+                { id: 'risk', name: 'Risk Evaluator' },
+                { id: 'payment', name: 'Payment Agent' }
+              ].map((ag, index) => {
+                const status = _activeAgent === ag.id ? 'active' : _completedAgents.includes(ag.id) ? 'success' : 'pending';
+                return (
+                  <div key={ag.id} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '0.65rem 0.85rem', 
+                    background: '#ffffff',
+                    fontSize: '0.78rem'
+                  }}>
+                    <span className="brutalist-text" style={{ fontWeight: status === 'active' ? 700 : 500, color: status === 'active' ? '#111111' : '#71717a' }}>
+                      {index + 1}. {ag.name}
+                    </span>
+                    {status === 'active' ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0044ff', fontSize: '0.65rem', fontWeight: 700 }}>
+                        <span className="minimal-indicator-live" /> LIVE
+                      </span>
+                    ) : status === 'success' ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontSize: '0.65rem', fontWeight: 700 }}>
+                        <span className="minimal-indicator-success" /> OK
+                      </span>
+                    ) : (
+                      <span style={{ color: '#d4d4d8', fontSize: '0.65rem', fontWeight: 700 }}>IDLE</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 4: Live Controls Context / Clarification / Trust Overrides */}
+          {(awaitingClarification || trustOverrideActive) && (
+            <div>
+              <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+                [04 // ATTENTION REQUIRED]
+              </div>
+              {/* Trust Override warnings */}
+              {trustOverrideActive && (
+                <div style={{ padding: '0.85rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '2px', marginBottom: '0.75rem' }}>
+                  <p className="brutalist-text" style={{ fontSize: '0.75rem', color: '#ef4444', margin: '0 0 0.5rem 0', lineHeight: 1.4 }}>
+                    WARNING: The destination merchant domain requires dynamic credentials verification. Proceed with bypass?
+                  </p>
+                  <button 
+                    className="minimal-btn minimal-btn-danger" 
+                    style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem' }}
+                    onClick={() => {
+                      if (wsRef.current) wsRef.current.send(JSON.stringify({ type: 'override_trust' }));
+                      setTrustOverrideActive(false);
+                    }}
+                  >
+                    Bypass & Verify Site
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+
+        {/* Right Side: Conversation Transcript Workspace */}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+          
+          {/* Header */}
+          <div style={{ padding: '0.85rem 1.75rem', borderBottom: '1px solid #111111', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span className="brutalist-title" style={{ fontSize: '1.15rem' }}>TRANSACTION TIMELINE LEDGER</span>
+              {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
+            </div>
+            <div className="brutalist-mono" style={{ fontSize: '0.75rem', color: '#71717a' }}>
+              Mode: <strong style={{ color: '#111111', textTransform: 'uppercase' }}>{autonomyMode}</strong>
+            </div>
+          </div>
+
+          {/* Transcript Log Stream */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#ffffff' }}>
             {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', color: '#0149ae', opacity: 0.18, fontFamily: "'Antonio', sans-serif", fontWeight: 700 }}>GB</div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#032676' }}>GLASSBOX Agentic Commerce Cockpit</h3>
-                <p style={{ fontSize: '0.875rem', maxWidth: '560px', margin: '0 auto 1.5rem auto', lineHeight: 1.6, color: 'rgba(30,30,30,0.6)' }}>
-                  Autonomous buyer agent with <strong>Smart Parameter Verification</strong>, <strong>Deterministic Site Trust</strong>, and <strong>Spend Guardrails</strong>.
-                  Just describe what you want — the agent will ask for all the details it needs before searching!
+              <div style={{ textAlign: 'center', padding: '5rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="brutalist-title" style={{ fontSize: '3.5rem', marginBottom: '0.25rem', color: '#0044ff' }}>GLASSBOX</div>
+                <h3 className="brutalist-subtitle" style={{ fontSize: '0.85rem', margin: '0 0 1rem 0' }}>// TRANSACTION LEDGER CONSOLE</h3>
+                <p className="brutalist-text" style={{ fontSize: '0.88rem', maxWidth: '520px', margin: '0 auto 2rem auto', lineHeight: 1.6, color: '#71717a' }}>
+                  A secure, multi-agent sandbox enforcing deterministic ceiling budgets, ML risk filters, and site trust schemas. Enter target items and search specifications below to initialize.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {['Buy me a shirt of ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
@@ -824,17 +932,8 @@ export default function CheckoutPage() {
                       key={suggestion}
                       type="button"
                       onClick={() => setInput(suggestion)}
-                      style={{
-                        padding: '0.45rem 0.9rem',
-                        borderRadius: '99px',
-                        border: '1px solid rgba(1,73,174,0.25)',
-                        background: 'rgba(1,73,174,0.04)',
-                        color: '#0149ae',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
+                      className="minimal-btn minimal-btn-ghost"
+                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.74rem' }}
                     >
                       {suggestion}
                     </button>
@@ -843,30 +942,26 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <>
-                {messages.map((msg: Message, i: number) => {
+                {messages.map((msg, index) => {
                   const isUser = msg.role === 'user';
                   const label = msg.agent ? AGENT_LABELS[msg.agent] || msg.agent : '';
+                  
                   return (
-                    <div key={i} style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '0.65rem', animation: 'slide-in-up 0.3s ease-out' }}>
-                      {!isUser && (
-                        <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(1,73,174,0.1)', border: '2px solid rgba(1,73,174,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 800, color: '#0149ae', marginTop: '0.15rem' }}>
-                          {(msg.agent || 'A')[0].toUpperCase()}
-                        </div>
-                      )}
+                    <div key={index} style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem' }}>
                       <div style={{ maxWidth: '88%', minWidth: 0 }}>
-                        {!isUser && label && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.3rem' }}>{label}</div>}
+                        {!isUser && label && <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.3rem', fontSize: '0.68rem' }}>{label}</div>}
                         <div style={{
                           padding: '0.85rem 1.1rem',
-                          borderRadius: isUser ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                          background: isUser ? 'linear-gradient(135deg, #0149ae 0%, #032676 100%)' : '#f5f5f5',
-                          color: isUser ? '#ffffff' : '#1e1e1e',
-                          border: isUser ? 'none' : '1px solid rgba(1,73,174,0.1)',
-                          borderLeft: isUser ? 'none' : '3px solid #0149ae',
+                          borderRadius: '2px',
+                          background: isUser ? '#0044ff' : '#f4f4f5',
+                          color: isUser ? '#ffffff' : '#111111',
+                          border: isUser ? 'none' : '1px solid #e4e4e7',
+                          borderLeft: isUser ? 'none' : '3px solid #0044ff',
                           fontSize: '0.875rem',
                           lineHeight: 1.55,
-                          boxShadow: isUser ? '0 2px 8px rgba(1,73,174,0.2)' : '0 1px 4px rgba(3,38,118,0.04)',
+                          boxShadow: 'none'
                         }}>
-                          <div style={{ fontWeight: 500 }}>{msg.content}</div>
+                          <div className="brutalist-text" style={{ fontWeight: 500 }}>{msg.content}</div>
 
                           {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (
@@ -890,33 +985,35 @@ export default function CheckoutPage() {
 
                           {/* ---- Site Trust Warning ---- */}
                           {msg.trustWarningPrompt && (
-                            <div style={{ marginTop: '0.85rem', padding: '1rem 1.15rem', background: '#fff5f5', borderRadius: '8px', border: '1px solid rgba(3,38,118,0.25)', borderLeft: '4px solid #032676', color: '#032676', animation: 'slide-in-up 0.3s ease-out' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', color: '#032676', marginBottom: '0.4rem' }}>
-                                <ShieldX size={18} color="#032676" />
-                                Deterministic Site Trust Warning Triggered
+                            <div style={{ marginTop: '0.85rem', padding: '1rem 1.15rem', background: '#fee2e2', borderRadius: '2px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444', color: '#991b1b', animation: 'slide-in-up 0.3s ease-out' }}>
+                              <div className="brutalist-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', marginBottom: '0.4rem' }}>
+                                <ShieldX size={18} color="#ef4444" />
+                                Deterministic Site Trust Warning
                               </div>
-                              <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.82rem', lineHeight: 1.5, color: '#1e1e1e' }}>
-                                Target site <strong>{msg.trustWarningPrompt.site}</strong> failed deterministic security checks (HTTPS, SSL, domain age, typosquatting pattern).
+                              <p className="brutalist-text" style={{ margin: '0 0 0.6rem 0', fontSize: '0.82rem', lineHeight: 1.5, color: '#111111' }}>
+                                Target site <strong>{msg.trustWarningPrompt.site}</strong> failed deterministic safety checks (HTTPS, SSL, domain age, typosquatting pattern).
                               </p>
-                              <div style={{ fontSize: '0.75rem', background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(3,38,118,0.15)', marginBottom: '0.85rem', fontFamily: 'monospace' }}>
+                              <div className="brutalist-mono" style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', marginBottom: '0.85rem', color: '#111111' }}>
                                 {msg.trustWarningPrompt.reason}
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'rgba(30,30,30,0.6)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <div className="brutalist-text" style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                 <Lock size={13} />
-                                Audit Note: Choosing to continue will record <code style={{ background: 'rgba(3,38,118,0.1)', padding: '0.1rem 0.3rem', borderRadius: '3px', fontWeight: 700 }}>trust_override: true</code> in the immutable audit log.
+                                Audit Note: Continuing will log trust_override in the immutable ledger.
                               </div>
                               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
                                   onClick={() => handleSend('continue')}
-                                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', background: '#032676', color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                  className="minimal-btn minimal-btn-danger"
+                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '2px' }}
                                 >
-                                  <CheckCircle size={14} /> Continue & Override Warning
+                                  <CheckCircle size={14} /> Continue & Override
                                 </button>
                                 <button
                                   type="button"
                                   onClick={handleRestartSession}
-                                  style={{ padding: '0.5rem 1rem', borderRadius: '6px', background: '#ffffff', color: '#0149ae', border: '1px solid rgba(1,73,174,0.3)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+                                  className="minimal-btn minimal-btn-ghost"
+                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '2px', background: '#ffffff' }}
                                 >
                                   Restart Search
                                 </button>
@@ -926,33 +1023,30 @@ export default function CheckoutPage() {
 
                           {/* ---- Autonomous Skipped Banner ---- */}
                           {msg.sitesRejectedCount !== undefined && msg.sitesRejectedCount > 0 && (
-                            <div style={{ marginTop: '0.65rem', padding: '0.45rem 0.75rem', background: 'rgba(1,73,174,0.06)', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)', fontSize: '0.78rem', color: '#0149ae', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <div className="brutalist-text" style={{ marginTop: '0.65rem', padding: '0.45rem 0.75rem', background: '#f4f4f5', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '3px solid #0044ff', fontSize: '0.78rem', color: '#0044ff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               <Globe size={14} />
-                              Transparency Note: {msg.sitesRejectedCount} candidate source site(s) skipped automatically for failing trust checks.
+                              Transparency Note: {msg.sitesRejectedCount} candidate site(s) skipped for failing trust check.
                             </div>
                           )}
 
                           {/* ---- Discovered Product Candidates ---- */}
                           {msg.candidates && msg.candidates.length > 0 && (
                             <div style={{ marginTop: '1rem' }}>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Filter size={12} /> {msg.candidates.length} product{msg.candidates.length !== 1 ? 's' : ''} found — all match your filters
+                              <div className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#0044ff', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Filter size={12} /> {msg.candidates.length} matching candidate{msg.candidates.length !== 1 ? 's' : ''} found
                               </div>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
                                 {msg.candidates.map((item: DiscoveredCandidate, idx: number) => (
-                                  <div key={idx} style={{
-                                    background: '#ffffff',
-                                    borderRadius: '12px',
-                                    border: '1px solid rgba(1,73,174,0.15)',
-                                    boxShadow: '0 2px 8px rgba(3,38,118,0.07)',
+                                  <div key={idx} className="minimal-card" style={{
+                                    padding: 0,
                                     overflow: 'hidden',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    transition: 'box-shadow 0.2s, transform 0.15s',
+                                    transition: 'border-color 0.15s',
                                   }}>
                                     {/* Product Image */}
                                     {(item as any).image_url ? (
-                                      <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f0f4ff', flexShrink: 0 }}>
+                                      <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f4f4f5', flexShrink: 0 }}>
                                         <img
                                           src={(item as any).image_url}
                                           alt={item.name}
@@ -961,47 +1055,47 @@ export default function CheckoutPage() {
                                         />
                                       </div>
                                     ) : (
-                                      <div style={{ width: '100%', height: '80px', background: 'linear-gradient(135deg, rgba(1,73,174,0.08) 0%, rgba(3,38,118,0.12) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <span style={{ fontSize: '2rem' }}>🛍️</span>
+                                      <div style={{ width: '100%', height: '80px', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderBottom: '1px solid #e4e4e7' }}>
+                                        <Tag size={28} color="#0044ff" />
                                       </div>
                                     )}
 
                                     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
                                       {/* Option badge + site */}
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.58rem', color: '#0149ae', fontWeight: 800, textTransform: 'uppercase', background: 'rgba(1,73,174,0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Option {idx + 1}</span>
+                                        <span className="minimal-pill" style={{ fontSize: '0.58rem', padding: '0.1rem 0.4rem' }}>Option {idx + 1}</span>
                                         {item.source_site && (
-                                          <span style={{ fontSize: '0.6rem', fontWeight: 600, color: 'rgba(30,30,30,0.45)', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.source_site}</span>
+                                          <span className="brutalist-mono" style={{ fontSize: '0.6rem', color: '#71717a', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.source_site}</span>
                                         )}
                                       </div>
 
                                       {/* Product Name */}
-                                      <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#1e1e1e', lineHeight: 1.3 }}>{item.name}</div>
+                                      <div className="brutalist-text" style={{ fontSize: '0.83rem', fontWeight: 700, color: '#111111', lineHeight: 1.3 }}>{item.name}</div>
 
                                       {/* Brand */}
                                       {item.brand && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Tag size={10} color="rgba(30,30,30,0.35)" />
-                                          <span style={{ fontSize: '0.68rem', color: 'rgba(30,30,30,0.5)', fontWeight: 600 }}>{item.brand}</span>
+                                          <Tag size={10} color="#71717a" />
+                                          <span className="brutalist-text" style={{ fontSize: '0.68rem', color: '#71717a', fontWeight: 600 }}>{item.brand}</span>
                                         </div>
                                       )}
 
                                       {/* Price */}
-                                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0149ae' }}>&#8377;{item.price.toLocaleString()}</div>
+                                      <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff' }}>&#8377;{item.price.toLocaleString()}</div>
 
                                       {/* Star Rating */}
                                       {item.rating != null && <StarRating rating={item.rating} />}
 
                                       {/* Match Reason */}
                                       {(item as any).match_reason && (
-                                        <div style={{ fontSize: '0.67rem', color: '#0149ae', fontStyle: 'italic', lineHeight: 1.3, padding: '0.3rem 0.5rem', background: 'rgba(1,73,174,0.05)', borderRadius: '5px', borderLeft: '2px solid #0149ae' }}>
+                                        <div className="brutalist-text" style={{ fontSize: '0.67rem', color: '#0044ff', fontStyle: 'italic', lineHeight: 1.3, padding: '0.3rem 0.5rem', background: '#faf9f6', borderRadius: '2px', borderLeft: '2px solid #0044ff' }}>
                                           {(item as any).match_reason}
                                         </div>
                                       )}
 
                                       {/* Review Summary */}
                                       {item.review_summary && (
-                                        <div style={{ fontSize: '0.67rem', color: 'rgba(30,30,30,0.55)', lineHeight: 1.3 }}>
+                                        <div className="brutalist-text" style={{ fontSize: '0.67rem', color: '#71717a', lineHeight: 1.3 }}>
                                           {item.review_summary}
                                         </div>
                                       )}
@@ -1012,9 +1106,10 @@ export default function CheckoutPage() {
                                           href={(item as any).source_url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          style={{ marginTop: 'auto', paddingTop: '0.4rem', fontSize: '0.68rem', fontWeight: 700, color: '#0149ae', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                          className="brutalist-subtitle"
+                                          style={{ marginTop: 'auto', paddingTop: '0.4rem', fontSize: '0.68rem', color: '#0044ff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                         >
-                                          <Globe size={11} /> View Product ↗
+                                          <Globe size={11} /> View Product
                                         </a>
                                       )}
                                     </div>
@@ -1028,70 +1123,138 @@ export default function CheckoutPage() {
                           {msg.guardrailData && (
                             <div style={{ marginTop: '0.85rem' }}>
                               {/* Chosen Product Card */}
-                              {msg.guardrailData.chosenProduct && (
-                                <div style={{ marginBottom: '0.75rem', padding: '0.9rem 1rem', background: 'linear-gradient(135deg, rgba(1,73,174,0.06) 0%, rgba(3,38,118,0.08) 100%)', borderRadius: '10px', border: '2px solid rgba(1,73,174,0.25)' }}>
-                                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <CheckCircle size={13} color="#0149ae" /> Agent Selected This Product
+                              {msg.guardrailData?.chosenProduct && (
+                                <div style={{ marginBottom: '0.75rem', padding: '0.9rem 1rem', background: '#ffffff', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff' }}>
+                                  <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <CheckCircle size={13} color="#0044ff" /> Selected Optimal Choice
                                   </div>
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                                    {msg.guardrailData.chosenProduct.image_url ? (
-                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                                    {msg.guardrailData?.chosenProduct?.image_url ? (
+                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '2px', flexShrink: 0 }} onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                                     ) : (
-                                      <div style={{ width: '64px', height: '64px', borderRadius: '8px', background: 'rgba(1,73,174,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.6rem' }}>🛍️</div>
+                                      <div style={{ width: '64px', height: '64px', borderRadius: '2px', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Tag size={24} color="#0044ff" />
+                                      </div>
                                     )}
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e1e1e', lineHeight: 1.3 }}>{msg.guardrailData.chosenProduct.name}</div>
-                                      {msg.guardrailData.chosenProduct.brand && (
-                                        <div style={{ fontSize: '0.7rem', color: 'rgba(30,30,30,0.5)', marginTop: '0.15rem' }}>{msg.guardrailData.chosenProduct.brand}</div>
+                                      <div className="brutalist-text" style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', lineHeight: 1.3 }}>{msg.guardrailData?.chosenProduct?.name}</div>
+                                      {msg.guardrailData?.chosenProduct?.brand && (
+                                        <div className="brutalist-text" style={{ fontSize: '0.7rem', color: '#71717a', marginTop: '0.15rem' }}>{msg.guardrailData.chosenProduct.brand}</div>
                                       )}
-                                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0149ae', marginTop: '0.2rem' }}>&#8377;{Number(msg.guardrailData.price).toLocaleString()}</div>
-                                      {msg.guardrailData.chosenProduct.rating != null && <StarRating rating={msg.guardrailData.chosenProduct.rating} />}
-                                      {msg.guardrailData.chosenProduct.source_url && (
-                                        <a href={msg.guardrailData.chosenProduct.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0149ae', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem' }}>
-                                          <Globe size={11} /> View on {msg.guardrailData.chosenProduct.source_site || 'store'} ↗
+                                      <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff', marginTop: '0.2rem' }}>&#8377;{Number(msg.guardrailData?.price).toLocaleString()}</div>
+                                      {msg.guardrailData?.chosenProduct?.rating != null && <StarRating rating={msg.guardrailData.chosenProduct.rating} />}
+                                      {msg.guardrailData?.chosenProduct?.source_url && (
+                                        <a href={msg.guardrailData.chosenProduct.source_url} target="_blank" rel="noopener noreferrer" className="brutalist-subtitle" style={{ fontSize: '0.68rem', color: '#0044ff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem' }}>
+                                          <Globe size={11} /> View on Store
                                         </a>
                                       )}
                                     </div>
                                   </div>
-                                  {/* WHY WE CHOSE THIS */}
-                                  {msg.guardrailData.selectionReason && (
-                                    <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid rgba(1,73,174,0.15)', borderLeft: '4px solid #0149ae' }}>
-                                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#0149ae', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Why we chose this</div>
-                                      <div style={{ fontSize: '0.78rem', color: '#1e1e1e', lineHeight: 1.5 }}>{msg.guardrailData.selectionReason}</div>
+                                  {/* Candidates being compared */}
+                                  {msg.guardrailData?.candidates && msg.guardrailData.candidates.length > 0 && (
+                                    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #e4e4e7', paddingTop: '0.65rem' }}>
+                                      <div className="brutalist-subtitle" style={{ fontSize: '0.62rem', color: '#71717a', marginBottom: '0.4rem' }}>
+                                        Negotiated between candidate(s):
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
+                                        {msg.guardrailData.candidates.map((cand: any, idx: number) => {
+                                          const isChosen = cand.product_id === msg.guardrailData?.chosenProduct?.product_id;
+                                          return (
+                                            <div key={idx} style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '0.4rem',
+                                              padding: '0.35rem 0.6rem',
+                                              background: isChosen ? '#faf9f6' : '#ffffff',
+                                              border: `1px solid ${isChosen ? '#0044ff' : '#e4e4e7'}`,
+                                              borderRadius: '2px',
+                                              flexShrink: 0,
+                                            }}>
+                                              {cand.image_url ? (
+                                                <img src={cand.image_url} alt={cand.name} style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '2px' }} />
+                                              ) : (
+                                                <div style={{ width: '24px', height: '24px', background: '#f4f4f5', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                  <Tag size={12} color="#71717a" />
+                                                </div>
+                                              )}
+                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {cand.name}
+                                              </div>
+                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', fontWeight: 700, color: isChosen ? '#0044ff' : '#111111' }}>
+                                                ₹{cand.price}
+                                              </div>
+                                              {isChosen && <span className="minimal-pill minimal-pill-primary" style={{ fontSize: '0.6rem' }}>CHOSEN</span>}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Behind-the-scenes Agent Chat */}
+                                  {msg.guardrailData?.dialogue && msg.guardrailData.dialogue.length > 0 && (
+                                    <div style={{ marginTop: '0.75rem', padding: '0.75rem 0.9rem', background: '#faf9f6', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #7c3aed' }}>
+                                      <div className="brutalist-subtitle" style={{ color: '#7c3aed', marginBottom: '0.5rem', fontSize: '0.62rem' }}>
+                                        Agent Negotiation Logs
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {msg.guardrailData.dialogue.map((bubble: any, bIdx: number) => (
+                                          <div key={bIdx} style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
+                                            <div style={{ width: '18px', height: '18px', borderRadius: '2px', background: '#0044ff', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, flexShrink: 0 }}>
+                                              {bubble.avatar}
+                                            </div>
+                                            <div className="brutalist-text" style={{ flex: 1 }}>
+                                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111111', marginRight: '0.3rem' }}>{bubble.name}:</span>
+                                              <span style={{ fontSize: '0.72rem', color: '#71717a', lineHeight: 1.4 }}>{bubble.text}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
                               )}
                               {/* Guardrail Lock Bar */}
-                              <div className={`guardrail-lock ${msg.guardrailData.passed ? 'passed' : 'blocked'}`}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                padding: '0.85rem 1.1rem',
+                                borderRadius: '2px',
+                                fontSize: '0.85rem',
+                                border: '1px solid #e4e4e7',
+                                marginTop: '0.75rem',
+                                background: msg.guardrailData?.passed ? '#ecfdf5' : '#fef2f2',
+                                color: msg.guardrailData?.passed ? '#047857' : '#b91c1c'
+                              }}>
                                 <Lock size={16} style={{ flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>Non-Negotiable Spend Guardrail</div>
-                                  <div style={{ fontSize: '0.78rem', marginTop: '0.2rem', opacity: 0.8 }}>Ceiling: &#8377;{msg.guardrailData.ceiling.toLocaleString()} · Item: &#8377;{msg.guardrailData.price.toLocaleString()}</div>
+                                  <div className="brutalist-subtitle" style={{ color: 'inherit', fontSize: '0.8rem' }}>Non-Negotiable Spend Guardrail</div>
+                                  <div className="brutalist-mono" style={{ fontSize: '0.74rem', marginTop: '0.1rem', opacity: 0.9 }}>Ceiling: &#8377;{msg.guardrailData?.ceiling?.toLocaleString()} · Item: &#8377;{msg.guardrailData?.price?.toLocaleString()}</div>
                                 </div>
-                                <span className={`pill ${msg.guardrailData.passed ? 'pill-success' : 'pill-danger'}`}>{msg.guardrailData.passed ? 'PASSED' : 'BLOCKED'}</span>
+                                <span className={`minimal-pill ${msg.guardrailData?.passed ? 'minimal-pill-success' : 'minimal-pill-danger'}`}>{msg.guardrailData?.passed ? 'PASSED' : 'BLOCKED'}</span>
                               </div>
                             </div>
                           )}
 
                           {/* ---- Payment Attempts ---- */}
                           {msg.paymentAttempts && msg.paymentAttempts.length > 0 && (
-                            <div style={{ marginTop: '0.85rem', padding: '1rem', background: 'rgba(3,38,118,0.05)', borderRadius: '8px', border: '1px solid rgba(3,38,118,0.15)', color: '#032676' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, marginBottom: '0.6rem', fontSize: '0.82rem' }}>
+                            <div style={{ marginTop: '0.85rem', padding: '1rem', background: '#f4f4f5', borderRadius: '2px', border: '1px solid #e4e4e7', color: '#111111' }}>
+                              <div className="brutalist-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', color: '#111111' }}>
                                 <RefreshCw size={14} />
-                                Razorpay Gateway — Fixed 1-Retry Policy
+                                Razorpay Gateway (Fixed 1-Retry Policy)
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
                                 {msg.paymentAttempts.map((att, idx) => (
-                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '6px', border: '1px solid rgba(3,38,118,0.12)', fontSize: '0.78rem' }}>
-                                    <span><strong>Attempt {att.attempt}</strong> ({att.attempt === 1 ? 'Initial' : 'Retry 1/1'}): {att.reason || att.status}</span>
-                                    <span className="pill pill-danger">{att.status}</span>
+                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '2px', border: '1px solid #e4e4e7', fontSize: '0.78rem' }}>
+                                    <span className="brutalist-text"><strong>Attempt {att.attempt}</strong> ({att.attempt === 1 ? 'Initial' : 'Retry 1/1'}): {att.reason || att.status}</span>
+                                    <span className="minimal-pill minimal-pill-danger">{att.status}</span>
                                   </div>
                                 ))}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '6px', borderLeft: '4px solid #032676', fontSize: '0.75rem', fontWeight: 600, color: '#032676' }}>
+                              <div className="brutalist-text" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '2px', borderLeft: '4px solid #ef4444', fontSize: '0.75rem', fontWeight: 600, color: '#ef4444' }}>
                                 <ShieldAlert size={14} />
-                                Policy enforced: No further charges attempted without user instruction.
+                                Policy Enforced: No further charges attempted. Awaiting details.
                               </div>
                             </div>
                           )}
@@ -1110,22 +1273,23 @@ export default function CheckoutPage() {
 
           {/* Guided Mode Site Input Bar */}
           {autonomyMode === 'guided' && (
-            <div style={{ padding: '0.5rem 1.1rem', background: 'rgba(1,73,174,0.04)', borderTop: '1px solid rgba(1,73,174,0.08)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Globe size={15} color="#0149ae" />
-              <span style={{ fontSize: '0.78rem', color: '#0149ae', fontWeight: 700 }}>Target Site URL / Domain:</span>
+            <div style={{ padding: '0.5rem 1.1rem', background: '#faf9f6', borderTop: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <Globe size={15} color="#0044ff" />
+              <span className="brutalist-subtitle" style={{ color: '#0044ff', fontSize: '0.75rem' }}>Target Site:</span>
               <input
                 type="text"
-                placeholder="e.g. myntra.com or amaz0n-deals.com"
+                placeholder="e.g. myntra.com"
                 value={requestedSitesInput}
                 onChange={e => setRequestedSitesInput(e.target.value)}
                 disabled={isRunning}
-                style={{ flex: 1, padding: '0.35rem 0.75rem', border: '1px solid rgba(1,73,174,0.2)', borderRadius: '6px', fontSize: '0.82rem', outline: 'none', background: '#ffffff' }}
+                className="minimal-input"
+                style={{ flex: 1, padding: '0.35rem 0.75rem', fontSize: '0.82rem' }}
               />
             </div>
           )}
 
           {/* Input Bar */}
-          <div style={{ padding: '0.85rem 1.1rem', borderTop: '1px solid rgba(1,73,174,0.08)', background: '#ffffff' }}>
+          <div style={{ padding: '0.85rem 1.1rem', borderTop: '1px solid #e4e4e7', background: '#ffffff' }}>
             <div style={{ display: 'flex', gap: '0.6rem' }}>
               <input
                 type="text"
@@ -1140,15 +1304,14 @@ export default function CheckoutPage() {
                       : 'E.g. Find me running shoes under ₹4,000…'
                 }
                 disabled={isRunning}
-                style={{ flex: 1, padding: '0.75rem 1rem', border: '1px solid rgba(1,73,174,0.15)', borderRadius: '8px', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', opacity: isRunning ? 0.6 : 1, background: '#ffffff', color: '#1e1e1e' }}
-                onFocus={e => e.target.style.borderColor = '#0149ae'}
-                onBlur={e => e.target.style.borderColor = 'rgba(1,73,174,0.15)'}
+                className="minimal-input"
+                style={{ flex: 1, opacity: isRunning ? 0.6 : 1 }}
               />
               <button
-                className="btn-primary"
+                className="minimal-btn minimal-btn-primary"
                 onClick={() => handleSend()}
                 disabled={isRunning || !input.trim()}
-                style={{ padding: '0.75rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: (isRunning || !input.trim()) ? 0.5 : 1, cursor: (isRunning || !input.trim()) ? 'not-allowed' : 'pointer' }}>
+                style={{ padding: '0.75rem 1.25rem', fontSize: '0.9rem', opacity: (isRunning || !input.trim()) ? 0.5 : 1 }}>
                 <Send size={15} /> Send
               </button>
             </div>

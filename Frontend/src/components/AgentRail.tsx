@@ -30,8 +30,8 @@ export default function AgentRail({ activeAgent: rawActiveAgent, onSelectAgent, 
   };
 
   return (
-    <div className="agent-rail" style={{ paddingRight: '1.5rem', gap: '0.75rem' }}>
-      <span className="agent-rail-label">Agents</span>
+    <div style={{ padding: '0 1.5rem', height: '56px', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#ffffff', borderBottom: '1px solid #e4e4e7' }}>
+      <span className="brutalist-subtitle" style={{ fontSize: '0.68rem', color: '#71717a' }}>Agents</span>
 
       <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'visible' }}>
         {AGENTS.map((agent, idx) => {
@@ -47,29 +47,28 @@ export default function AgentRail({ activeAgent: rawActiveAgent, onSelectAgent, 
                 title={`${agent.name} — ${agent.subtitle}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.4rem',
-                  padding: '0.3rem 0.8rem', borderRadius: '99px',
+                  padding: '0.35rem 0.75rem', borderRadius: '2px',
                   border: isActive
-                    ? '1px solid #032676'
+                    ? '1px solid #0044ff'
                     : isCompleted
-                    ? '1px solid rgba(1,73,174,0.3)'
-                    : '1px solid transparent',
-                  background: isActive ? '#0149ae' : isCompleted ? 'rgba(1,73,174,0.08)' : '#f5f5f5',
-                  color: isActive ? '#ffffff' : isCompleted ? '#0149ae' : 'rgba(30,30,30,0.45)',
-                  fontSize: '0.78rem', fontWeight: isActive || isCompleted ? 700 : 500,
-                  cursor: 'pointer', transition: 'all 0.2s ease',
-                  boxShadow: isActive ? '0 2px 12px rgba(1,73,174,0.3)' : 'none',
-                  animation: isActive ? 'pulse-glow 1.8s ease-in-out infinite' : 'none',
+                    ? '1px solid #e4e4e7'
+                    : '1px solid #e4e4e7',
+                  background: isActive ? '#0044ff' : isCompleted ? '#faf9f6' : '#ffffff',
+                  color: isActive ? '#ffffff' : isCompleted ? '#0044ff' : '#71717a',
+                  fontSize: '0.75rem', fontWeight: 700,
+                  cursor: 'pointer', transition: 'all 0.15s ease',
                   whiteSpace: 'nowrap', flexShrink: 0,
+                  fontFamily: 'Space Grotesk'
                 }}
               >
-                <span className={`agent-dot ${status}`} style={{ flexShrink: 0 }} />
+                <span className={`agent-dot ${status}`} style={{ flexShrink: 0, borderRadius: '2px', background: isActive ? '#ffffff' : isCompleted ? '#0044ff' : '#d4d4d8' }} />
                 {agent.name}
               </button>
 
               {idx < AGENTS.length - 1 && (
                 <div style={{
-                  flex: 1, height: '1px', margin: '0 2px',
-                  background: isEdgeCompleted ? '#0149ae' : 'rgba(1,73,174,0.12)',
+                  flex: 1, height: '1px', margin: '0 4px',
+                  background: isEdgeCompleted ? '#0044ff' : '#e4e4e7',
                   minWidth: '6px', maxWidth: '32px', transition: 'background 0.4s',
                 }} />
               )}
@@ -77,8 +76,6 @@ export default function AgentRail({ activeAgent: rawActiveAgent, onSelectAgent, 
           );
         })}
       </div>
-
-
     </div>
   );
 }

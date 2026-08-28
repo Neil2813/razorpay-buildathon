@@ -19,10 +19,10 @@ interface InsightsData {
 
 function MetricCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="metric-card">
-      <p className="label">{label}</p>
-      <p className="value" style={{ color: accent || '#032676' }}>{value}</p>
-      {sub && <p className="sub">{sub}</p>}
+    <div className="minimal-card" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      <p className="brutalist-subtitle" style={{ fontSize: '0.68rem', margin: 0 }}>{label}</p>
+      <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: 0, color: accent || '#111111' }}>{value}</p>
+      {sub && <p className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', margin: 0 }}>{sub}</p>}
     </div>
   );
 }
@@ -55,12 +55,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
         <Navbar />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: 'rgba(30,30,30,0.4)' }}>
-          <div style={{ width: '36px', height: '36px', border: '3px solid rgba(1,73,174,0.15)', borderTop: '3px solid #0149ae', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: '#71717a' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid #e4e4e7', borderTop: '3px solid #0044ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <span style={{ fontSize: '0.9rem' }}>Loading Merchant Revenue Intelligence…</span>
+          <span className="brutalist-subtitle" style={{ fontSize: '0.85rem' }}>Loading Merchant Revenue Intelligence…</span>
         </div>
       </div>
     );
@@ -69,124 +69,151 @@ export default function DashboardPage() {
   const aiGap = insights ? insights.acceptance_rate_with_policy_pct - insights.acceptance_rate_without_policy_pct : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
       <Navbar />
       <div className="container" style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
 
         {/* Header */}
         <div style={{ marginBottom: '2rem' }}>
-          <div style={{ display: 'inline-block', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0149ae', background: 'rgba(1,73,174,0.08)', padding: '0.25rem 0.75rem', borderRadius: '99px', border: '1px solid rgba(1,73,174,0.2)', marginBottom: '0.75rem' }}>
+          <div className="minimal-pill minimal-pill-primary" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.75rem' }}>
             Merchant Revenue Intelligence
           </div>
-          <h2 style={{ margin: 0, fontSize: '1.85rem', color: '#032676' }}>AI Buyer Readiness Dashboard</h2>
-          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', color: 'rgba(30,30,30,0.45)' }}>
-            Tenant: <strong style={{ color: '#1e1e1e' }}>{user?.tenant_id}</strong> · {insights?.sample_size_note}
+          <h2 className="brutalist-title" style={{ margin: 0, fontSize: '2rem', color: '#111111' }}>AI Buyer Readiness Dashboard</h2>
+          <p className="brutalist-text" style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', color: '#71717a' }}>
+            Console Identifier: <strong style={{ color: '#111111' }}>{user?.tenant_id}</strong> · {insights?.sample_size_note}
           </p>
         </div>
 
-        {/* Metric Cards */}
+        {/* Metric Cards - Continuous Mesh */}
         {insights && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            <MetricCard label="Total Agent Events" value={insights.transaction_event_count} sub={insights.sample_size_note} />
-            <MetricCard label="Successful Payments" value={insights.payment_success_count} accent="#0149ae" sub={`of ${insights.payment_attempt_count} attempts`} />
-            <MetricCard label="AI Acceptance — With Policy" value={`${insights.acceptance_rate_with_policy_pct}%`} accent="#1250b2" sub="Structured listings convert higher" />
-            <MetricCard label="AI Acceptance — No Policy" value={`${insights.acceptance_rate_without_policy_pct}%`} accent="#032676" sub="Missing return/delivery data" />
-            {aiGap > 0 && <MetricCard label="Revenue Impact Gap" value={`+${aiGap.toFixed(0)}%`} accent="#0149ae" sub="By adding structured return policy" />}
+          <div className="minimal-grid-mesh" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '2rem', borderRadius: '2px' }}>
+            <div className="minimal-grid-mesh-item">
+              <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Total Agent Events</p>
+              <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: '0.2rem 0 0 0' }}>{insights.transaction_event_count}</p>
+              <p className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', margin: '0.15rem 0 0 0' }}>{insights.sample_size_note}</p>
+            </div>
+            <div className="minimal-grid-mesh-item">
+              <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Successful Payments</p>
+              <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: '0.2rem 0 0 0', color: '#0044ff' }}>{insights.payment_success_count}</p>
+              <p className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', margin: '0.15rem 0 0 0' }}>of {insights.payment_attempt_count} attempts</p>
+            </div>
+            <div className="minimal-grid-mesh-item">
+              <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>AI Acceptance — With Policy</p>
+              <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: '0.2rem 0 0 0', color: '#0044ff' }}>{insights.acceptance_rate_with_policy_pct}%</p>
+              <p className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', margin: '0.15rem 0 0 0' }}>Structured listings convert higher</p>
+            </div>
+            <div className="minimal-grid-mesh-item">
+              <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>AI Acceptance — No Policy</p>
+              <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: '0.2rem 0 0 0', color: '#111111' }}>{insights.acceptance_rate_without_policy_pct}%</p>
+              <p className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', margin: '0.15rem 0 0 0' }}>Missing return/delivery data</p>
+            </div>
+            {aiGap > 0 && (
+              <div className="minimal-grid-mesh-item">
+                <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Revenue Impact Gap</p>
+                <p className="brutalist-title" style={{ fontSize: '1.8rem', margin: '0.2rem 0 0 0', color: '#0044ff' }}>+{aiGap.toFixed(0)}%</p>
+                <p className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', margin: '0.15rem 0 0 0' }}>By adding structured return policy</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Main Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '1.5rem', alignItems: 'start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
+        {/* Main Grid: Integrated Control Console Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '0px', border: '1px solid #111111', borderRadius: '2px', background: '#ffffff' }}>
+          
+          {/* Left Column Workspace */}
+          <div style={{ borderRight: '1px solid #111111', display: 'flex', flexDirection: 'column' }}>
+            
             {/* Executive Summary */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(30,30,30,0.35)', marginBottom: '0.5rem' }}>Executive Summary</div>
-              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', color: '#032676' }}>AI Readiness & Conversion Analysis</h3>
-              <div className="insight-callout">{insights?.summary || 'No transaction evaluation history recorded yet. Run a demo transaction to generate insights.'}</div>
+            <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
+              <div className="brutalist-subtitle" style={{ marginBottom: '0.4rem', fontSize: '0.65rem' }}>[01 // EXECUTIVE SUMMARY]</div>
+              <h3 className="brutalist-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem' }}>AI Conversion & Readiness Analysis</h3>
+              <div className="brutalist-text" style={{ background: '#faf9f6', borderLeft: '4px solid #0044ff', padding: '0.85rem 1.1rem', fontSize: '0.875rem', color: '#111111', lineHeight: '1.55' }}>
+                {insights?.summary || 'No transaction evaluation history recorded yet. Run a demo transaction to generate insights.'}
+              </div>
             </div>
 
-            {/* Site Trust & Agent-Readable Data Advantage (UPDATE.md §7) */}
-            <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(1,73,174,0.03) 0%, rgba(3,38,118,0.06) 100%)', border: '1px solid rgba(1,73,174,0.18)' }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0149ae', marginBottom: '0.4rem' }}>
-                Agent Data Intelligence (UPDATE.md §7)
+            {/* Site Trust & Agent-Readable Data Advantage */}
+            <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
+              <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.4rem', fontSize: '0.65rem' }}>
+                [02 // AGENT DATA INTELLIGENCE]
               </div>
-              <h3 style={{ margin: '0 0 0.6rem 0', fontSize: '1.1rem', color: '#032676' }}>
+              <h3 className="brutalist-title" style={{ margin: '0 0 0.6rem 0', fontSize: '1.25rem' }}>
                 Site Trust & Structured Data Conversion Advantage
               </h3>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(30,30,30,0.7)', lineHeight: 1.55, margin: '0 0 1rem 0' }}>
+              <p className="brutalist-text" style={{ fontSize: '0.85rem', color: '#71717a', lineHeight: 1.55, margin: '0 0 1rem 0' }}>
                 Merchants providing clean, agent-readable structured data and verified SSL/domain credentials are selected <strong>42% more often</strong> by autonomous buyer agents than unvetted sites requiring fragile scraping.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-                <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(1,73,174,0.12)' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(30,30,30,0.4)', textTransform: 'uppercase' }}>Site Trust Gate</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0149ae', marginTop: '0.2rem' }}>100% Pre-Fetch</div>
-                  <div style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.5)', marginTop: '0.15rem' }}>Deterministic safety checks before scraping</div>
+              
+              <div className="minimal-grid-mesh" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                <div className="minimal-grid-mesh-item">
+                  <div className="brutalist-subtitle" style={{ fontSize: '0.62rem' }}>Site Trust Gate</div>
+                  <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff', marginTop: '0.2rem' }}>100% Pre-Fetch</div>
+                  <div className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '0.15rem' }}>Deterministic safety checks before scraping</div>
                 </div>
-                <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(1,73,174,0.12)' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(30,30,30,0.4)', textTransform: 'uppercase' }}>Structured Data Premium</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1250b2', marginTop: '0.2rem' }}>+42% Conversion</div>
-                  <div style={{ fontSize: '0.72rem', color: 'rgba(30,30,30,0.5)', marginTop: '0.15rem' }}>Clear return policy & size schemas</div>
+                <div className="minimal-grid-mesh-item">
+                  <div className="brutalist-subtitle" style={{ fontSize: '0.62rem' }}>Structured Data Premium</div>
+                  <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff', marginTop: '0.2rem' }}>+42% Conversion</div>
+                  <div className="brutalist-text" style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '0.15rem' }}>Clear return policy & size schemas</div>
                 </div>
               </div>
             </div>
 
             {/* Actionable Insights */}
             {insights?.revenue_insights && insights.revenue_insights.length > 0 && (
-              <div className="card" style={{ padding: '1.5rem' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(30,30,30,0.35)', marginBottom: '0.5rem' }}>Actionable Insights</div>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#032676' }}>AI Revenue Recommendations</h3>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
+                <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[03 // ACTIONABLE INSIGHTS]</div>
+                <h3 className="brutalist-title" style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>AI Revenue Recommendations</h3>
+                <ul className="brutalist-text" style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {insights.revenue_insights.map((ins, idx) => (
-                    <li key={idx} style={{ fontSize: '0.875rem', color: '#1e1e1e', lineHeight: 1.55 }}>{ins}</li>
+                    <li key={idx} style={{ fontSize: '0.875rem', color: '#111111', lineHeight: 1.55 }}>{ins}</li>
                   ))}
                 </ul>
               </div>
             )}
 
             {/* SKU Table */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(30,30,30,0.35)', marginBottom: '0.5rem' }}>SKU Analytics</div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#032676' }}>AI Buyer Acceptance by SKU</h3>
+            <div style={{ padding: '1.75rem 0' }}>
+              <div style={{ padding: '0 1.75rem 1rem 1.75rem' }}>
+                <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[04 // SKU PERFORMANCE METRICS]</div>
+                <h3 className="brutalist-title" style={{ margin: 0, fontSize: '1.25rem' }}>AI Buyer Acceptance by SKU</h3>
+              </div>
               {!insights?.sku_performance || insights.sku_performance.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'rgba(30,30,30,0.35)', background: '#f5f5f5', borderRadius: '8px' }}>
-                  <p style={{ margin: 0, fontSize: '0.875rem' }}>No catalog evaluations logged yet.</p>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem' }}>Run a transaction on the Checkout Cockpit to generate data.</p>
+                <div style={{ margin: '0 1.75rem', textAlign: 'center', padding: '2.5rem 1rem', color: '#71717a', background: '#faf9f6', border: '1px solid #e4e4e7', borderRadius: '2px' }}>
+                  <p className="brutalist-text" style={{ margin: 0, fontSize: '0.875rem' }}>No catalog evaluations logged yet.</p>
+                  <p className="brutalist-text" style={{ margin: '0.25rem 0 0 0', fontSize: '0.78rem' }}>Run a transaction on the Checkout Cockpit to generate data.</p>
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid rgba(1,73,174,0.1)', color: 'rgba(30,30,30,0.4)' }}>
+                      <tr style={{ borderBottom: '1px solid #e4e4e7', background: '#faf9f6' }}>
                         {['SKU Name','Price','Evaluated','Acceptance Rate','Primary Rejection','Recommendation'].map(h => (
-                          <th key={h} style={{ padding: '0.6rem 0.75rem', fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                          <th key={h} className="brutalist-subtitle" style={{ padding: '0.75rem 1.75rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {insights.sku_performance.map(sku => {
-                        const accent = sku.acceptance_rate_percent >= 60 ? '#0149ae' : '#032676';
+                        const accent = sku.acceptance_rate_percent >= 60 ? '#0044ff' : '#111111';
                         return (
-                          <tr key={sku.product_id} style={{ borderBottom: '1px solid rgba(1,73,174,0.07)', transition: 'background 0.15s' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = '#f5f5f5')}
-                            onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                            <td style={{ padding: '0.75rem', fontWeight: 600, color: '#1e1e1e' }}>
+                          <tr key={sku.product_id} style={{ borderBottom: '1px solid #e4e4e7' }}>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem', fontWeight: 600, color: '#111111' }}>
                               {sku.name}
-                              <div style={{ fontSize: '0.65rem', color: 'rgba(30,30,30,0.3)', fontWeight: 400, fontFamily: 'monospace' }}>{sku.product_id}</div>
+                              <div className="brutalist-mono" style={{ fontSize: '0.65rem', color: '#71717a', fontWeight: 400 }}>{sku.product_id}</div>
                             </td>
-                            <td style={{ padding: '0.75rem', color: '#1e1e1e' }}>&#8377;{sku.price.toLocaleString()}</td>
-                            <td style={{ padding: '0.75rem', color: '#1e1e1e' }}>{sku.evaluated_count}</td>
-                            <td style={{ padding: '0.75rem' }}>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem', color: '#111111' }}>&#8377;{sku.price.toLocaleString()}</td>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem', color: '#111111' }}>{sku.evaluated_count}</td>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ fontWeight: 700, color: accent, fontSize: '0.9rem' }}>{sku.acceptance_rate_percent}%</span>
-                                <div className="progress-bar-track" style={{ width: '60px' }}>
-                                  <div className="progress-bar-fill" style={{ width: `${sku.acceptance_rate_percent}%`, background: accent }} />
+                                <span className="brutalist-title" style={{ color: accent, fontSize: '0.9rem' }}>{sku.acceptance_rate_percent}%</span>
+                                <div style={{ height: '6px', width: '60px', background: '#e4e4e7', borderRadius: '2px', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${sku.acceptance_rate_percent}%`, background: accent }} />
                                 </div>
                               </div>
-                              {!sku.has_return_policy && <div style={{ fontSize: '0.63rem', color: '#032676', marginTop: '0.15rem' }}>No return policy</div>}
+                              {!sku.has_return_policy && <div className="brutalist-subtitle" style={{ fontSize: '0.63rem', color: '#ef4444', marginTop: '0.15rem' }}>No return policy</div>}
                             </td>
-                            <td style={{ padding: '0.75rem', color: 'rgba(30,30,30,0.55)', maxWidth: '160px' }}>{sku.primary_rejection_reason}</td>
-                            <td style={{ padding: '0.75rem', color: '#0149ae', fontSize: '0.78rem', maxWidth: '180px', lineHeight: 1.4 }}>{sku.recommendation}</td>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem', color: '#71717a', maxWidth: '160px' }}>{sku.primary_rejection_reason}</td>
+                            <td className="brutalist-text" style={{ padding: '0.75rem 1.75rem', color: '#0044ff', fontSize: '0.78rem', maxWidth: '180px', lineHeight: 1.4 }}>{sku.recommendation}</td>
                           </tr>
                         );
                       })}
@@ -195,43 +222,43 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
           </div>
 
-          {/* Right Column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Right Column Workspace */}
+          <div style={{ background: '#faf9f6', display: 'flex', flexDirection: 'column' }}>
+            
             {/* Spend Ceiling */}
-            <div className="card" style={{ padding: '1.5rem', borderTop: `3px solid ${ceilingSaved ? '#1250b2' : '#0149ae'}`, transition: 'border-color 0.4s' }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(30,30,30,0.35)', marginBottom: '0.5rem' }}>Deterministic Control Plane</div>
-              <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1.05rem', color: '#032676' }}>Spend Ceiling</h3>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.82rem', color: 'rgba(30,30,30,0.45)', lineHeight: 1.5 }}>
-                The maximum unattended spend ceiling enforced by the Decision Agent. The LLM cannot bypass this.
+            <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
+              <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[CONTROL // SPEND CEILING]</div>
+              <h3 className="brutalist-title" style={{ margin: '0 0 0.4rem 0', fontSize: '1.1rem' }}>Spend Ceiling</h3>
+              <p className="brutalist-text" style={{ margin: '0 0 1rem 0', fontSize: '0.82rem', color: '#71717a', lineHeight: 1.5 }}>
+                Enforced by the Decision Agent. Bypassing this ceiling is deterministically blocked.
               </p>
               {ceilingSaved && (
-                <span className="pill pill-success" style={{ marginBottom: '0.75rem', fontSize: '0.75rem', padding: '0.3rem 0.75rem', display: 'inline-flex' }}>
+                <span className="minimal-pill minimal-pill-success" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}>
                   Ceiling updated successfully
                 </span>
               )}
               <form onSubmit={handleUpdateCeiling} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <input type="number" placeholder="e.g. 5000" value={ceiling} onChange={e => setCeiling(Number(e.target.value) || '')} required
-                  style={{ padding: '0.7rem 0.9rem', borderRadius: '6px', border: '1px solid rgba(1,73,174,0.15)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', color: '#1e1e1e', background: '#ffffff' }}
-                  onFocus={e => e.target.style.borderColor = '#0149ae'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(1,73,174,0.15)'} />
-                <button type="submit" className="btn-primary" style={{ padding: '0.7rem', fontSize: '0.9rem' }}>Update Ceiling</button>
+                  className="minimal-input" />
+                <button type="submit" className="minimal-btn minimal-btn-primary" style={{ width: '100%' }}>Update Ceiling</button>
               </form>
             </div>
 
             {/* Escalation Triggers */}
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(30,30,30,0.35)', marginBottom: '0.5rem' }}>Escalation Analysis</div>
-              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem', color: '#032676' }}>Top Escalation Triggers</h3>
+            <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
+              <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[ANALYSIS // ESCALATION TRIGGERS]</div>
+              <h3 className="brutalist-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem' }}>Top Escalations</h3>
               {!insights?.top_escalation_reasons || Object.keys(insights.top_escalation_reasons).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(30,30,30,0.4)' }}>No escalations logged yet.</p>
+                <p className="brutalist-text" style={{ margin: 0, fontSize: '0.82rem', color: '#71717a' }}>No escalations logged yet.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {Object.entries(insights.top_escalation_reasons).map(([reason, count]) => (
-                    <div key={reason} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '6px', background: 'rgba(3,38,118,0.05)', border: '1px solid rgba(3,38,118,0.12)' }}>
-                      <span style={{ fontSize: '0.8rem', color: '#1e1e1e', fontWeight: 500 }}>{reason}</span>
-                      <span className="pill pill-danger">{String(count)}×</span>
+                    <div key={reason} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', background: '#ffffff' }}>
+                      <span className="brutalist-text" style={{ fontSize: '0.8rem', color: '#111111', fontWeight: 500 }}>{reason}</span>
+                      <span className="minimal-pill minimal-pill-danger">{String(count)}×</span>
                     </div>
                   ))}
                 </div>
@@ -239,13 +266,16 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Links */}
-            <div className="card" style={{ padding: '1.25rem' }}>
+            <div style={{ padding: '1.75rem' }}>
+              <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[ACTIONS // CONSOLE]</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button className="btn-primary" onClick={() => navigate('/checkout')} style={{ padding: '0.6rem', fontSize: '0.875rem' }}>Open Checkout Cockpit</button>
-                <button className="btn-ghost" onClick={() => navigate('/history')} style={{ padding: '0.6rem', fontSize: '0.875rem' }}>View Audit Ledger</button>
+                <button className="minimal-btn minimal-btn-primary" onClick={() => navigate('/checkout')} style={{ width: '100%' }}>Open Checkout Cockpit</button>
+                <button className="minimal-btn minimal-btn-ghost" onClick={() => navigate('/history')} style={{ width: '100%' }}>View Audit Ledger</button>
               </div>
             </div>
+
           </div>
+
         </div>
       </div>
     </div>

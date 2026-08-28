@@ -61,6 +61,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["7", "8", "9", "10", "11"],
             "color": "black",
             "review_summary": "4.4 ★ — Customers love the cushioning and durability; minor complaints about narrow fit.",
+            "image_url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.amazon.in/dp/B073RENE001",
         },
         {
             "product_id": "AMZ-002",
@@ -74,6 +76,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL", "XXL"],
             "color": "white",
             "review_summary": "4.5 ★ — Crisp collar, breathable cotton blend.",
+            "image_url": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.amazon.in/dp/B073RENE002",
         }
     ],
     "www.amazon.in": [],  # Will be mapped to amazon.in dynamically below
@@ -90,6 +94,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["7", "8", "9", "10"],
             "color": "black",
             "review_summary": "4.6 ★ — Lightweight with excellent grip; true to size.",
+            "image_url": "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.flipkart.com/p/aero-lite-running-shoes",
         },
         {
             "product_id": "FK-002",
@@ -103,6 +109,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["6", "7", "8", "9", "10"],
             "color": "white",
             "review_summary": "4.1 ★ — Praised for style; some note sole wear after 6 months.",
+            "image_url": "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.flipkart.com/p/urban-step-canvas",
         }
     ],
     "www.flipkart.com": [],
@@ -119,6 +127,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL"],
             "color": "beige",
             "review_summary": "4.6 ★ — Excellent summer shirt, wrinkle-resistant.",
+            "image_url": "https://images.unsplash.com/photo-1589310243389-96a5483213a8?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.myntra.com/shirts/premium-linen-casual",
         },
         {
             "product_id": "MY-002",
@@ -132,6 +142,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL", "XXL"],
             "color": "black",
             "review_summary": "4.6 ★ — Premium stretch black denim, rich color retention.",
+            "image_url": "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.myntra.com/shirts/obsidian-black-denim",
         }
     ],
     "www.myntra.com": [],
@@ -148,6 +160,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["7", "8", "9", "10", "11"],
             "color": "brown",
             "review_summary": "4.2 ★ — Comfortable for daily wear; slight break-in period.",
+            "image_url": "https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.ajio.com/p/classic-leather-loafer",
         },
         {
             "product_id": "AJ-002",
@@ -161,6 +175,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["M", "L", "XL", "XXL"],
             "color": "blue",
             "review_summary": "3.9 ★ — Fun casual style, vibrant print.",
+            "image_url": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.ajio.com/p/casual-printed-shirt",
         }
     ],
     "www.ajio.com": [],
@@ -177,6 +193,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL"],
             "color": "blue",
             "review_summary": "4.3 ★ — Good fabric quality and consistent sizing.",
+            "image_url": "https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.meesho.com/p/slimfit-cotton-polo",
         }
     ],
     "www.meesho.com": [],
@@ -193,6 +211,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["8", "9", "10"],
             "color": "brown",
             "review_summary": "4.7 ★ — Premium leather; excellent build quality.",
+            "image_url": "https://images.unsplash.com/photo-1449505278894-297fdb3edbc1?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.nykaa.com/p/formal-edge-oxford",
         }
     ],
     "www.nykaa.com": [],
@@ -209,6 +229,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["M", "L", "XL", "XXL"],
             "color": "red",
             "review_summary": "4.2 ★ — Great for casual outings, thick flannel.",
+            "image_url": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.zudio.com/p/bold-checks-flannel",
         }
     ],
     "www.zudio.com": [],
@@ -225,6 +247,8 @@ _MOCK_CATALOG: dict[str, list[dict[str, Any]]] = {
             "sizes": ["S", "M", "L", "XL", "XXL"],
             "color": "black",
             "review_summary": "4.8 ★ — Ultra-smooth satin finish black formal shirt.",
+            "image_url": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=400&q=80",
+            "source_url": "https://www.snitch.com/products/midnight-edition-formal-black-shirt",
         }
     ],
     "www.snitch.com": [],
