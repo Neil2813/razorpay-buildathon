@@ -169,13 +169,7 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Audit Status Ticker Cell */}
-      {user && (
-        <div className="brutalist-text" style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderLeft: '1px solid #e4e4e7', fontSize: '0.78rem', color: '#71717a' }}>
-          <span className="minimal-indicator-live" style={{ marginRight: '0.5rem' }} />
-          Console: <strong style={{ color: '#111111', marginLeft: '0.25rem' }}>{user.tenant_id}</strong>
-        </div>
-      )}
+
 
       {/* Right User Controls Cell */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 1.5rem', borderLeft: '1px solid #111111' }}>
