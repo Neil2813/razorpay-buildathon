@@ -20,7 +20,7 @@ except ImportError:
     RunnableConfig = Any
 
 from . import concierge_agent, decision_agent, discovery_agent, ledger_agent, payment_execution_agent, risk_agent
-from .state import TransactionState, new_transaction_state
+from .state import TransactionState, audit_event, new_transaction_state
 
 
 _AGENT_SEQUENCE = ["concierge", "discovery", "negotiation", "risk", "payment", "ledger"]
@@ -56,10 +56,10 @@ def concierge_node(state: TransactionState, config: RunnableConfig) -> dict[str,
 
 
 def discovery_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
-    """Discovery Agent node: multi-source, trust-gated product discovery."""
+    """Discovery Agent node: search the current merchant's catalogue only."""
     if _should_skip_node(state, "discovery"):
         return dict(state)
-    discovery_agent.run(state)
+    discovery_agent.run(state, config.get("configurable", {}).get("catalog", []))
     # discovery_agent sets payment_status="escalated" on trust-warning halt (guided mode).
     # Only set the generic "no results" escalation if NOT already escalated for another reason.
     if (
@@ -99,6 +99,13 @@ def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]
     if product.get("price"):
         transaction["amount"] = float(product["price"])
     risk_agent.run(state, transaction)
+    if not state.get("requires_confirmation") and not state.get("buyer_approved"):
+        audit_event(
+            state,
+            agent="risk",
+            decision_reason="Risk check passed; buyer approval is required before a Razorpay order can be created.",
+            output_summary={"buyer_approval_required": True, "amount": product.get("price")},
+        )
     if state.get("payment_status") != "escalated":
         state["current_agent"] = "risk"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
@@ -169,7 +176,7 @@ def route_after_negotiation(state: TransactionState) -> str:
 
 
 def route_after_risk(state: TransactionState) -> str:
-    if state.get("requires_confirmation") or state.get("payment_status") == "escalated":
+    if state.get("requires_confirmation") or not state.get("buyer_approved") or state.get("payment_status") == "escalated":
         return "ledger"
     return "payment"
 
@@ -246,6 +253,7 @@ def run_transaction(
     # callers that want to pre-seed them without a Concierge turn.
     autonomy_mode: str | None = None,
     requested_sites: list[str] | None = None,
+    buyer_approved: bool = False,
     on_checkpoint: Callable[[TransactionState], None] | None = None,
 ) -> TransactionState:
     """Run a purchase request through the compiled LangGraph StateGraph."""
@@ -271,6 +279,12 @@ def run_transaction(
             state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
         if requested_sites:
             state["requested_sites"] = requested_sites
+        if buyer_approved:
+            # Approval resumes the already selected SKU.  Earlier nodes are
+            # skipped, preventing a changed prompt from changing the amount.
+            state["buyer_approved"] = True
+            state["current_agent"] = "risk"
+            state["payment_status"] = "pending"
     else:
         state = new_transaction_state(
             tenant_id=tenant_id, user_message=user_message, session_id=session_id
@@ -279,6 +293,7 @@ def run_transaction(
             state["autonomy_mode"] = autonomy_mode  # type: ignore[assignment]
         if requested_sites:
             state["requested_sites"] = requested_sites
+        state["buyer_approved"] = buyer_approved
 
     event_index = len(state.get("audit_log", []))
 
@@ -314,7 +329,7 @@ def run_transaction(
         checkpoint(state)
         return state
     if state["current_agent"] == "concierge":
-        discovery_agent.run(state)   # replaces: catalog_agent.run(state, catalog)
+        discovery_agent.run(state, list(catalog))
         checkpoint(state)
     # Trust-warning halt — guided mode, awaiting user response.
     if state["current_agent"] == "discovery" and state.get("payment_status") == "escalated":
@@ -331,7 +346,7 @@ def run_transaction(
     if state["current_agent"] == "negotiation":
         risk_agent.run(state, transaction)
         checkpoint(state)
-    if state["current_agent"] == "risk" and state.get("requires_confirmation"):
+    if state["current_agent"] == "risk" and (state.get("requires_confirmation") or not state.get("buyer_approved")):
         ledger_agent.finalize(state)
         checkpoint(state)
         return state

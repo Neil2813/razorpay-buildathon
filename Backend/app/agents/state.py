@@ -54,6 +54,9 @@ class TransactionState(TypedDict, total=False):
     audit_log: list[dict[str, Any]]
     current_agent: str
     requires_confirmation: bool
+    buyer_approved: bool
+    razorpay_order_id: str | None
+    razorpay_key_id: str | None
 
 
 def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str | None = None) -> TransactionState:
@@ -83,6 +86,7 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         audit_log=[],
         current_agent="",
         requires_confirmation=False,
+        buyer_approved=False,
     )
 
 

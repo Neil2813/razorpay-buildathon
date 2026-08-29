@@ -591,12 +591,39 @@ def _run_autonomous(state: TransactionState) -> TransactionState:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def run(state: TransactionState) -> TransactionState:
-    """Route to the appropriate discovery mode based on autonomy_mode."""
-    mode = state.get("autonomy_mode")
-    if mode == "guided":
-        return _run_guided(state)
-    elif mode == "autonomous":
+def run(state: TransactionState, merchant_catalog: list[dict[str, Any]] | None = None) -> TransactionState:
+    """Discover only products which the current merchant can actually sell.
+
+    GLASSBOX is a merchant checkout, not a browser automation layer for other
+    retailers.  A tenant-scoped catalogue is therefore authoritative.  The
+    legacy web-discovery paths remain available for backwards-compatible demos
+    only when no catalogue was supplied.
+    """
+    if merchant_catalog is None:
         return _run_autonomous(state)
-    else:
-        return _run_autonomous(state)
+
+    intent = state.get("intent", {})
+    candidates = _rank_and_explain(
+        [dict(product) for product in merchant_catalog if _qualifies(product, intent)],
+        intent,
+    )
+    for candidate in candidates:
+        candidate["source_site"] = "merchant_catalog"
+        candidate["source_url"] = None
+        candidate["has_return_policy"] = bool(candidate.get("return_policy"))
+        candidate["has_delivery_time"] = candidate.get("delivery_time_days") is not None
+
+    state["sites_rejected_count"] = 0
+    state["discovered_candidates"] = candidates
+    state["catalog_candidates"] = candidates
+    audit_event(
+        state,
+        agent="discovery",
+        decision_reason=(
+            f"Merchant catalogue search complete: found {len(candidates)} transactable item(s)."
+            if candidates else "Merchant catalogue search complete: no in-stock item matched the buyer's requirements."
+        ),
+        inputs_summary={"tenant_id": state.get("tenant_id"), "intent": intent, "catalogue_scope": "merchant_owned"},
+        output_summary={"candidate_count": len(candidates), "discovered_candidates": candidates},
+    )
+    return state

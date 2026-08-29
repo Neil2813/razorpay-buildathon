@@ -31,6 +31,10 @@ class RunTransactionRequest(BaseModel):
         default=None,
         description="Target site URLs or domains for guided mode.",
     )
+    buyer_approved: bool = Field(
+        default=False,
+        description="Explicit approval for the already selected merchant SKU and its exact amount.",
+    )
 
 
 class AuditEventResponse(BaseModel):
@@ -40,6 +44,13 @@ class AuditEventResponse(BaseModel):
     decision_reason: str
     inputs_summary: dict[str, Any]
     output_summary: dict[str, Any]
+
+
+class VerifyPaymentRequest(BaseModel):
+    session_id: str
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
 
 
 class TransactionResponse(BaseModel):
@@ -63,3 +74,6 @@ class TransactionResponse(BaseModel):
     site_trust_results: list[dict[str, Any]] = []
     trust_override: bool = False
     sites_rejected_count: int = 0
+    buyer_approved: bool = False
+    razorpay_order_id: str | None = None
+    razorpay_key_id: str | None = None

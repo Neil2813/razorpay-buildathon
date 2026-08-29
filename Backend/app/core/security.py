@@ -43,6 +43,12 @@ def verify_razorpay_signature(payload_bytes: bytes, signature_header: str, webho
     return hmac.compare_digest(expected_signature, signature_header)
 
 
+def verify_razorpay_payment_signature(*, order_id: str, payment_id: str, signature: str, key_secret: str) -> bool:
+    """Verify Standard Checkout's browser callback against the server order."""
+    expected = hmac.new(key_secret.encode("utf-8"), f"{order_id}|{payment_id}".encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+
 def is_private_ip(ip_str: str) -> bool:
     """
     Check whether an IP address string falls within any blocked/private network range.

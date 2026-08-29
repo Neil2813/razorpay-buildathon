@@ -62,7 +62,8 @@ class RazorpayGateway:
         Create a Razorpay order in test mode.
 
         Razorpay amount is in paise (1 INR = 100 paise).
-        Returns a normalized dict: {'status': 'success'|'failed', 'payment_id': str, 'reason': str}
+        Returns a payment order, not a successful payment.  The browser must
+        complete Razorpay Checkout and the server must verify its signature.
         """
         amount_paise = int(amount * 100)
         payload = {
@@ -77,9 +78,10 @@ class RazorpayGateway:
             rp_status = response.get("status", "")
             if order_id and rp_status in ("created", "paid"):
                 return {
-                    "status": "success",
+                    "status": "order_created",
                     "payment_id": order_id,
-                    "reason": f"Order created in Razorpay test-mode. Status: {rp_status}",
+                    "key_id": self.key_id,
+                    "reason": f"Razorpay order created in test mode. Status: {rp_status}",
                 }
             return {
                 "status": "failed",

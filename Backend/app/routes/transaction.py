@@ -21,7 +21,9 @@ from app.agents import (
     ledger_agent, merchant_insights_agent, payment_execution_agent, risk_agent, site_trust_agent,
 )
 from app.agents.orchaestartor_langgraph import run_transaction
-from app.agents.state import TransactionState, new_transaction_state
+from app.agents.state import TransactionState, audit_event, new_transaction_state
+from app.core.config import settings
+from app.core.security import verify_razorpay_payment_signature
 from app.auth.deps import get_current_user
 from app.core.razorpay_gateway import get_gateway
 from app.db.database import (
@@ -29,7 +31,7 @@ from app.db.database import (
 )
 
 
-from app.schemas.transaction import RunTransactionRequest, TransactionResponse
+from app.schemas.transaction import RunTransactionRequest, TransactionResponse, VerifyPaymentRequest
 
 router = APIRouter(prefix="/transaction", tags=["Transaction Orchestrator"])
 
@@ -120,6 +122,7 @@ def _run_with_streaming(
         ledger=ledger,
         autonomy_mode=request.autonomy_mode,
         requested_sites=request.requested_sites,
+        buyer_approved=request.buyer_approved,
         on_checkpoint=checkpoint_and_broadcast,
     )
     return state
@@ -173,6 +176,9 @@ async def run_transaction_endpoint(
         site_trust_results=state.get("site_trust_results", []),
         trust_override=state.get("trust_override", False),
         sites_rejected_count=state.get("sites_rejected_count", 0),
+        buyer_approved=state.get("buyer_approved", False),
+        razorpay_order_id=state.get("razorpay_order_id"),
+        razorpay_key_id=state.get("razorpay_key_id"),
     )
 
 
@@ -214,7 +220,28 @@ async def get_transaction(
         site_trust_results=state.get("site_trust_results", []),
         trust_override=state.get("trust_override", False),
         sites_rejected_count=state.get("sites_rejected_count", 0),
+        buyer_approved=state.get("buyer_approved", False),
+        razorpay_order_id=state.get("razorpay_order_id"),
+        razorpay_key_id=state.get("razorpay_key_id"),
     )
+
+
+@router.post("/verify-payment", response_model=TransactionResponse, summary="Verify Razorpay Checkout payment")
+async def verify_payment(body: VerifyPaymentRequest, current_user: dict = Depends(get_current_user)):
+    tenant_id = _resolve_tenant_id(None, current_user)
+    state = load_transaction_checkpoint(body.session_id, tenant_id)
+    if not state or state.get("razorpay_order_id") != body.razorpay_order_id:
+        raise HTTPException(status_code=404, detail="Approved Razorpay order was not found for this buyer session.")
+    if not verify_razorpay_payment_signature(
+        order_id=state["razorpay_order_id"], payment_id=body.razorpay_payment_id,
+        signature=body.razorpay_signature, key_secret=settings.RAZORPAY_KEY_SECRET,
+    ):
+        raise HTTPException(status_code=400, detail="Payment verification failed. The order will not be fulfilled.")
+    if state.get("payment_status") != "success":
+        state["payment_status"] = "success"
+        audit_event(state, agent="payment", decision_reason="Razorpay Checkout signature verified; merchant order is eligible for fulfilment.", output_summary={"order_id": state["razorpay_order_id"], "payment_id": body.razorpay_payment_id, "payment_verified": True})
+        checkpoint_transaction(state, from_event_index=len(state.get("audit_log", [])) - 1)
+    return TransactionResponse(**{key: state.get(key) for key in TransactionResponse.model_fields})
 
 
 @router.get(

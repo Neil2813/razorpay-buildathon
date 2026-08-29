@@ -25,8 +25,8 @@ def prepare_idempotency_key(state: TransactionState) -> str:
 def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "INR",
         before_first_charge: Callable[[TransactionState], None] | None = None,
         after_attempt: Callable[[TransactionState], None] | None = None) -> TransactionState:
-    """Try once plus exactly one retry; never charge after an escalation."""
-    if not state.get("guardrail_passed") or state.get("requires_confirmation"):
+    """Create one approved Razorpay order; payment succeeds only after verification."""
+    if not state.get("guardrail_passed") or state.get("requires_confirmation") or not state.get("buyer_approved"):
         state["payment_status"] = "escalated"
         audit_event(state, agent="payment", decision_reason="Payment blocked by deterministic guardrail or confirmation requirement.")
         return state
@@ -55,9 +55,11 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": status, "reason": result.get("reason"), "payment_id": result.get("payment_id")})
             if after_attempt:
                 after_attempt(state)
-            if status == "success":
-                state["payment_status"] = "success"
-                audit_event(state, agent="payment", decision_reason="Gateway charge succeeded.", output_summary={"attempts": attempt_number, "payment_id": result.get("payment_id"), "idempotency_key_present": True})
+            if status == "order_created":
+                state["payment_status"] = "pending"
+                state["razorpay_order_id"] = result.get("payment_id")
+                state["razorpay_key_id"] = result.get("key_id")
+                audit_event(state, agent="payment", decision_reason="Approved amount locked in a Razorpay order; awaiting buyer checkout and server-side signature verification.", output_summary={"attempts": attempt_number, "order_id": result.get("payment_id"), "idempotency_key_present": True, "payment_verified": False})
                 return state
         except Exception as exc:
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})
