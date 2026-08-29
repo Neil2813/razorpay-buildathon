@@ -343,10 +343,10 @@ export default function CheckoutPage() {
   const [isRunning, setIsRunning] = useState(false);
 
   const [_auditLog, setAuditLog] = useState<AuditEvent[]>([]);
-  const [_paymentStatus, setPaymentStatus] = useState<string>('pending');
+  const [paymentStatus, setPaymentStatus] = useState<string>('pending');
   const [_escalationMessage, setEscalationMessage] = useState<string | null>(null);
   const [_guardrailCeiling, setGuardrailCeiling] = useState<number | undefined>(undefined);
-  const [_chosenProduct, setChosenProduct] = useState<Record<string, any> | null>(null);
+  const [chosenProduct, setChosenProduct] = useState<Record<string, any> | null>(null);
   const [_riskScore, setRiskScore] = useState<number | null>(null);
   const [_riskFeatures, setRiskFeatures] = useState<Record<string, any> | null>(null);
   const [trustOverrideActive, setTrustOverrideActive] = useState<boolean>(false);
@@ -504,7 +504,7 @@ export default function CheckoutPage() {
     return () => ws.close();
   }, [sessionId]);
 
-  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, siteOverride?: string, buyerApproved = false) => {
+  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, _siteOverride?: string, buyerApproved = false) => {
     const query = queryOverride || input;
     if (!query.trim() || isRunning) return;
 
