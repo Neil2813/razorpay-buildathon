@@ -129,6 +129,13 @@ def seed_db():
         """, products)
         print("[seed] Seeded 4 products into catalog.")
 
+    # Ratings make the demo catalogue genuinely agent-readable for rating
+    # constraints, including on databases created before the rating field.
+    cursor.executemany(
+        "UPDATE catalog SET rating = ? WHERE product_id = ? AND rating IS NULL;",
+        [(4.5, "prod_shoes_01"), (4.2, "prod_shoes_02"), (4.8, "prod_shoes_03"), (4.4, "prod_shirt_01")],
+    )
+
     conn.commit()
     conn.close()
     print("[seed] Seeding completed successfully.")

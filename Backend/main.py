@@ -28,7 +28,11 @@ async def lifespan(app: FastAPI):
     """Pre-load ML model during startup for zero cold-start latency."""
     print("[startup] Initializing database...")
     from app.db.database import init_db
+    from app.db.seed import seed_db
     init_db()
+    # Give the demo merchant a transactable catalogue on a fresh install.
+    # seed_db is idempotent and leaves an existing merchant catalogue intact.
+    seed_db()
     
     print("[startup] Pre-loading risk model...")
     try:

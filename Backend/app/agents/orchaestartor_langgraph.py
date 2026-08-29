@@ -96,8 +96,12 @@ def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]
     """Risk Agent node: ML risk evaluation & threshold check."""
     if _should_skip_node(state, "risk"):
         return dict(state)
-    transaction = config.get("configurable", {}).get("transaction", {})
     product = state.get("chosen_product") or {}
+    # Discovery may have stopped with no eligible SKU.  A risk score for a
+    # non-existent ₹0 purchase is misleading and must never be shown.
+    if not product:
+        return dict(state)
+    transaction = config.get("configurable", {}).get("transaction", {})
     if product.get("price"):
         transaction["amount"] = float(product["price"])
     risk_agent.run(state, transaction)

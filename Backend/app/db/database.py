@@ -91,6 +91,7 @@ def init_db():
         in_stock INTEGER NOT NULL DEFAULT 1, -- boolean 0/1
         return_policy TEXT, -- policy text (missing policy leads to rejection stats)
         delivery_time_days INTEGER NOT NULL,
+        rating REAL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
     );
@@ -119,6 +120,10 @@ def init_db():
         cursor.execute("ALTER TABLE transactions ADD COLUMN idempotency_key TEXT;")
     if "state_json" not in transaction_columns:
         cursor.execute("ALTER TABLE transactions ADD COLUMN state_json TEXT NOT NULL DEFAULT '{}';")
+
+    catalog_columns = {row[1] for row in cursor.execute("PRAGMA table_info(catalog);")}
+    if "rating" not in catalog_columns:
+        cursor.execute("ALTER TABLE catalog ADD COLUMN rating REAL;")
 
     # 5. Audit Events Table
     cursor.execute("""
@@ -261,7 +266,7 @@ def query_catalog(tenant_id: str) -> list[dict[str, Any]]:
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT product_id, tenant_id, name, description, price, category, color, sizes, in_stock, return_policy, delivery_time_days
+        SELECT product_id, tenant_id, name, description, price, category, color, sizes, in_stock, return_policy, delivery_time_days, rating
         FROM catalog
         WHERE tenant_id = ?;
         """,

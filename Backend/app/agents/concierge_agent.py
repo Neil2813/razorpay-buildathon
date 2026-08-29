@@ -46,7 +46,9 @@ _PARAM_LABELS: dict[str, str] = {
 }
 
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "size", "min_rating", "requested_sites"]
-_AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min", "min_rating"]
+# In autonomous mode, only the item category and maximum budget are needed.
+# Colour, size and rating are optional filters when the buyer supplies them.
+_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_max"]
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +58,10 @@ _AUTONOMOUS_REQUIRED: list[str] = ["size", "color", "budget_max", "budget_min", 
 _CURRENCY_RE = re.compile(
     r"(?:₹|rs\.?|inr|under|below|max|budget|ceiling|upto|up to)\s*(?:price|cost|amount)?\s*([\d,]+(?:\.\d+)?)"
     r"|([\d,]+(?:\.\d+)?)\s*(?:inr|rs\.?|rupees)",
+    re.I,
+)
+_MAX_BUDGET_RE = re.compile(
+    r"(?:under|below|max(?:imum)?|budget|ceiling|upto|up\s+to)\s*(?:price|cost|amount)?\s*(?:₹|rs\.?\s*|inr\s*)?([\d,]+(?:\.\d+)?)",
     re.I,
 )
 _CURRENCY_RANGE_RE = re.compile(
@@ -69,7 +75,7 @@ _FLOOR_RE = re.compile(
 _SIZE_RE = re.compile(r"\b(?:size\s*)?(xxs|xs|s|m|l|xl|xxl|\d{1,2})\b", re.I)
 _RATING_RE = re.compile(
     r"(?:min(?:imum)?\s*)?(?:rating|rated|stars?)\s*(?:of\s*)?([\d.]+)"
-    r"|([\d.]+)\s*(?:star|★|rating)",
+    r"|([\d.]+)\s*(?:-|\s)*(?:star|★|rating)",
     re.I,
 )
 _BRAND_RE = re.compile(
@@ -157,7 +163,9 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
             budget_min, budget_max = sorted([v1, v2])
 
     if budget_max is None and not floor_match:
-        max_match = _CURRENCY_RE.search(text)
+        # Prefer an explicit maximum phrase; it handles both "under ₹4,000"
+        # and "max 4000" without the currency marker splitting the match.
+        max_match = _MAX_BUDGET_RE.search(text) or _CURRENCY_RE.search(text)
         if max_match:
             val_str = max_match.group(1) or max_match.group(2)
             budget_max = _extract_number(val_str)
@@ -234,12 +242,12 @@ def _build_clarification_message(missing: list[str]) -> str:
     """Build a friendly, ordered clarification prompt for the missing params."""
     if len(missing) == 1:
         label = _PARAM_LABELS.get(missing[0], missing[0])
-        return f"Just one more thing — could you tell me your **{label}**?"
+        return f"Just one more thing: please provide your {label}."
     lines = ["I still need a few details before I search:"]
     for i, key in enumerate(missing, 1):
         label = _PARAM_LABELS.get(key, key)
-        lines.append(f"  {i}. **{label}**")
-    lines.append("\nPlease reply with these details and I'll get searching right away! 🔍")
+        lines.append(f"  {i}. {label}")
+    lines.append("Please reply with these details and I’ll start the search.")
     return "\n".join(lines)
 
 
@@ -367,8 +375,8 @@ def run(state: TransactionState) -> TransactionState:
             else:
                 intent["needs_clarification"] = True
                 intent["clarification_reason"] = (
-                    "Would you like to run in **Autonomous Mode** (let me find & buy automatically) "
-                    "or **Guided Mode** (tell me which site to check)? "
+                    "Would you like Autonomous Mode (let me find the best merchant SKU) "
+                    "or Buyer Guided Mode (you steer the recommendation)? "
                     "Please select your preferred mode below."
                 )
                 intent["missing_parameters"] = ["autonomy_mode"]
