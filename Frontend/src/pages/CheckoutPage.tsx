@@ -338,7 +338,7 @@ export default function CheckoutPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'guided'>('autonomous');
-  const [requestedSitesInput, setRequestedSitesInput] = useState('');
+  const [buyerApproved, setBuyerApproved] = useState(false);
   const [sessionId, setSessionId] = useState(() => `sess_${Math.random().toString(36).substring(2, 9)}`);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -509,9 +509,7 @@ export default function CheckoutPage() {
     if (!query.trim() || isRunning) return;
 
     const modeToUse = forceMode !== undefined ? forceMode : (autonomyMode ?? 'autonomous');
-    const sitesToUse = siteOverride !== undefined
-      ? (siteOverride ? [siteOverride] : null)
-      : (requestedSitesInput.trim() ? [requestedSitesInput.trim()] : null);
+    const sitesToUse = null; // External retailer sites are intentionally out of scope.
 
     // Append user message. On clarification turns (queryOverride set), keep prior agent messages.
     // On fresh top-level sends, keep only prior user messages (wipe stale agent cards).
@@ -548,6 +546,7 @@ export default function CheckoutPage() {
         if (data.risk_score !== undefined) setRiskScore(data.risk_score);
         if (data.risk_features) setRiskFeatures(data.risk_features);
         if (data.audit_log) setAuditLog(data.audit_log);
+        setBuyerApproved(Boolean(data.buyer_approved));
         if (data.trust_override) setTrustOverrideActive(true);
 
         if (data.razorpay_order_id && data.razorpay_key_id && buyerApproved) {
@@ -786,6 +785,7 @@ export default function CheckoutPage() {
     setPaymentStatus('pending');
     setEscalationMessage(null);
     setTrustOverrideActive(false);
+    setBuyerApproved(false);
   };
 
   return (
@@ -856,7 +856,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {chosenProduct && paymentStatus === 'pending' && !isRunning && (
+          {chosenProduct && paymentStatus === 'pending' && !buyerApproved && !isRunning && (
             <div>
               <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
                 [03 // PAYMENT APPROVAL]
@@ -1312,23 +1312,6 @@ export default function CheckoutPage() {
               </>
             )}
           </div>
-
-          {/* Guided Mode Site Input Bar */}
-          {autonomyMode === 'guided' && (
-            <div style={{ padding: '0.5rem 1.1rem', background: '#faf9f6', borderTop: '1px solid #e4e4e7', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Globe size={15} color="#0044ff" />
-              <span className="brutalist-subtitle" style={{ color: '#0044ff', fontSize: '0.75rem' }}>Target Site:</span>
-              <input
-                type="text"
-                placeholder="e.g. myntra.com"
-                value={requestedSitesInput}
-                onChange={e => setRequestedSitesInput(e.target.value)}
-                disabled={isRunning}
-                className="minimal-input"
-                style={{ flex: 1, padding: '0.35rem 0.75rem', fontSize: '0.82rem' }}
-              />
-            </div>
-          )}
 
           {/* Input Bar */}
           <div style={{ padding: '0.85rem 1.1rem', borderTop: '1px solid #e4e4e7', background: '#ffffff' }}>

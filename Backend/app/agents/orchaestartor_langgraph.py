@@ -268,6 +268,10 @@ def run_transaction(
         # Successful transactions are terminal durable checkpoints.
         if state.get("payment_status") == "success":
             return state
+        # A Razorpay order is immutable. Re-opening Checkout must reuse it,
+        # never create a second order for the same approved merchant SKU.
+        if buyer_approved and state.get("razorpay_order_id"):
+            return state
 
         is_clarification = state.get("payment_status") == "escalated"
         state["user_message"] = user_message
