@@ -218,7 +218,7 @@ export default function DashboardPage() {
     );
   }
 
-  const aiGap = insights ? insights.acceptance_rate_with_policy_pct - insights.acceptance_rate_without_policy_pct : 0;
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
@@ -369,7 +369,6 @@ export default function DashboardPage() {
                           {insights.conversion_funnel.map((stage, i) => {
                             const maxPct = 100;
                             const pct = stage.pct;
-                            const isGood = pct >= 70;
                             const barColor = i === 0 ? '#0044ff' : pct >= 60 ? '#059669' : pct >= 30 ? '#f59e0b' : '#ef4444';
                             return (
                               <div key={i} style={{ display: 'grid', gridTemplateColumns: '220px 1fr 60px', gap: '0.75rem', alignItems: 'center' }}>

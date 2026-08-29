@@ -193,6 +193,9 @@ async def run_transaction_endpoint(
         fulfilment=state.get("fulfilment"),
         upsell_offer=state.get("upsell_offer"),
     )
+
+
+@router.get(
     "/{session_id}",
     response_model=TransactionResponse,
     summary="Replay Transaction",
