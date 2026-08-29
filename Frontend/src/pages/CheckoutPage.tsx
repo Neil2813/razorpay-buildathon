@@ -378,15 +378,6 @@ export default function CheckoutPage() {
           output_summary: data.output_summary,
         }]);
 
-        let riskData: RiskFeaturesData | undefined;
-        let guardrailData: Message['guardrailData'];
-        let paymentAttempts: PaymentAttempt[] | undefined;
-        let candidates: Message['candidates'];
-        let siteTrustData: Message['siteTrustData'];
-        let trustWarningPrompt: Message['trustWarningPrompt'];
-        let sitesRejectedCount: number | undefined;
-        let missingParams: MissingParam[] | undefined;
-
         if (data.output_summary?.trust_override) {
           setTrustOverrideActive(true);
         }
@@ -394,62 +385,24 @@ export default function CheckoutPage() {
         // Check for missing parameters (clarification required)
         if (data.agent === 'concierge' && data.output_summary?.missing_parameters?.length > 0) {
           const missing: string[] = data.output_summary.missing_parameters;
-          if (missing.includes('autonomy_mode')) {
-            missingParams = [{ key: 'autonomy_mode', label: 'Execution Mode', inputType: 'select' }];
-          } else {
-            const mode = data.inputs_summary?.mode || autonomyMode || 'autonomous';
-            const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
-            missingParams = allParams.filter(p => missing.includes(p.key));
-          }
           setAwaitingClarification(true);
         }
 
-        if (data.agent === 'site_trust' && data.output_summary) {
-          const s = data.output_summary;
-          siteTrustData = { site: s.site || 'candidate site', status: s.status, reason: s.reason, trustOverride: s.user_overrode_trust_warning || s.trust_override };
-        } else if ((data.agent === 'discovery' || data.agent === 'catalog') && data.output_summary) {
-          if (data.output_summary.candidates || data.output_summary.discovered_candidates) {
-            candidates = data.output_summary.discovered_candidates || data.output_summary.candidates;
-          }
-          if (data.output_summary.sites_rejected_count) {
-            sitesRejectedCount = data.output_summary.sites_rejected_count;
-          }
-          if (candidates?.length) setAwaitingClarification(false);
+        if ((data.agent === 'discovery' || data.agent === 'catalog') && data.output_summary) {
+          if (data.output_summary.candidates?.length || data.output_summary.discovered_candidates?.length) setAwaitingClarification(false);
         } else if (data.agent === 'risk' && data.output_summary) {
           const s = data.output_summary;
           setRiskScore(s.risk_score);
           setRiskFeatures({ top_features: s.top_features, model: s.model_source, explanation: s.explanation });
-          riskData = { risk_score: s.risk_score ?? 0.01, risk_level: s.risk_level, threshold: s.threshold ?? 0.8, top_features: s.top_features || [], explanation: s.explanation, model: s.model_source === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble' };
         } else if (data.agent === 'negotiation' && data.output_summary) {
           const s = data.output_summary;
           setGuardrailCeiling(s.ceiling);
           if (s.product_id) setChosenProduct({ product_id: s.product_id, price: s.price });
-          guardrailData = { ceiling: s.ceiling || 5000, price: s.price || 0, passed: s.guardrail_passed !== false, productName: s.product_id };
-        } else if (data.agent === 'payment' && data.output_summary?.payment_attempts) {
-          paymentAttempts = data.output_summary.payment_attempts;
         }
 
-        if (data.decision_reason && (data.decision_reason.includes('safety check') || data.decision_reason.includes('untrusted'))) {
-          trustWarningPrompt = {
-            site: data.output_summary?.site || data.inputs_summary?.requested_sites?.[0] || 'amaz0n-deals.com',
-            reason: data.decision_reason,
-          };
-        }
-
-        setMessages((prev: Message[]) => [...prev, {
-          role: 'agent',
-          agent: currentAgentKey,
-          content: data.decision_reason,
-          candidates,
-          siteTrustData,
-          trustWarningPrompt,
-          sitesRejectedCount,
-          riskData,
-          guardrailData,
-          paymentAttempts,
-          missingParams,
-          clarificationMode: data.inputs_summary?.mode || autonomyMode,
-        }]);
+        // REST renders one durable, rich summary after the run completes.
+        // WebSocket events are deliberately state-only so the same
+        // clarification card never appears twice.
       } else if (data.type === 'transaction_complete') {
         setActiveAgent('ledger');
         setCompletedAgents(['concierge', 'site_trust', 'discovery', 'negotiation', 'risk', 'payment']);
@@ -463,12 +416,8 @@ export default function CheckoutPage() {
         if (data.state.audit_log) setAuditLog(data.state.audit_log);
         if (data.state.trust_override) setTrustOverrideActive(true);
 
-        // If escalated on clarification, keep awaitingClarification and skip generic ledger complete banner
-        const isParamHalt = data.state.payment_status === 'escalated' &&
-          (data.state.intent?.needs_clarification ||
-           (data.state.escalation_message || '').includes('detail') ||
-           (data.state.escalation_message || '').includes('search') ||
-           (data.state.escalation_message || '').includes('mode'));
+        // A missing detail is a normal pause, not an escalation.
+        const isParamHalt = Boolean(data.state.intent?.needs_clarification);
 
         if (isParamHalt) {
           setAwaitingClarification(true);
@@ -477,27 +426,8 @@ export default function CheckoutPage() {
 
         setAwaitingClarification(false);
 
-        let finalRiskData: RiskFeaturesData | undefined;
-        if (data.state?.risk_features) {
-          const rf = data.state.risk_features;
-          finalRiskData = { risk_score: data.state.risk_score ?? 0, top_features: rf.top_features || [], explanation: rf.explanation, model: rf.model || 'XGBoost+LightGBM Hybrid Ensemble' };
-        }
-
-        const isTrustHalt = data.state.payment_status === 'escalated' && (data.state.escalation_message || '').includes('safety check');
-
-        setMessages((prev: Message[]) => [...prev, {
-          role: 'agent',
-          agent: 'ledger',
-          content: isTrustHalt
-            ? `Transaction paused on Site Trust Warning — awaiting user action (Restart or Continue with trust_override).`
-            : `Transaction complete: ${data.state.payment_status.toUpperCase()}${data.state.escalation_message ? ` — ${data.state.escalation_message}` : ''}`,
-          trustWarningPrompt: isTrustHalt ? {
-            site: data.state.site_trust_results?.[0]?.site || 'requested site',
-            reason: data.state.escalation_message || 'Site failed safety check: Typosquatting / domain age flag',
-          } : undefined,
-          riskData: finalRiskData,
-          paymentAttempts: data.state.payment_attempts,
-        }]);
+        // The REST response owns transcript rendering; see the agent-event
+        // branch above for why we avoid duplicate WebSocket transcript cards.
       }
     };
     wsRef.current = ws;

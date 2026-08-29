@@ -45,7 +45,9 @@ def concierge_node(state: TransactionState, config: RunnableConfig) -> dict[str,
         return dict(state)
     concierge_agent.run(state)
     if state.get("intent", {}).get("needs_clarification"):
-        state["payment_status"] = "escalated"
+        # Clarification is a normal waiting state, never a failed or
+        # escalated money action. No payment node is reachable from this edge.
+        state["payment_status"] = "pending"
         state["escalation_message"] = state["intent"].get("clarification_reason")
     else:
         state["current_agent"] = "concierge"
@@ -273,7 +275,7 @@ def run_transaction(
         if buyer_approved and state.get("razorpay_order_id"):
             return state
 
-        is_clarification = state.get("payment_status") == "escalated"
+        is_clarification = bool(state.get("intent", {}).get("needs_clarification"))
         state["user_message"] = user_message
         state["payment_status"] = "pending"
         state["escalation_message"] = None
@@ -327,7 +329,7 @@ def run_transaction(
         concierge_agent.run(state)
         checkpoint(state)
     if state["current_agent"] == "concierge" and state["intent"].get("needs_clarification"):
-        state["payment_status"] = "escalated"
+        state["payment_status"] = "pending"
         state["escalation_message"] = state["intent"]["clarification_reason"]
         ledger_agent.finalize(state)
         checkpoint(state)
