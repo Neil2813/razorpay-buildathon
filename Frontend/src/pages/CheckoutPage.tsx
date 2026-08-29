@@ -6,6 +6,10 @@ import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureCha
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
+declare global {
+  interface Window { Razorpay?: new (options: Record<string, unknown>) => { open: () => void }; }
+}
+
 interface PaymentAttempt { attempt: number; timestamp: string; status: string; reason?: string; }
 
 interface DiscoveredCandidate {
@@ -75,7 +79,6 @@ const GUIDED_PARAMS: MissingParam[] = [
   { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
   { key: 'min_rating', label: 'Minimum Rating (out of 5)', inputType: 'select', options: ['any', '3', '3.5', '4', '4.5'] },
-  { key: 'requested_sites', label: 'Website to Shop From', inputType: 'text', placeholder: 'e.g. myntra.com' },
 ];
 
 const AUTONOMOUS_PARAMS: MissingParam[] = [
@@ -108,10 +111,10 @@ function LiveAgentProgress() {
       </div>
       <div className="brutalist-text" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: '#111111' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#0044ff' }}>
-          <Globe size={13} /> Discovery Agent Triggered: Searching catalogs & live web…
+          <Globe size={13} /> Discovery Agent Triggered: Searching this merchant's catalogue…
         </div>
         <div style={{ fontSize: '0.72rem', color: '#71717a', paddingLeft: '1.2rem', lineHeight: 1.4 }}>
-          Evaluating candidates against spend guardrails, deterministic site trust, and ML risk model…
+          Evaluating merchant SKUs against budget guardrails, availability, and the risk model…
         </div>
       </div>
     </div>
@@ -501,7 +504,7 @@ export default function CheckoutPage() {
     return () => ws.close();
   }, [sessionId]);
 
-  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, siteOverride?: string) => {
+  const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, siteOverride?: string, buyerApproved = false) => {
     const query = queryOverride || input;
     if (!query.trim() || isRunning) return;
 
@@ -533,6 +536,7 @@ export default function CheckoutPage() {
         force_payment_fail: false,
         autonomy_mode: modeToUse,
         requested_sites: sitesToUse,
+        buyer_approved: buyerApproved,
       });
 
       const data = res;
@@ -545,6 +549,34 @@ export default function CheckoutPage() {
         if (data.risk_features) setRiskFeatures(data.risk_features);
         if (data.audit_log) setAuditLog(data.audit_log);
         if (data.trust_override) setTrustOverrideActive(true);
+
+        if (data.razorpay_order_id && data.razorpay_key_id && buyerApproved) {
+          if (data.razorpay_key_id === 'rzp_test_mock_key') {
+            setMessages((prev: Message[]) => [...prev, { role: 'agent', agent: 'payment', content: 'Razorpay test credentials are not configured. Add a real rzp_test key and secret to open test Checkout.' }]);
+          } else {
+            const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+            if (!existing) {
+              await new Promise<void>((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                script.onload = () => resolve(); script.onerror = () => reject(new Error('Unable to load Razorpay Checkout.'));
+                document.body.appendChild(script);
+              });
+            }
+            const checkout = new window.Razorpay!({
+              key: data.razorpay_key_id, amount: Math.round(Number(data.chosen_product.price) * 100), currency: 'INR',
+              name: 'GLASSBOX Merchant', description: data.chosen_product.name, order_id: data.razorpay_order_id,
+              prefill: { email: user?.email },
+              handler: async (payment: any) => {
+                const verified = await api.post('/transaction/verify-payment', { session_id: data.session_id, ...payment });
+                setPaymentStatus(verified.payment_status);
+                setMessages((prev: Message[]) => [...prev, { role: 'agent', agent: 'payment', content: 'Payment verified server-side. The merchant order is ready for fulfilment.' }]);
+              },
+              modal: { ondismiss: () => setMessages((prev: Message[]) => [...prev, { role: 'agent', agent: 'payment', content: 'Checkout closed. No payment was recorded.' }]) },
+            });
+            checkout.open();
+          }
+        }
 
         // Aggregate turn result message from response data
         const auditLog: any[] = data.audit_log || [];
@@ -738,18 +770,12 @@ export default function CheckoutPage() {
     if (values.budget_min) parts.push(`minimum budget ₹${values.budget_min}`);
     if (values.budget_max) parts.push(`maximum budget ₹${values.budget_max}`);
     if (values.min_rating && values.min_rating !== 'any') parts.push(`minimum rating ${values.min_rating} stars`);
-    if (values.requested_sites) parts.push(`from ${values.requested_sites}`);
 
     const clarificationMsg = parts.length > 0
       ? `I want: ${parts.join(', ')}.`
       : Object.entries(values).map(([k, v]) => `${k}: ${v}`).join(', ');
 
-    // For guided mode with requested_sites, update the site input
-    if (values.requested_sites) {
-      setRequestedSitesInput(values.requested_sites);
-    }
-
-    await handleSend(clarificationMsg, autonomyMode, values.requested_sites || requestedSitesInput || undefined);
+    await handleSend(clarificationMsg, autonomyMode);
   };
 
   const handleRestartSession = () => {
@@ -783,7 +809,7 @@ export default function CheckoutPage() {
           {/* Section 2: Autonomy Level */}
           <div>
             <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              [02 // AUTONOMY CONTROL]
+              [02 // BUYER CONTROL]
             </div>
             
             <div style={{ display: 'flex', background: '#ffffff', padding: '3px', borderRadius: '2px', border: '1px solid #e4e4e7' }}>
@@ -805,7 +831,7 @@ export default function CheckoutPage() {
                   fontFamily: 'Space Grotesk'
                 }}
               >
-                Autonomous
+                Agent Recommend
               </button>
               <button
                 type="button"
@@ -825,15 +851,31 @@ export default function CheckoutPage() {
                   fontFamily: 'Space Grotesk'
                 }}
               >
-                Guided Mode
+                Buyer Guided
               </button>
             </div>
           </div>
 
-          {/* Section 3: Live Exec Agents */}
+          {chosenProduct && paymentStatus === 'pending' && !isRunning && (
+            <div>
+              <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+                [03 // PAYMENT APPROVAL]
+              </div>
+              <div style={{ padding: '0.9rem', background: '#ffffff', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff' }}>
+                <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: '0 0 0.7rem', lineHeight: 1.45 }}>
+                  Approve exactly <strong>{chosenProduct.name}</strong> for <strong>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</strong>. The agent cannot alter this amount.
+                </p>
+                <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.55rem' }}>
+                  <Lock size={13} /> Approve & Open Test Checkout
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Live Exec Agents */}
           <div>
             <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              [03 // REAL-TIME EXECUTION AGENTS]
+                [04 // REAL-TIME EXECUTION AGENTS]
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#e4e4e7', border: '1px solid #e4e4e7', borderRadius: '2px', overflow: 'hidden' }}>
               {[
@@ -874,11 +916,11 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Section 4: Live Controls Context / Clarification / Trust Overrides */}
+          {/* Section 5: Live Controls Context / Clarification / Trust Overrides */}
           {(awaitingClarification || trustOverrideActive) && (
             <div>
               <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                [04 // ATTENTION REQUIRED]
+                [05 // ATTENTION REQUIRED]
               </div>
               {/* Trust Override warnings */}
               {trustOverrideActive && (
@@ -924,7 +966,7 @@ export default function CheckoutPage() {
                 <div className="brutalist-title" style={{ fontSize: '3.5rem', marginBottom: '0.25rem', color: '#0044ff' }}>GLASSBOX</div>
                 <h3 className="brutalist-subtitle" style={{ fontSize: '0.85rem', margin: '0 0 1rem 0' }}>// TRANSACTION LEDGER CONSOLE</h3>
                 <p className="brutalist-text" style={{ fontSize: '0.88rem', maxWidth: '520px', margin: '0 auto 2rem auto', lineHeight: 1.6, color: '#71717a' }}>
-                  A secure, multi-agent sandbox enforcing deterministic ceiling budgets, ML risk filters, and site trust schemas. Enter target items and search specifications below to initialize.
+                  An AI-buyer checkout for this merchant's catalogue. The agent recommends a transactable SKU, then waits for your approval before Razorpay Test Checkout opens.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {['Buy me a shirt of ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
