@@ -191,10 +191,8 @@ async def run_transaction_endpoint(
         razorpay_key_id=state.get("razorpay_key_id"),
         delivery_address=state.get("delivery_address"),
         fulfilment=state.get("fulfilment"),
+        upsell_offer=state.get("upsell_offer"),
     )
-
-
-@router.get(
     "/{session_id}",
     response_model=TransactionResponse,
     summary="Replay Transaction",
@@ -237,6 +235,7 @@ async def get_transaction(
         razorpay_key_id=state.get("razorpay_key_id"),
         delivery_address=state.get("delivery_address"),
         fulfilment=state.get("fulfilment"),
+        upsell_offer=state.get("upsell_offer"),
     )
 
 

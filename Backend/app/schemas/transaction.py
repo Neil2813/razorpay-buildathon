@@ -80,3 +80,4 @@ class TransactionResponse(BaseModel):
     razorpay_key_id: str | None = None
     delivery_address: dict[str, Any] | None = None
     fulfilment: dict[str, Any] | None = None
+    upsell_offer: dict[str, Any] | None = None  # Revenue Growth Engine bundle proposal

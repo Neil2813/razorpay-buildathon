@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Tag, MapPin, Truck, Plus, Trash2, Save, ShoppingBag, ShieldAlert, Bot, Zap, ShieldCheck, Globe, CheckCircle, Copy, TrendingUp, TrendingDown, AlertTriangle, BarChart2, Sparkles, Lock } from 'lucide-react';
+import { Tag, MapPin, Truck, Plus, Trash2, Save, ShoppingBag, ShieldAlert, Bot, Zap, ShieldCheck, Globe, CheckCircle, Copy, TrendingUp, AlertTriangle, BarChart2, Sparkles, Lock } from 'lucide-react';
 
 interface SkuPerformance {
   product_id: string; name: string; price: number; evaluated_count: number; selected_count: number;
@@ -576,19 +576,6 @@ export default function DashboardPage() {
                 <p className="brutalist-text" style={{ margin: 0, fontSize: '0.875rem' }}>No transaction data yet. Run a checkout to generate analytics.</p>
               </div>
             )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {Object.entries(insights.top_escalation_reasons).map(([reason, count]) => (
-                        <div key={reason} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', background: '#ffffff' }}>
-                          <span className="brutalist-text" style={{ fontSize: '0.8rem', color: '#111111', fontWeight: 500 }}>{reason}</span>
-                          <span className="minimal-pill minimal-pill-danger">{String(count)}×</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
           </>
         ) : activeTab === 'setup' ? (
           /* Merchant Configuration Workspace */
