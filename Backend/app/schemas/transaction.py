@@ -35,6 +35,7 @@ class RunTransactionRequest(BaseModel):
         default=False,
         description="Explicit approval for the already selected merchant SKU and its exact amount.",
     )
+    address_id: str | None = Field(default=None, description="Buyer delivery address selected for fulfilment.")
 
 
 class AuditEventResponse(BaseModel):
@@ -77,3 +78,5 @@ class TransactionResponse(BaseModel):
     buyer_approved: bool = False
     razorpay_order_id: str | None = None
     razorpay_key_id: str | None = None
+    delivery_address: dict[str, Any] | None = None
+    fulfilment: dict[str, Any] | None = None

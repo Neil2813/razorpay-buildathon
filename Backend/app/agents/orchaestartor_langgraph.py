@@ -260,6 +260,7 @@ def run_transaction(
     autonomy_mode: str | None = None,
     requested_sites: list[str] | None = None,
     buyer_approved: bool = False,
+    delivery_address: dict[str, Any] | None = None,
     on_checkpoint: Callable[[TransactionState], None] | None = None,
 ) -> TransactionState:
     """Run a purchase request through the compiled LangGraph StateGraph."""
@@ -295,6 +296,8 @@ def run_transaction(
             state["buyer_approved"] = True
             state["current_agent"] = "risk"
             state["payment_status"] = "pending"
+        if delivery_address and not state.get("buyer_approved"):
+            state["delivery_address"] = delivery_address
     else:
         state = new_transaction_state(
             tenant_id=tenant_id, user_message=user_message, session_id=session_id
@@ -304,6 +307,7 @@ def run_transaction(
         if requested_sites:
             state["requested_sites"] = requested_sites
         state["buyer_approved"] = buyer_approved
+        state["delivery_address"] = delivery_address
 
     event_index = len(state.get("audit_log", []))
 

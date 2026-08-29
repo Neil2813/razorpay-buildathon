@@ -136,6 +136,41 @@ def seed_db():
         [(4.5, "prod_shoes_01"), (4.2, "prod_shoes_02"), (4.8, "prod_shoes_03"), (4.4, "prod_shirt_01")],
     )
 
+    # Seed Warehouses (Bengaluru, Delhi, Mumbai)
+    cursor.execute("""INSERT OR IGNORE INTO warehouses (warehouse_id, tenant_id, name, line1, city, state, pincode)
+        VALUES ('wh_apex_blr', 'demo_tenant', 'Apex Bengaluru Warehouse', '88 Commerce Park', 'Bengaluru', 'Karnataka', '560001');""")
+    cursor.execute("""INSERT OR IGNORE INTO warehouses (warehouse_id, tenant_id, name, line1, city, state, pincode)
+        VALUES ('wh_apex_del', 'demo_tenant', 'Apex Delhi Warehouse', '12 Ring Road', 'New Delhi', 'Delhi', '110001');""")
+    cursor.execute("""INSERT OR IGNORE INTO warehouses (warehouse_id, tenant_id, name, line1, city, state, pincode)
+        VALUES ('wh_apex_mum', 'demo_tenant', 'Apex Mumbai Warehouse', '45 Marine Drive', 'Mumbai', 'Maharashtra', '400001');""")
+
+    # Seed Specificity Delivery Zones
+    cursor.execute("""INSERT OR IGNORE INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days)
+        VALUES ('zone_apex_all_india', 'demo_tenant', 'all_india', 'all', 150.0, 5);""")
+    cursor.execute("""INSERT OR IGNORE INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days)
+        VALUES ('zone_apex_karnataka', 'demo_tenant', 'state', 'Karnataka', 80.0, 3);""")
+    cursor.execute("""INSERT OR IGNORE INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days)
+        VALUES ('zone_apex_blr_city', 'demo_tenant', 'city', 'Bengaluru', 40.0, 1);""")
+    cursor.execute("""INSERT OR IGNORE INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days)
+        VALUES ('zone_apex_pincode_blr', 'demo_tenant', 'pincode', '560001', 20.0, 1);""")
+
+    # Seed Inventory across warehouses
+    inventory_items = [
+        # Bengaluru inventory
+        ("wh_apex_blr", "prod_shoes_01", 12),
+        ("wh_apex_blr", "prod_shoes_02", 4),
+        ("wh_apex_blr", "prod_shirt_01", 20),
+        # Delhi inventory
+        ("wh_apex_del", "prod_shoes_01", 5),
+        ("wh_apex_del", "prod_shoes_02", 8),
+        # Mumbai inventory
+        ("wh_apex_mum", "prod_shoes_03", 6)
+    ]
+    cursor.executemany(
+        "INSERT OR IGNORE INTO warehouse_inventory (warehouse_id, product_id, quantity) VALUES (?, ?, ?);",
+        inventory_items,
+    )
+
     conn.commit()
     conn.close()
     print("[seed] Seeding completed successfully.")

@@ -27,7 +27,8 @@ from app.core.security import verify_razorpay_payment_signature
 from app.auth.deps import get_current_user
 from app.core.razorpay_gateway import get_gateway
 from app.db.database import (
-    checkpoint_transaction, get_tenant_ceiling, get_transaction_history, load_transaction_checkpoint, query_catalog,
+    checkpoint_transaction, get_addresses, get_checkout_catalog, get_tenant_ceiling, get_transaction_history, load_transaction_checkpoint,
+    create_fulfilment_order,
 )
 
 
@@ -80,9 +81,17 @@ def _run_with_streaming(
     loop.call_soon_threadsafe so we don't block the agent steps.
     """
     tenant_id = _resolve_tenant_id(request.tenant_id, current_user)
-    catalog = query_catalog(tenant_id)
+    addresses = get_addresses(current_user["user_id"])
+    address = (
+        next((item for item in addresses if item["address_id"] == request.address_id), None)
+        if request.address_id
+        else (next((item for item in addresses if item["is_default"]), addresses[0] if addresses else None))
+    )
+    if not address:
+        raise ValueError("Add a delivery address before searching the merchant catalogue.")
+    catalog = get_checkout_catalog(tenant_id, address)
     guardrail_ceiling = get_tenant_ceiling(tenant_id)
-    gateway = get_gateway(force_fail=request.force_payment_fail)
+    gateway = get_gateway(tenant_id=tenant_id, force_fail=request.force_payment_fail)
 
     # Build transaction payload from the chosen product price (populated mid-run)
     # Risk agent will receive real figures once the product is selected.
@@ -123,6 +132,7 @@ def _run_with_streaming(
         autonomy_mode=request.autonomy_mode,
         requested_sites=request.requested_sites,
         buyer_approved=request.buyer_approved,
+        delivery_address=address,
         on_checkpoint=checkpoint_and_broadcast,
     )
     return state
@@ -179,6 +189,8 @@ async def run_transaction_endpoint(
         buyer_approved=state.get("buyer_approved", False),
         razorpay_order_id=state.get("razorpay_order_id"),
         razorpay_key_id=state.get("razorpay_key_id"),
+        delivery_address=state.get("delivery_address"),
+        fulfilment=state.get("fulfilment"),
     )
 
 
@@ -223,6 +235,8 @@ async def get_transaction(
         buyer_approved=state.get("buyer_approved", False),
         razorpay_order_id=state.get("razorpay_order_id"),
         razorpay_key_id=state.get("razorpay_key_id"),
+        delivery_address=state.get("delivery_address"),
+        fulfilment=state.get("fulfilment"),
     )
 
 
@@ -239,7 +253,32 @@ async def verify_payment(body: VerifyPaymentRequest, current_user: dict = Depend
         raise HTTPException(status_code=400, detail="Payment verification failed. The order will not be fulfilled.")
     if state.get("payment_status") != "success":
         state["payment_status"] = "success"
-        audit_event(state, agent="payment", decision_reason="Razorpay Checkout signature verified; merchant order is eligible for fulfilment.", output_summary={"order_id": state["razorpay_order_id"], "payment_id": body.razorpay_payment_id, "payment_verified": True})
+        chosen_prod = state.get("chosen_product") or {}
+        fulfilment_info = chosen_prod.get("fulfilment") or {}
+        
+        order = create_fulfilment_order(
+            session_id=state["session_id"],
+            tenant_id=state["tenant_id"],
+            product_id=chosen_prod.get("product_id"),
+            warehouse_id=fulfilment_info.get("warehouse_id"),
+            shipping_fee=fulfilment_info.get("shipping_fee", 0.0),
+            tax_amount=fulfilment_info.get("tax_amount", 0.0),
+            total_amount=chosen_prod.get("total_amount", 0.0),
+            delivery_address=state.get("delivery_address"),
+            delivery_days=fulfilment_info.get("delivery_days", 3)
+        )
+        
+        audit_event(
+            state,
+            agent="payment",
+            decision_reason="Razorpay Checkout signature verified; merchant order is eligible for fulfilment.",
+            output_summary={
+                "order_id": state["razorpay_order_id"],
+                "payment_id": body.razorpay_payment_id,
+                "payment_verified": True,
+                "fulfilment_order": order
+            }
+        )
         checkpoint_transaction(state, from_event_index=len(state.get("audit_log", [])) - 1)
     return TransactionResponse(**{key: state.get(key) for key in TransactionResponse.model_fields})
 

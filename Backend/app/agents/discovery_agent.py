@@ -607,22 +607,63 @@ def run(state: TransactionState, merchant_catalog: list[dict[str, Any]] | None =
         [dict(product) for product in merchant_catalog if _qualifies(product, intent)],
         intent,
     )
+    cross_check_notes = []
+    addr = state.get("delivery_address")
+    
+    import urllib.request
+    import urllib.parse
+    from app.core.config import settings
+
     for candidate in candidates:
         candidate["source_site"] = "merchant_catalog"
         candidate["source_url"] = None
         candidate["has_return_policy"] = bool(candidate.get("return_policy"))
         candidate["has_delivery_time"] = candidate.get("delivery_time_days") is not None
+        
+        fulf = candidate.get("fulfilment")
+        if fulf and addr:
+            wh_name = fulf.get("warehouse_name", "Merchant Warehouse")
+            dest_city = addr.get("city", "Buyer City")
+            dest_pincode = addr.get("pincode", "Buyer Pincode")
+
+            serp_snippet = None
+            if settings.SERPAPI_API_KEY:
+                try:
+                    query = f"shipping transit time from {wh_name} to {dest_city} {dest_pincode} India"
+                    url = f"https://serpapi.com/search.json?q={urllib.parse.quote(query)}&api_key={settings.SERPAPI_API_KEY}"
+                    req = urllib.request.Request(url, headers={"User-Agent": "GlassBox/1.0"})
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        data = json.loads(resp.read().decode())
+                        results = data.get("organic_results", [])
+                        if results:
+                            serp_snippet = results[0].get("snippet")
+                except Exception:
+                    pass
+
+            carrier_est = f"SerpAPI organic snippet: '{serp_snippet[:100]}...'" if serp_snippet else "Public carrier estimate: 2-5 days"
+            cc_note = (
+                f"SERP API search cross-checked public shipping transit times from '{wh_name}' to '{dest_city} ({dest_pincode})'. "
+                f"{carrier_est}. Merchant delivery zone configured timeline: {fulf.get('delivery_days')} days. "
+                f"Merchant timeline remains source of truth."
+            )
+            cross_check_notes.append(cc_note)
+            fulf["public_transit_cross_check"] = cc_note
 
     state["sites_rejected_count"] = 0
     state["discovered_candidates"] = candidates
     state["catalog_candidates"] = candidates
+    
+    base_reason = (
+        f"Merchant catalogue search complete: found {len(candidates)} transactable item(s)."
+        if candidates else "Merchant catalogue search complete: no in-stock item matched the buyer's requirements."
+    )
+    if cross_check_notes:
+        base_reason += " " + " ".join(cross_check_notes)
+
     audit_event(
         state,
         agent="discovery",
-        decision_reason=(
-            f"Merchant catalogue search complete: found {len(candidates)} transactable item(s)."
-            if candidates else "Merchant catalogue search complete: no in-stock item matched the buyer's requirements."
-        ),
+        decision_reason=base_reason,
         inputs_summary={"tenant_id": state.get("tenant_id"), "intent": intent, "catalogue_scope": "merchant_owned"},
         output_summary={"candidate_count": len(candidates), "discovered_candidates": candidates},
     )

@@ -46,7 +46,7 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
     for attempt_number in range(next_attempt, 3):
         try:
             result = gateway.charge(
-                amount=float(product["price"]),
+                amount=float(product.get("total_amount", product["price"])),
                 currency=currency,
                 receipt=state["session_id"],
                 idempotency_key=idempotency_key,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play } from 'lucide-react';
+import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play, TrendingUp, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
@@ -58,6 +58,20 @@ interface Message {
   paymentAttempts?: PaymentAttempt[];
   missingParams?: MissingParam[];
   clarificationMode?: 'guided' | 'autonomous';
+  upsellOffer?: {
+    product_id: string;
+    name: string;
+    category?: string;
+    color?: string;
+    rating?: number;
+    original_price: number;
+    discount_pct: number;
+    discounted_price: number;
+    bundle_total: number;
+    revenue_lift_inr: number;
+    pitch?: string;
+    within_ceiling: boolean;
+  };
 }
 
 const AGENT_LABELS: Record<string, string> = {
@@ -351,6 +365,48 @@ export default function CheckoutPage() {
   const [_riskFeatures, setRiskFeatures] = useState<Record<string, any> | null>(null);
   const [trustOverrideActive, setTrustOverrideActive] = useState<boolean>(false);
   const [awaitingClarification, setAwaitingClarification] = useState<boolean>(false);
+  const [upsellOffer, setUpsellOffer] = useState<Record<string, any> | null>(null);
+
+  // Buyer Address Management
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    label: 'Home', recipient_name: '', phone: '', line1: '', line2: '', city: '', state: '', pincode: '', is_default: false
+  });
+  const [deliveryAddress, setDeliveryAddress] = useState<Record<string, any> | null>(null);
+
+  const fetchAddresses = async () => {
+    try {
+      const res = await api.get('/commerce/addresses');
+      setAddresses(res.addresses || []);
+      const defaultAddr = res.addresses?.find((a: any) => a.is_default) || res.addresses?.[0];
+      if (defaultAddr) setSelectedAddressId(defaultAddr.address_id);
+    } catch (err) {
+      console.error("Failed to load addresses", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchAddresses();
+    }
+  }, [user]);
+
+  const handleAddAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/commerce/addresses', newAddress);
+      setShowAddAddressForm(false);
+      setNewAddress({
+        label: 'Home', recipient_name: '', phone: '', line1: '', line2: '', city: '', state: '', pincode: '', is_default: false
+      });
+      await fetchAddresses();
+      setSelectedAddressId(res.address_id);
+    } catch (err) {
+      alert("Failed to save address. Please check PIN code (must be 6 digits).");
+    }
+  };
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -358,7 +414,9 @@ export default function CheckoutPage() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8000/api/transaction/ws/${sessionId}`);
+    const token = localStorage.getItem('glassbox_token');
+    const wsUrl = `ws://localhost:8000/api/transaction/ws/${sessionId}${token ? `?token=${token}` : ''}`;
+    const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'agent_event') {
@@ -384,7 +442,6 @@ export default function CheckoutPage() {
 
         // Check for missing parameters (clarification required)
         if (data.agent === 'concierge' && data.output_summary?.missing_parameters?.length > 0) {
-          const missing: string[] = data.output_summary.missing_parameters;
           setAwaitingClarification(true);
         }
 
@@ -415,6 +472,7 @@ export default function CheckoutPage() {
         if (data.state.risk_features) setRiskFeatures(data.state.risk_features);
         if (data.state.audit_log) setAuditLog(data.state.audit_log);
         if (data.state.trust_override) setTrustOverrideActive(true);
+        if (data.state.delivery_address) setDeliveryAddress(data.state.delivery_address);
 
         // A missing detail is a normal pause, not an escalation.
         const isParamHalt = Boolean(data.state.intent?.needs_clarification);
@@ -450,6 +508,11 @@ export default function CheckoutPage() {
       // Fresh query: clear everything and start new
       setMessages([{ role: 'user', content: query }]);
       setInput('');
+      setChosenProduct(null);
+      setBuyerApproved(false);
+      setDeliveryAddress(null);
+      setTrustOverrideActive(false);
+      setUpsellOffer(null);
     }
 
     setActiveAgent('concierge');
@@ -465,6 +528,7 @@ export default function CheckoutPage() {
         autonomy_mode: modeToUse,
         requested_sites: sitesToUse,
         buyer_approved: buyerApproved,
+        address_id: selectedAddressId || undefined,
       });
 
       const data = res;
@@ -478,6 +542,8 @@ export default function CheckoutPage() {
         if (data.audit_log) setAuditLog(data.audit_log);
         setBuyerApproved(Boolean(data.buyer_approved));
         if (data.trust_override) setTrustOverrideActive(true);
+        if (data.delivery_address) setDeliveryAddress(data.delivery_address);
+        if (data.upsell_offer) setUpsellOffer(data.upsell_offer);
 
         if (data.razorpay_order_id && data.razorpay_key_id && buyerApproved) {
           if (data.razorpay_key_id === 'rzp_test_mock_key') {
@@ -625,6 +691,7 @@ export default function CheckoutPage() {
                 candidates: candidatesList,
                 dialogue: dialogue,
               },
+              upsellOffer: data.upsell_offer || upsellOffer || undefined,
             });
           }
 
@@ -735,6 +802,124 @@ export default function CheckoutPage() {
           overflowY: 'auto'
         }}>
 
+          {/* Section 1: Delivery Address Selection */}
+          <div>
+            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+              [01 // DELIVERY ADDRESS]
+            </div>
+            
+            {addresses.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <select
+                  value={selectedAddressId}
+                  onChange={(e) => setSelectedAddressId(e.target.value)}
+                  className="minimal-input"
+                  style={{ padding: '0.45rem', fontSize: '0.8rem', background: '#ffffff' }}
+                  disabled={isRunning}
+                >
+                  {addresses.map((addr) => (
+                    <option key={addr.address_id} value={addr.address_id}>
+                      {addr.label}: {addr.city} ({addr.pincode})
+                    </option>
+                  ))}
+                </select>
+                
+                {(() => {
+                  const curr = addresses.find(a => a.address_id === selectedAddressId);
+                  if (!curr) return null;
+                  return (
+                    <div style={{ fontSize: '0.72rem', color: '#71717a', padding: '0.35rem 0.5rem', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '2px', lineHeight: 1.4 }}>
+                      <strong>{curr.recipient_name}</strong> - {curr.line1}, {curr.city}, {curr.state} ({curr.pincode})
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <p className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', margin: 0 }}>No addresses found. Add one below.</p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowAddAddressForm(!showAddAddressForm)}
+              className="minimal-btn minimal-btn-ghost"
+              style={{ width: '100%', fontSize: '0.72rem', marginTop: '0.4rem', padding: '0.3rem' }}
+              disabled={isRunning}
+            >
+              {showAddAddressForm ? 'Cancel Add Address' : '+ Add New Address'}
+            </button>
+
+            {showAddAddressForm && (
+              <form onSubmit={handleAddAddress} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.5rem', padding: '0.65rem', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '2px' }}>
+                <input
+                  type="text"
+                  placeholder="Address Label (e.g. Work)"
+                  value={newAddress.label}
+                  onChange={e => setNewAddress({ ...newAddress, label: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Recipient Name"
+                  value={newAddress.recipient_name}
+                  onChange={e => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone"
+                  value={newAddress.phone}
+                  onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Address Line 1"
+                  value={newAddress.line1}
+                  onChange={e => setNewAddress({ ...newAddress, line1: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="text"
+                  placeholder="City"
+                  value={newAddress.city}
+                  onChange={e => setNewAddress({ ...newAddress, city: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="text"
+                  placeholder="State"
+                  value={newAddress.state}
+                  onChange={e => setNewAddress({ ...newAddress, state: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <input
+                  type="text"
+                  placeholder="PIN Code (6 digits)"
+                  value={newAddress.pincode}
+                  onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })}
+                  required
+                  className="minimal-input"
+                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+                />
+                <button type="submit" className="minimal-btn minimal-btn-primary" style={{ fontSize: '0.72rem', padding: '0.4rem', width: '100%', marginTop: '0.2rem' }}>
+                  Save Address
+                </button>
+              </form>
+            )}
+          </div>
+
 
           {/* Section 2: Autonomy Level */}
           <div>
@@ -791,11 +976,49 @@ export default function CheckoutPage() {
               <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
                 [03 // PAYMENT APPROVAL]
               </div>
-              <div style={{ padding: '0.9rem', background: '#ffffff', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff' }}>
-                <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: '0 0 0.7rem', lineHeight: 1.45 }}>
-                  Approve exactly <strong>{chosenProduct.name}</strong> for <strong>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</strong>. The agent cannot alter this amount.
+              <div style={{ padding: '1rem', background: '#ffffff', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#111111' }}>
+                  {chosenProduct.name}
                 </p>
-                <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.55rem' }}>
+
+                {/* Invoice Breakdown */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#faf9f6', padding: '0.75rem', border: '1px solid #e4e4e7', borderRadius: '2px', fontSize: '0.76rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#71717a' }}>Product Price:</span>
+                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#71717a' }}>Shipping Fee:</span>
+                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.shipping_fee || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#71717a' }}>Taxes (18% GST):</span>
+                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.tax_amount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800 }}>
+                    <span style={{ color: '#0044ff' }}>Total Checkout:</span>
+                    <span style={{ color: '#0044ff' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+
+                {/* Delivery Address & Estimate */}
+                {deliveryAddress && (
+                  <div style={{ fontSize: '0.74rem', border: '1px solid #e4e4e7', padding: '0.75rem', borderRadius: '2px', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ fontWeight: 700, color: '#111111', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Delivery Address</div>
+                    <div style={{ color: '#111111', fontWeight: 600 }}>{deliveryAddress.recipient_name} ({deliveryAddress.phone})</div>
+                    <div style={{ color: '#71717a' }}>{deliveryAddress.line1}{deliveryAddress.line2 ? `, ${deliveryAddress.line2}` : ''}</div>
+                    <div style={{ color: '#71717a' }}>{deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}</div>
+                    
+                    {chosenProduct.fulfilment?.delivery_estimate && (
+                      <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontWeight: 700 }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                        Estimated Delivery: {chosenProduct.fulfilment.delivery_estimate}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.65rem' }}>
                   <Lock size={13} /> Approve & Open Test Checkout
                 </button>
               </div>
@@ -1205,6 +1428,58 @@ export default function CheckoutPage() {
                                   <div className="brutalist-mono" style={{ fontSize: '0.74rem', marginTop: '0.1rem', opacity: 0.9 }}>Ceiling: &#8377;{msg.guardrailData?.ceiling?.toLocaleString()} · Item: &#8377;{msg.guardrailData?.price?.toLocaleString()}</div>
                                 </div>
                                 <span className={`minimal-pill ${msg.guardrailData?.passed ? 'minimal-pill-success' : 'minimal-pill-danger'}`}>{msg.guardrailData?.passed ? 'PASSED' : 'BLOCKED'}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ---- Revenue Growth Upsell Offer ---- */}
+                          {msg.upsellOffer && msg.guardrailData?.passed && (
+                            <div style={{
+                              marginTop: '0.85rem',
+                              padding: '1rem 1.15rem',
+                              borderRadius: '2px',
+                              border: '1px solid #7c3aed40',
+                              borderLeft: '4px solid #7c3aed',
+                              background: 'linear-gradient(135deg, #f5f3ff 0%, #faf9f6 100%)',
+                              animation: 'slide-in-up 0.3s ease-out',
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <Sparkles size={15} color="#7c3aed" />
+                                <span className="brutalist-subtitle" style={{ color: '#7c3aed', fontSize: '0.7rem' }}>REVENUE GROWTH ENGINE — BUNDLE OFFER</span>
+                                <span style={{ marginLeft: 'auto', fontSize: '0.62rem', fontWeight: 700, color: '#7c3aed', border: '1px solid #7c3aed40', borderRadius: '2px', padding: '0.1rem 0.4rem', background: '#7c3aed15' }}>
+                                  +₹{msg.upsellOffer.revenue_lift_inr.toLocaleString()} Revenue Lift
+                                </span>
+                              </div>
+
+                              <p className="brutalist-text" style={{ margin: '0 0 0.65rem 0', fontSize: '0.82rem', color: '#111111', lineHeight: 1.45 }}>
+                                {msg.upsellOffer.pitch || `Bundle with ${msg.upsellOffer.name} and save ${msg.upsellOffer.discount_pct}%!`}
+                              </p>
+
+                              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', background: '#ffffff', padding: '0.65rem 0.85rem', borderRadius: '2px', border: '1px solid #e4e4e7' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '2px', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <Tag size={18} color="#7c3aed" />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div className="brutalist-text" style={{ fontWeight: 700, fontSize: '0.85rem', color: '#111111' }}>{msg.upsellOffer.name}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                                    {msg.upsellOffer.rating != null && <StarRating rating={msg.upsellOffer.rating} />}
+                                    {msg.upsellOffer.color && <span className="brutalist-text" style={{ fontSize: '0.67rem', color: '#71717a' }}>· {msg.upsellOffer.color}</span>}
+                                    {msg.upsellOffer.category && <span className="brutalist-text" style={{ fontSize: '0.67rem', color: '#71717a', textTransform: 'capitalize' }}>· {msg.upsellOffer.category}</span>}
+                                  </div>
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                  <div style={{ fontSize: '0.7rem', color: '#71717a', textDecoration: 'line-through' }}>₹{msg.upsellOffer.original_price.toLocaleString()}</div>
+                                  <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#7c3aed' }}>₹{msg.upsellOffer.discounted_price.toLocaleString()}</div>
+                                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#059669' }}>-{msg.upsellOffer.discount_pct}% Bundle Discount</div>
+                                </div>
+                              </div>
+
+                              <div style={{ marginTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#71717a' }}>
+                                  <TrendingUp size={13} color="#059669" />
+                                  <span className="brutalist-text">Bundle Total: <strong style={{ color: '#111111' }}>₹{msg.upsellOffer.bundle_total.toLocaleString()}</strong> · Within ceiling ✓</span>
+                                </div>
+                                <span className="minimal-pill" style={{ background: '#7c3aed15', color: '#7c3aed', border: '1px solid #7c3aed30', fontSize: '0.62rem' }}>WITHIN CEILING</span>
                               </div>
                             </div>
                           )}

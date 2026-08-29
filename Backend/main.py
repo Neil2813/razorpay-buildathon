@@ -13,6 +13,8 @@ from app.routes.profile import router as profile_router
 from app.routes.risk import router as risk_router
 from app.routes.transaction import router as transaction_router
 from app.routes.webhooks import router as webhooks_router
+from app.routes.commerce import router as commerce_router
+from app.routes.agent_protocol import router_root as agent_protocol_root_router, router_api as agent_protocol_api_router
 
 try:
     from app.ml.inference import get_model
@@ -78,6 +80,10 @@ def create_app() -> FastAPI:
     app.include_router(risk_router, prefix=settings.API_V1_STR)
     app.include_router(transaction_router, prefix=settings.API_V1_STR)
     app.include_router(webhooks_router, prefix=settings.API_V1_STR)
+    app.include_router(commerce_router, prefix=settings.API_V1_STR)
+    # Agent Protocol — root-level for /.well-known/ + API-prefixed for /api/agent/
+    app.include_router(agent_protocol_root_router)
+    app.include_router(agent_protocol_api_router, prefix=settings.API_V1_STR)
 
     return app
 

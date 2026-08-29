@@ -32,4 +32,11 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+  put: (endpoint: string, data: any) => fetchWithAuth(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (endpoint: string) => fetchWithAuth(endpoint, {
+    method: 'DELETE',
+  }),
 };

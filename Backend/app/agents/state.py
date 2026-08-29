@@ -57,6 +57,10 @@ class TransactionState(TypedDict, total=False):
     buyer_approved: bool
     razorpay_order_id: str | None
     razorpay_key_id: str | None
+    delivery_address: dict[str, Any] | None
+    fulfilment: dict[str, Any] | None
+    # --- Revenue Growth Engine (Upsell & Cross-Sell) ---
+    upsell_offer: dict[str, Any] | None  # complement item bundle proposal
 
 
 def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str | None = None) -> TransactionState:
@@ -87,6 +91,9 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         current_agent="",
         requires_confirmation=False,
         buyer_approved=False,
+        delivery_address=None,
+        fulfilment=None,
+        upsell_offer=None,
     )
 
 

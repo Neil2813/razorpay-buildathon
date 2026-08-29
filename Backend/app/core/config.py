@@ -27,10 +27,14 @@ class Settings(BaseModel):
     RAZORPAY_KEY_SECRET: str = os.getenv("RAZORPAY_KEY_SECRET", "mock_secret")
     RAZORPAY_WEBHOOK_SECRET: str = os.getenv("RAZORPAY_WEBHOOK_SECRET", "glassbox_webhook_secret_key")
 
+    # SerpAPI Configuration
+    SERPAPI_API_KEY: str = os.getenv("SERPAPI_API_KEY", "")
+
     # Security & SSRF Protection
     ALLOWED_OUTBOUND_DOMAINS: list[str] = [
         "api.razorpay.com",
         "api.groq.com",
+        "serpapi.com",
         "supabase.co",
         "127.0.0.1",
         "localhost",

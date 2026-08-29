@@ -107,12 +107,29 @@ class MockFailGateway:
         }
 
 
-def get_gateway(*, force_fail: bool = False) -> RazorpayGateway | MockFailGateway:
+def get_gateway(*, tenant_id: str | None = None, force_fail: bool = False) -> RazorpayGateway | MockFailGateway:
     """
     Return the appropriate gateway instance.
     - If force_fail=True, returns MockFailGateway (for demo failure script).
-    - If RAZORPAY_KEY_ID is a real test key, uses RazorpayGateway.
+    - Checks tenant-specific Razorpay credentials from database if tenant_id is provided.
+    - Otherwise falls back to system settings.
     """
     if force_fail:
         return MockFailGateway()
-    return RazorpayGateway()
+
+    key_id = None
+    key_secret = None
+
+    if tenant_id:
+        try:
+            from app.db.database import get_db_connection
+            conn = get_db_connection()
+            row = conn.execute("SELECT razorpay_key_id, razorpay_key_secret FROM tenants WHERE tenant_id = ?;", (tenant_id,)).fetchone()
+            conn.close()
+            if row and row["razorpay_key_id"] and row["razorpay_key_secret"]:
+                key_id = row["razorpay_key_id"]
+                key_secret = row["razorpay_key_secret"]
+        except Exception:
+            pass
+
+    return RazorpayGateway(key_id=key_id, key_secret=key_secret)

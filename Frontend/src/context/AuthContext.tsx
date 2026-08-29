@@ -11,8 +11,8 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: any) => Promise<void>;
-  register: (userData: any) => Promise<void>;
+  login: (userData: any) => Promise<any>;
+  register: (userData: any) => Promise<any>;
   logout: () => void;
   loading: boolean;
 }
@@ -44,14 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post('/auth/login', credentials);
     localStorage.setItem('glassbox_token', res.access_token);
     setUser(res.user);
+    return res.user;
   };
 
   const register = async (credentials: any) => {
-    // Inject defaults for UI
+    // Inject defaults for UI, allowing credentials to override them
     const payload = {
-      ...credentials,
       role: 'buyer',
-      tenant_id: 'demo_tenant'
+      tenant_id: 'demo_tenant',
+      ...credentials
     };
     const res = await api.post('/auth/register', payload);
     localStorage.setItem('glassbox_token', res.access_token);

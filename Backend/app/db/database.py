@@ -57,8 +57,121 @@ def init_db():
     CREATE TABLE IF NOT EXISTS tenants (
         tenant_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+        company_name TEXT,
+        support_email TEXT,
+        support_phone TEXT,
+        razorpay_key_id TEXT,
+        razorpay_key_secret TEXT,
         unattended_spend_ceiling REAL NOT NULL DEFAULT 5000.0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # Column migrations for existing databases
+    for col in [("razorpay_key_id", "TEXT"), ("razorpay_key_secret", "TEXT")]:
+        try:
+            cursor.execute(f"ALTER TABLE tenants ADD COLUMN {col[0]} {col[1]};")
+        except sqlite3.OperationalError:
+            pass
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS addresses (
+        address_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        recipient_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        line1 TEXT NOT NULL,
+        line2 TEXT,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        pincode TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS warehouses (
+        warehouse_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        line1 TEXT NOT NULL,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        pincode TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+    );
+    """)
+
+    # Create table with correct constraint if not exists
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS delivery_zones (
+        zone_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        coverage_type TEXT NOT NULL CHECK (coverage_type IN ('all_india', 'state', 'city', 'pincode')),
+        coverage_value TEXT NOT NULL,
+        shipping_fee REAL NOT NULL DEFAULT 0,
+        delivery_days INTEGER NOT NULL DEFAULT 3,
+        active INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+    );
+    """)
+
+    # Try inserting 'city' into delivery_zones to see if constraint needs migration
+    cursor.execute("SELECT 1 FROM tenants WHERE tenant_id = 'demo_tenant';")
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO tenants (tenant_id, name) VALUES ('demo_tenant', 'Demo Merchant Store');")
+    
+    try:
+        cursor.execute("SAVEPOINT test_city;")
+        cursor.execute("INSERT INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days, active) VALUES ('test_mig_id', 'demo_tenant', 'city', 'test_city', 0, 1, 0);")
+        cursor.execute("ROLLBACK TO test_city;")
+        cursor.execute("RELEASE test_city;")
+    except sqlite3.IntegrityError:
+        cursor.execute("ROLLBACK TO test_city;")
+        cursor.execute("RELEASE test_city;")
+        # Constraint migration needed
+        cursor.execute("ALTER TABLE delivery_zones RENAME TO delivery_zones_old;")
+        cursor.execute("""
+        CREATE TABLE delivery_zones (
+            zone_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            coverage_type TEXT NOT NULL CHECK (coverage_type IN ('all_india', 'state', 'city', 'pincode')),
+            coverage_value TEXT NOT NULL,
+            shipping_fee REAL NOT NULL DEFAULT 0,
+            delivery_days INTEGER NOT NULL DEFAULT 3,
+            active INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+        );
+        """)
+        cursor.execute("""
+        INSERT INTO delivery_zones (zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days, active)
+        SELECT zone_id, tenant_id, coverage_type, coverage_value, shipping_fee, delivery_days, active FROM delivery_zones_old;
+        """)
+        cursor.execute("DROP TABLE delivery_zones_old;")
+
+    # Create fulfilment_orders table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS fulfilment_orders (
+        order_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        warehouse_id TEXT NOT NULL,
+        shipping_fee REAL NOT NULL,
+        tax_amount REAL NOT NULL,
+        total_amount REAL NOT NULL,
+        delivery_address TEXT NOT NULL,
+        delivery_estimate_date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'created',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+        FOREIGN KEY (session_id) REFERENCES transactions(session_id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES catalog(product_id) ON DELETE CASCADE,
+        FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id) ON DELETE CASCADE
     );
     """)
 
@@ -74,6 +187,17 @@ def init_db():
         tenant_id TEXT NOT NULL DEFAULT 'demo_tenant',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS warehouse_inventory (
+        warehouse_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (warehouse_id, product_id),
+        FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES catalog(product_id) ON DELETE CASCADE
     );
     """)
 
@@ -124,6 +248,10 @@ def init_db():
     catalog_columns = {row[1] for row in cursor.execute("PRAGMA table_info(catalog);")}
     if "rating" not in catalog_columns:
         cursor.execute("ALTER TABLE catalog ADD COLUMN rating REAL;")
+    tenant_columns = {row[1] for row in cursor.execute("PRAGMA table_info(tenants);")}
+    for column in ("company_name", "support_email", "support_phone"):
+        if column not in tenant_columns:
+            cursor.execute(f"ALTER TABLE tenants ADD COLUMN {column} TEXT;")
 
     # 5. Audit Events Table
     cursor.execute("""
@@ -285,6 +413,163 @@ def query_catalog(tenant_id: str) -> list[dict[str, Any]]:
         prod["in_stock"] = bool(prod["in_stock"])
         products.append(prod)
     return products
+
+
+def get_addresses(user_id: str) -> list[dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        return [dict(row) for row in conn.execute("SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC;", (user_id,))]
+    finally:
+        conn.close()
+
+
+def save_address(user_id: str, address: dict[str, Any]) -> dict[str, Any]:
+    from uuid import uuid4
+    address_id = address.get("address_id") or str(uuid4())
+    conn = get_db_connection()
+    try:
+        with conn:
+            if address.get("is_default"):
+                conn.execute("UPDATE addresses SET is_default = 0 WHERE user_id = ?;", (user_id,))
+            conn.execute("""
+                INSERT INTO addresses (address_id, user_id, label, recipient_name, phone, line1, line2, city, state, pincode, is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(address_id) DO UPDATE SET label=excluded.label, recipient_name=excluded.recipient_name, phone=excluded.phone,
+                  line1=excluded.line1, line2=excluded.line2, city=excluded.city, state=excluded.state, pincode=excluded.pincode, is_default=excluded.is_default
+            """, (address_id, user_id, address["label"], address["recipient_name"], address["phone"], address["line1"], address.get("line2"), address["city"], address["state"], address["pincode"], int(address.get("is_default", False))))
+            row = conn.execute("SELECT * FROM addresses WHERE address_id = ? AND user_id = ?;", (address_id, user_id)).fetchone()
+            return dict(row)
+    finally:
+        conn.close()
+
+
+def get_checkout_catalog(tenant_id: str, address: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return only merchant SKUs that can be fulfilled to the buyer's address."""
+    products = query_catalog(tenant_id)
+    conn = get_db_connection()
+    try:
+        zones = [dict(row) for row in conn.execute("SELECT * FROM delivery_zones WHERE tenant_id = ? AND active = 1;", (tenant_id,))]
+        warehouses = [dict(row) for row in conn.execute("SELECT w.*, COALESCE(SUM(i.quantity), 0) AS inventory_total FROM warehouses w LEFT JOIN warehouse_inventory i ON i.warehouse_id=w.warehouse_id WHERE w.tenant_id=? AND w.active=1 GROUP BY w.warehouse_id;", (tenant_id,))]
+        
+        # Filter matching zones
+        matching_zones = []
+        for z in zones:
+            cov_type = z["coverage_type"]
+            cov_val = z["coverage_value"].lower()
+            if cov_type == "all_india":
+                matching_zones.append(z)
+            elif cov_type == "state" and cov_val == address["state"].lower():
+                matching_zones.append(z)
+            elif cov_type == "city" and cov_val == address["city"].lower():
+                matching_zones.append(z)
+            elif cov_type == "pincode" and cov_val == address["pincode"]:
+                matching_zones.append(z)
+
+        if not matching_zones:
+            return []
+
+        # Sort matching zones by specificity (narrowest/pincode first)
+        specificity_priority = {"pincode": 0, "city": 1, "state": 2, "all_india": 3}
+        matching_zones = sorted(
+            matching_zones,
+            key=lambda z: (specificity_priority.get(z["coverage_type"], 4), z["shipping_fee"], z["delivery_days"])
+        )
+        zone = matching_zones[0]
+
+        for product in products:
+            stock_rows = [dict(row) for row in conn.execute("SELECT w.*, i.quantity FROM warehouse_inventory i JOIN warehouses w ON w.warehouse_id=i.warehouse_id WHERE i.product_id=? AND w.tenant_id=? AND w.active=1 AND i.quantity > 0;", (product["product_id"], tenant_id))]
+            
+            # Sort stock_rows by distance score to choose the nearest eligible warehouse
+            def get_distance_score(w: dict) -> int:
+                if w["pincode"] == address["pincode"]:
+                    return 0
+                if w["city"].lower() == address["city"].lower():
+                    return 1
+                if w["state"].lower() == address["state"].lower():
+                    return 2
+                return 3
+
+            stock_rows = sorted(stock_rows, key=get_distance_score)
+            warehouse = stock_rows[0] if stock_rows else None
+            
+            # Backward-compatible product-level stock is fulfillable from the first warehouse if warehouses exist.
+            if warehouse is None and product.get("in_stock") and warehouses:
+                warehouse = warehouses[0]
+                
+            if warehouse:
+                price = float(product["price"])
+                tax_rate = 0.18
+                tax_amount = round(price * tax_rate, 2)
+                shipping_fee = float(zone["shipping_fee"])
+                total_amount = round(price + shipping_fee + tax_amount, 2)
+
+                from datetime import datetime, timedelta
+                delivery_days = int(zone["delivery_days"])
+                est_date = datetime.now() + timedelta(days=delivery_days)
+                est_date_str = est_date.strftime("%A, %b %d")
+
+                product["fulfilment"] = {
+                    "warehouse_id": warehouse["warehouse_id"],
+                    "warehouse_name": warehouse["name"],
+                    "shipping_fee": shipping_fee,
+                    "tax_amount": tax_amount,
+                    "delivery_days": delivery_days,
+                    "delivery_estimate": est_date_str,
+                    "address_id": address["address_id"]
+                }
+                product["total_amount"] = total_amount
+
+        return [product for product in products if product.get("fulfilment")]
+    finally:
+        conn.close()
+
+
+def create_fulfilment_order(
+    session_id: str,
+    tenant_id: str,
+    product_id: str,
+    warehouse_id: str,
+    shipping_fee: float,
+    tax_amount: float,
+    total_amount: float,
+    delivery_address: dict[str, Any],
+    delivery_days: int
+) -> dict[str, Any]:
+    """Create a fulfilment order in database and decrement inventory stock by 1."""
+    from uuid import uuid4
+    from datetime import datetime, timedelta
+    order_id = f"ord_{uuid4().hex[:12]}"
+    conn = get_db_connection()
+    try:
+        est_date = datetime.now() + timedelta(days=delivery_days)
+        est_date_str = est_date.strftime("%Y-%m-%d")
+        
+        with conn:
+            # 1. Insert order
+            conn.execute("""
+                INSERT INTO fulfilment_orders (
+                    order_id, session_id, tenant_id, product_id, warehouse_id,
+                    shipping_fee, tax_amount, total_amount, delivery_address,
+                    delivery_estimate_date, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created')
+            """, (
+                order_id, session_id, tenant_id, product_id, warehouse_id,
+                shipping_fee, tax_amount, total_amount, json.dumps(delivery_address),
+                est_date_str
+            ))
+            
+            # 2. Decrement inventory
+            conn.execute("""
+                UPDATE warehouse_inventory
+                SET quantity = MAX(0, quantity - 1)
+                WHERE warehouse_id = ? AND product_id = ?
+            """, (warehouse_id, product_id))
+            
+            # Retrieve created order
+            row = conn.execute("SELECT * FROM fulfilment_orders WHERE order_id = ?;", (order_id,)).fetchone()
+            return dict(row)
+    finally:
+        conn.close()
 
 
 def get_tenant_ceiling(tenant_id: str) -> float:

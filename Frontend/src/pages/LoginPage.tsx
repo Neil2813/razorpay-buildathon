@@ -16,8 +16,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     try {
-      await login({ email, password });
-      navigate('/checkout');
+      const loggedUser = await login({ email, password });
+      if (loggedUser?.role === 'merchant_admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/checkout');
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed');
     }
