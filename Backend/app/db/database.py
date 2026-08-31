@@ -535,7 +535,11 @@ def create_fulfilment_order(
     delivery_address: dict[str, Any],
     delivery_days: int
 ) -> dict[str, Any]:
-    """Create a fulfilment order in database and decrement inventory stock by 1."""
+    """Create a fulfilment order in database and decrement inventory stock by 1.
+
+    Raises RuntimeError if the product is out of stock at the requested warehouse
+    so callers can rollback the transaction and surface an error to the buyer.
+    """
     from uuid import uuid4
     from datetime import datetime, timedelta
     order_id = f"ord_{uuid4().hex[:12]}"
@@ -558,18 +562,30 @@ def create_fulfilment_order(
                 est_date_str
             ))
             
-            # 2. Decrement inventory
-            conn.execute("""
+            # 2. Atomic inventory decrement: only succeed if stock > 0.
+            # MAX(0, quantity-1) is NOT safe under concurrency — it silently
+            # allows all concurrent buyers through even when stock = 0.
+            cursor = conn.execute("""
                 UPDATE warehouse_inventory
-                SET quantity = MAX(0, quantity - 1)
-                WHERE warehouse_id = ? AND product_id = ?
+                SET quantity = quantity - 1
+                WHERE warehouse_id = ? AND product_id = ? AND quantity > 0
             """, (warehouse_id, product_id))
+            
+            if cursor.rowcount == 0:
+                # No row was updated → stock was already exhausted.
+                # The 'with conn' context manager will automatically rollback
+                # the INSERT above, keeping the database consistent.
+                raise RuntimeError(
+                    f"Inventory stock exhausted for product_id={product_id} "
+                    f"at warehouse_id={warehouse_id}. Order cannot be fulfilled."
+                )
             
             # Retrieve created order
             row = conn.execute("SELECT * FROM fulfilment_orders WHERE order_id = ?;", (order_id,)).fetchone()
             return dict(row)
     finally:
         conn.close()
+
 
 
 def get_tenant_ceiling(tenant_id: str) -> float:
@@ -659,6 +675,31 @@ def load_transaction_checkpoint(session_id: str, tenant_id: str) -> dict[str, An
         return json.loads(row["state_json"]) if row else None
     finally:
         conn.close()
+
+
+def get_transaction_by_order_id(razorpay_order_id: str) -> dict[str, Any] | None:
+    """Look up a transaction by its Razorpay order ID.
+
+    Used by the webhook handler to reconcile payment.captured events when the
+    buyer's browser drops the connection before /verify-payment is called.
+    Returns the full deserialized state dict, or None if not found.
+    """
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT state_json, tenant_id FROM transactions WHERE state_json LIKE ?;",
+            (f'%"{razorpay_order_id}"%',),
+        ).fetchone()
+        if not row:
+            return None
+        state = json.loads(row["state_json"])
+        # Only return if the stored order_id matches exactly (avoid LIKE false positives)
+        if state.get("razorpay_order_id") == razorpay_order_id:
+            return state
+        return None
+    finally:
+        conn.close()
+
 
 
 def get_transaction_history(tenant_id: str, limit: int = 50) -> list[dict[str, Any]]:

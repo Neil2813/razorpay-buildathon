@@ -3,7 +3,11 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Tag, MapPin, Truck, Plus, Trash2, Save, ShoppingBag, ShieldAlert, Bot, Zap, ShieldCheck, Globe, CheckCircle, Copy, TrendingUp, AlertTriangle, BarChart2, Sparkles, Lock } from 'lucide-react';
+import { Tag, MapPin, Truck, Plus, Trash2, Save, ShoppingBag, ShieldAlert, Bot, Zap, ShieldCheck, Globe, CheckCircle, Copy, TrendingUp, AlertTriangle, BarChart2, Sparkles, Lock, Network } from 'lucide-react';
+import AnimatedCountUp from '../components/AnimatedCountUp';
+import LiveStreamTicker from '../components/LiveStreamTicker';
+import GraphNodeInspectorModal, { NodeData } from '../components/GraphNodeInspectorModal';
+import { soundFX } from '../lib/soundFX';
 
 interface SkuPerformance {
   product_id: string; name: string; price: number; evaluated_count: number; selected_count: number;
@@ -49,6 +53,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'insights' | 'setup' | 'protocol'>('insights');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  // Graph Node Inspector State
+  const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
+  const [isNodeInspectorOpen, setIsNodeInspectorOpen] = useState(false);
 
   // Merchant settings / setup state
   const [companyName, setCompanyName] = useState('');
@@ -305,32 +313,38 @@ export default function DashboardPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1px', marginBottom: '2rem', border: '1px solid #111111', borderRadius: '2px', overflow: 'hidden', background: '#111111' }}>
                   {[
                     {
-                      label: 'AI Conversion Rate', value: `${insights.conversion_rate_pct}%`,
+                      label: 'AI Conversion Rate',
+                      valComp: <AnimatedCountUp value={insights.conversion_rate_pct || 0} suffix="%" decimals={1} />,
                       sub: `${insights.payment_success_count} of ${insights.payment_attempt_count} attempts`,
                       color: '#0044ff', icon: <TrendingUp size={14} />
                     },
                     {
-                      label: 'Avg Order Value', value: `₹${(insights.avg_order_value_inr || 0).toLocaleString()}`,
+                      label: 'Avg Order Value',
+                      valComp: <AnimatedCountUp value={insights.avg_order_value_inr || 0} prefix="₹" decimals={0} />,
                       sub: `Effective AOV ₹${(insights.effective_aov_inr || 0).toLocaleString()} w/ upsells`,
                       color: '#059669', icon: <BarChart2 size={14} />
                     },
                     {
-                      label: 'Total Upsell Revenue Lift', value: `₹${(insights.total_revenue_lift_inr || 0).toLocaleString()}`,
+                      label: 'Total Upsell Revenue Lift',
+                      valComp: <AnimatedCountUp value={insights.total_revenue_lift_inr || 0} prefix="₹" decimals={0} />,
                       sub: `${insights.upsell_offered_count} upsell(s) at avg ${insights.avg_upsell_discount_pct}% off`,
                       color: '#7c3aed', icon: <Sparkles size={14} />
                     },
                     {
-                      label: 'Ceiling Hit Rate', value: `${insights.ceiling_hit_rate_pct}%`,
+                      label: 'Ceiling Hit Rate',
+                      valComp: <AnimatedCountUp value={insights.ceiling_hit_rate_pct || 0} suffix="%" decimals={1} />,
                       sub: `${insights.ceiling_hit_count} blocked of ${insights.ceiling_hit_count + insights.ceiling_pass_count}`,
                       color: insights.ceiling_hit_rate_pct > 30 ? '#ef4444' : '#f59e0b', icon: <Lock size={14} />
                     },
                     {
-                      label: 'Policy Acceptance Gap', value: `+${Math.max(0, insights.acceptance_rate_with_policy_pct - insights.acceptance_rate_without_policy_pct).toFixed(0)}%`,
+                      label: 'Policy Acceptance Gap',
+                      valComp: <AnimatedCountUp value={Math.max(0, insights.acceptance_rate_with_policy_pct - insights.acceptance_rate_without_policy_pct)} prefix="+" suffix="%" decimals={0} />,
                       sub: `${insights.acceptance_rate_with_policy_pct}% with policy vs ${insights.acceptance_rate_without_policy_pct}% without`,
                       color: '#0891b2', icon: <ShieldCheck size={14} />
                     },
                     {
-                      label: 'Total Agent Events', value: `${insights.transaction_event_count}`,
+                      label: 'Total Agent Events',
+                      valComp: <AnimatedCountUp value={insights.transaction_event_count || 0} decimals={0} />,
                       sub: insights.sample_size_note,
                       color: '#71717a', icon: <Zap size={14} />
                     },
@@ -340,11 +354,14 @@ export default function DashboardPage() {
                         {m.icon}
                         <span className="brutalist-subtitle" style={{ fontSize: '0.62rem', color: '#71717a' }}>{m.label.toUpperCase()}</span>
                       </div>
-                      <div className="brutalist-title" style={{ fontSize: '1.65rem', color: m.color, lineHeight: 1.1 }}>{m.value}</div>
+                      <div className="brutalist-title" style={{ fontSize: '1.65rem', color: m.color, lineHeight: 1.1 }}>{m.valComp}</div>
                       <div className="brutalist-text" style={{ fontSize: '0.68rem', color: '#71717a', lineHeight: 1.35 }}>{m.sub}</div>
                     </div>
                   ))}
                 </div>
+
+                {/* Real-time Agentic Transaction Stream Ticker */}
+                <LiveStreamTicker />
 
                 {/* ── Main Analytics Grid ───────────────────────────────────── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1px', background: '#111111', border: '1px solid #111111', borderRadius: '2px', overflow: 'hidden', marginBottom: '1px' }}>
@@ -951,6 +968,13 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Interactive Knowledge Graph Node Inspector Modal */}
+      <GraphNodeInspectorModal
+        isOpen={isNodeInspectorOpen}
+        onClose={() => setIsNodeInspectorOpen(false)}
+        node={selectedNode}
+      />
     </div>
   );
 }

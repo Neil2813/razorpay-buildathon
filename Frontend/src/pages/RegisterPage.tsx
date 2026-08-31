@@ -18,6 +18,12 @@ export default function RegisterPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
+  
+  // Buyer-specific card fields
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardHolder, setCardHolder] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
 
   // Merchant-specific fields
   const [tenantId, setTenantId] = useState('demo_tenant');
@@ -79,6 +85,10 @@ export default function RegisterPage() {
         payload.address_city = city;
         payload.address_state = state;
         payload.address_pincode = pincode;
+        payload.card_number = cardNumber || undefined;
+        payload.card_holder = cardHolder || undefined;
+        payload.card_expiry = cardExpiry || undefined;
+        payload.card_cvv = cardCvv || undefined;
       } else {
         payload.tenant_id = tenantId || 'demo_tenant';
         payload.company_name = companyName;
@@ -277,6 +287,52 @@ export default function RegisterPage() {
                     className="minimal-input"
                   />
                 </div>
+                
+                <div className="brutalist-subtitle" style={{ color: '#0044ff', fontSize: '0.75rem', marginTop: '0.5rem', marginBottom: '0.25rem' }}>Payment Card Details</div>
+                
+                <div>
+                  <label className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#111111', display: 'block', marginBottom: '0.25rem' }}>Card Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="0000 0000 0000 0000" 
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(e.target.value)}
+                    className="minimal-input"
+                  />
+                </div>
+                <div>
+                  <label className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#111111', display: 'block', marginBottom: '0.25rem' }}>Card Holder Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="Jane Doe" 
+                    value={cardHolder}
+                    onChange={(e) => setCardHolder(e.target.value)}
+                    className="minimal-input"
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#111111', display: 'block', marginBottom: '0.25rem' }}>Expiry (MM/YY)</label>
+                    <input 
+                      type="text" 
+                      placeholder="12/28" 
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(e.target.value)}
+                      className="minimal-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#111111', display: 'block', marginBottom: '0.25rem' }}>CVV</label>
+                    <input 
+                      type="text" 
+                      placeholder="123" 
+                      value={cardCvv}
+                      onChange={(e) => setCardCvv(e.target.value)}
+                      className="minimal-input"
+                    />
+                  </div>
+                </div>
+
               </div>
             )}
 

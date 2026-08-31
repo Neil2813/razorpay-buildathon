@@ -253,36 +253,50 @@ async def verify_payment(body: VerifyPaymentRequest, current_user: dict = Depend
         signature=body.razorpay_signature, key_secret=settings.RAZORPAY_KEY_SECRET,
     ):
         raise HTTPException(status_code=400, detail="Payment verification failed. The order will not be fulfilled.")
+
     if state.get("payment_status") != "success":
-        state["payment_status"] = "success"
-        chosen_prod = state.get("chosen_product") or {}
-        fulfilment_info = chosen_prod.get("fulfilment") or {}
-        
-        order = create_fulfilment_order(
-            session_id=state["session_id"],
-            tenant_id=state["tenant_id"],
-            product_id=chosen_prod.get("product_id"),
-            warehouse_id=fulfilment_info.get("warehouse_id"),
-            shipping_fee=fulfilment_info.get("shipping_fee", 0.0),
-            tax_amount=fulfilment_info.get("tax_amount", 0.0),
-            total_amount=chosen_prod.get("total_amount", 0.0),
-            delivery_address=state.get("delivery_address"),
-            delivery_days=fulfilment_info.get("delivery_days", 3)
-        )
-        
-        audit_event(
-            state,
-            agent="payment",
-            decision_reason="Razorpay Checkout signature verified; merchant order is eligible for fulfilment.",
-            output_summary={
-                "order_id": state["razorpay_order_id"],
-                "payment_id": body.razorpay_payment_id,
-                "payment_verified": True,
-                "fulfilment_order": order
-            }
-        )
-        checkpoint_transaction(state, from_event_index=len(state.get("audit_log", [])) - 1)
+        # Guard: webhook may have already fulfilled this order (browser-independent path).
+        # create_fulfilment_order raises RuntimeError if stock is exhausted.
+        try:
+            state["payment_status"] = "success"
+            chosen_prod = state.get("chosen_product") or {}
+            fulfilment_info = chosen_prod.get("fulfilment") or {}
+
+            order = create_fulfilment_order(
+                session_id=state["session_id"],
+                tenant_id=state["tenant_id"],
+                product_id=chosen_prod.get("product_id"),
+                warehouse_id=fulfilment_info.get("warehouse_id"),
+                shipping_fee=fulfilment_info.get("shipping_fee", 0.0),
+                tax_amount=fulfilment_info.get("tax_amount", 0.0),
+                total_amount=chosen_prod.get("total_amount", 0.0),
+                delivery_address=state.get("delivery_address"),
+                delivery_days=fulfilment_info.get("delivery_days", 3)
+            )
+
+            audit_event(
+                state,
+                agent="payment",
+                decision_reason="Razorpay Checkout signature verified; merchant order is eligible for fulfilment.",
+                output_summary={
+                    "order_id": state["razorpay_order_id"],
+                    "payment_id": body.razorpay_payment_id,
+                    "payment_verified": True,
+                    "fulfillment_source": "browser_callback",
+                    "fulfilment_order": order
+                }
+            )
+            checkpoint_transaction(state, from_event_index=len(state.get("audit_log", [])) - 1)
+        except RuntimeError as exc:
+            # Inventory was exhausted — most likely the webhook already fulfilled it
+            # and decremented stock. Surface a 409 so the client can handle gracefully.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(exc),
+            )
+    # If payment_status is already "success", return the existing state (idempotent).
     return TransactionResponse(**{key: state.get(key) for key in TransactionResponse.model_fields})
+
 
 
 @router.get(
@@ -329,22 +343,26 @@ async def transaction_websocket(websocket: WebSocket, session_id: str):
     """
     WebSocket endpoint for real-time agent event streaming with tenant isolation.
 
-    The frontend connects to this before or during a /run call.
-    Authentication can be passed via ?token=<jwt_token> query parameter.
+    Authentication is MANDATORY via ?token=<jwt_token> query parameter.
+    Connections without a valid JWT are rejected before any data is sent.
     Events are pushed as JSON lines:
       {"type": "agent_event", "agent": "...", "decision_reason": "...", ...}
       {"type": "transaction_complete", "state": {...}}
     """
-    await websocket.accept()
-    
-    # Resolve tenant_id from optional JWT query parameter
-    tenant_id = "demo_tenant"
+    # --- Authenticate BEFORE accepting the WebSocket connection ---
+    # Reject unauthenticated connections with 1008 Policy Violation.
+    # This prevents anonymous callers from streaming live payment events,
+    # delivery addresses, and customer PII for any known session_id.
+    from app.auth.security import decode_access_token
     token = websocket.query_params.get("token")
-    if token:
-        from app.auth.security import decode_access_token
-        payload = decode_access_token(token)
-        if payload and payload.get("tenant_id"):
-            tenant_id = payload["tenant_id"]
+    payload = decode_access_token(token) if token else None
+    if not payload or not payload.get("tenant_id"):
+        await websocket.close(code=1008, reason="Authentication required: provide ?token=<jwt>")
+        return
+
+    tenant_id = payload["tenant_id"]
+
+    await websocket.accept()
 
     queue: asyncio.Queue = asyncio.Queue()
     _ws_queues.setdefault(session_id, []).append(queue)
@@ -375,3 +393,4 @@ async def transaction_websocket(websocket: WebSocket, session_id: str):
             queues.remove(queue)
         if not queues:
             _ws_queues.pop(session_id, None)
+

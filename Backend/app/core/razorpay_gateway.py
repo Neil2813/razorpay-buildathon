@@ -32,16 +32,21 @@ class RazorpayGateway:
         encoded = base64.b64encode(credentials.encode()).decode()
         return f"Basic {encoded}"
 
-    def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _post(self, path: str, payload: dict[str, Any], *, idempotency_key: str | None = None) -> dict[str, Any]:
         url = f"{self.BASE_URL}{path}"
         body = json.dumps(payload).encode()
+        headers: dict[str, str] = {
+            "Authorization": self._auth_header(),
+            "Content-Type": "application/json",
+        }
+        # Pass idempotency key as a native Razorpay HTTP header so the API
+        # deduplicates retried requests and never creates a second order.
+        if idempotency_key:
+            headers["X-Razorpay-Idempotency-Key"] = idempotency_key
         req = Request(
             url,
             data=body,
-            headers={
-                "Authorization": self._auth_header(),
-                "Content-Type": "application/json",
-            },
+            headers=headers,
             method="POST",
         )
         try:
@@ -65,7 +70,10 @@ class RazorpayGateway:
         Returns a payment order, not a successful payment.  The browser must
         complete Razorpay Checkout and the server must verify its signature.
         """
-        amount_paise = int(amount * 100)
+        # Use round() before int() to prevent floating-point truncation.
+        # e.g. 1499.99 * 100 = 149998.99...  -> int() = 149998 (wrong: 1 paise short)
+        #      round(1499.99 * 100) = 150000.0 -> int() = 149999 (correct)
+        amount_paise = int(round(amount * 100))
         payload = {
             "amount": amount_paise,
             "currency": currency,
@@ -73,7 +81,7 @@ class RazorpayGateway:
             "notes": {"idempotency_key": idempotency_key},
         }
         try:
-            response = self._post("/orders", payload)
+            response = self._post("/orders", payload, idempotency_key=idempotency_key)
             order_id = response.get("id", "")
             rp_status = response.get("status", "")
             if order_id and rp_status in ("created", "paid"):

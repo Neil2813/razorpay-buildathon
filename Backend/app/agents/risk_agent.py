@@ -28,7 +28,14 @@ def predict_risk_fallback(
     is_transfer = transaction_type == "TRANSFER"
     is_cash_out = transaction_type == "CASH_OUT"
     balance_delta_orig = old_balance_orig - new_balance_orig
-    orig_balance_wiped = int(new_balance_orig == 0)
+    # orig_balance_wiped is a PaySim fraud signal designed for bank wire transfers
+    # where a sender drains their account entirely. For e-commerce PAYMENT transactions
+    # the old/new balances are always 0 (not tracked), so (new_balance_orig == 0) would
+    # evaluate to True for EVERY purchase — producing a systematic false-positive bias.
+    # Suppress this feature for PAYMENT type to prevent wrongful escalation.
+    is_payment = transaction_type == "PAYMENT"
+    orig_balance_wiped = 0 if is_payment else int(new_balance_orig == 0)
+
 
     # Mimic hybrid model key features:
     # High risk when TRANSFER/CASH_OUT completely drains the sender's account for larger amounts.

@@ -1,16 +1,30 @@
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { soundFX } from '../lib/soundFX';
+import { Volume2, VolumeX, Command, Sparkles } from 'lucide-react';
 
-export default function Navbar() {
+interface NavbarProps {
+  onOpenCommandPalette?: () => void;
+}
+
+export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [soundEnabled, setSoundEnabled] = useState(soundFX.isEnabled());
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = () => {
+    soundFX.playClick();
     logout();
     navigate('/');
+  };
+
+  const toggleSound = () => {
+    const next = soundFX.toggle();
+    setSoundEnabled(next);
   };
 
   const isLanding = location.pathname === '/';
@@ -56,6 +70,24 @@ export default function Navbar() {
 
         {/* Right controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          {/* Sound FX Toggle */}
+          <button
+            onClick={toggleSound}
+            title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(1,73,174,0.2)',
+              borderRadius: '6px',
+              padding: '0.35rem 0.6rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              color: soundEnabled ? '#0149ae' : '#71717a'
+            }}
+          >
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+
           {user ? (
             <>
               {isLanding && (
@@ -121,7 +153,7 @@ export default function Navbar() {
 
       {/* Nav Links Cell */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0px', height: '100%' }}>
-        <Link to="/checkout" className="brutalist-subtitle" style={{ 
+        <Link to="/checkout" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
           textDecoration: 'none', 
           color: isActive('/checkout') ? '#0044ff' : '#71717a',
           height: '100%',
@@ -138,7 +170,7 @@ export default function Navbar() {
         {user && (
           <>
             {user.role === 'merchant_admin' && (
-              <Link to="/dashboard" className="brutalist-subtitle" style={{ 
+              <Link to="/dashboard" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
                 textDecoration: 'none', 
                 color: isActive('/dashboard') ? '#0044ff' : '#71717a',
                 height: '100%',
@@ -152,7 +184,7 @@ export default function Navbar() {
                 Revenue Intel
               </Link>
             )}
-            <Link to="/history" className="brutalist-subtitle" style={{ 
+            <Link to="/history" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
               textDecoration: 'none', 
               color: isActive('/history') ? '#0044ff' : '#71717a',
               height: '100%',
@@ -169,13 +201,54 @@ export default function Navbar() {
         )}
       </div>
 
-
-
       {/* Right User Controls Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 1.5rem', borderLeft: '1px solid #111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 1.5rem', borderLeft: '1px solid #111111' }}>
+        {/* Command Palette Trigger Button */}
+        <button
+          onClick={() => {
+            soundFX.playClick();
+            if (onOpenCommandPalette) onOpenCommandPalette();
+          }}
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            padding: '0.35rem 0.65rem',
+            borderRadius: '2px',
+            background: '#faf9f6',
+            border: '1px solid #d4d4d8',
+            color: '#111111',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem'
+          }}
+        >
+          <Command size={13} style={{ color: '#0044ff' }} />
+          <span>Cmd+K</span>
+        </button>
+
+        {/* Sound FX Toggle Button */}
+        <button
+          onClick={toggleSound}
+          title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
+          style={{
+            background: '#faf9f6',
+            border: '1px solid #d4d4d8',
+            borderRadius: '2px',
+            padding: '0.35rem 0.6rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            color: soundEnabled ? '#0044ff' : '#71717a'
+          }}
+        >
+          {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+        </button>
+
         {user ? (
           <>
-            <Link to="/profile" className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
+            <Link to="/profile" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
               Profile
             </Link>
             <button onClick={handleLogout} className="minimal-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
@@ -184,10 +257,10 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            <Link to="/login" className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
+            <Link to="/login" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
               Login
             </Link>
-            <Link to="/register" className="minimal-btn minimal-btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
+            <Link to="/register" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
               Register
             </Link>
           </>
@@ -196,3 +269,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

@@ -21,6 +21,8 @@ class Settings(BaseModel):
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "glassbox_jwt_secret_key_change_in_production_32bytes")
+
 
     # Razorpay Integration Configuration
     RAZORPAY_KEY_ID: str = os.getenv("RAZORPAY_KEY_ID", "rzp_test_mock_key")

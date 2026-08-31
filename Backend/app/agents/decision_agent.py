@@ -181,7 +181,12 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         upsell_item = _find_upsell(chosen, candidates, state["guardrail_ceiling"])
         if upsell_item:
             discount_info = _compute_discount(upsell_item, price, state["guardrail_ceiling"])
-            if discount_info["within_ceiling"]:
+            # Re-enforce the spend ceiling against the full bundle total.
+            # The initial guardrail only checked the primary product price; without
+            # this second check a discounted bundle could silently exceed the ceiling
+            # and charge the buyer above their unattended spend limit.
+            bundle_within_ceiling = discount_info["within_ceiling"] and discount_info["bundle_total"] <= state["guardrail_ceiling"]
+            if bundle_within_ceiling:
                 # Ask LLM for a brief, persuasive upsell pitch (soft signal only — not a decision)
                 pitch = complete_json(
                     model=FAST_MODEL,
@@ -217,6 +222,7 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
                     "within_ceiling": True,
                 }
                 state["upsell_offer"] = upsell_offer
+
 
     if not passed:
         state["payment_status"] = "escalated"
