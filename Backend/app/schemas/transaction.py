@@ -36,6 +36,14 @@ class RunTransactionRequest(BaseModel):
         description="Explicit approval for the already selected merchant SKU and its exact amount.",
     )
     address_id: str | None = Field(default=None, description="Buyer delivery address selected for fulfilment.")
+    accept_upsell: bool = Field(
+        default=False,
+        description=(
+            "Explicit opt-in for the upsell bundle offer presented in a prior response. "
+            "Pass True only when the buyer agent has been explicitly delegated to purchase "
+            "complementary items. Default False ensures upsells are proposals, never automatic charges."
+        ),
+    )
 
 
 class AuditEventResponse(BaseModel):

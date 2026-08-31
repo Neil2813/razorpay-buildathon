@@ -87,8 +87,37 @@ def _run_with_streaming(
         if request.address_id
         else (next((item for item in addresses if item["is_default"]), addresses[0] if addresses else None))
     )
+
+    # --- Graceful address clarification (Fix: was ValueError -> HTTP 500) ---
+    # Return a structured "needs_clarification" response instead of crashing.
+    # AI buyer agents and the Frontend can read this and prompt for address input.
     if not address:
-        raise ValueError("Add a delivery address before searching the merchant catalogue.")
+        from app.agents.state import new_transaction_state, audit_event
+        clarification_state = new_transaction_state(
+            tenant_id=tenant_id,
+            user_message=request.user_message,
+            session_id=request.session_id,
+        )
+        clarification_state["intent"] = {
+            "needs_clarification": True,
+            "clarification_reason": "delivery_address_missing",
+            "missing_parameters": ["delivery_address"],
+        }
+        clarification_state["payment_status"] = "pending"
+        clarification_state["escalation_message"] = (
+            "Please add or select a delivery address to view fulfillable products for your location."
+        )
+        audit_event(
+            clarification_state,
+            agent="concierge",
+            decision_reason="Missing delivery address — cannot search catalogue without knowing delivery zone.",
+            output_summary={
+                "missing_parameters": ["delivery_address"],
+                "clarification": "Please add or select a delivery address to view fulfillable products for your location.",
+            },
+        )
+        return clarification_state
+
     catalog = get_checkout_catalog(tenant_id, address)
     guardrail_ceiling = get_tenant_ceiling(tenant_id)
     gateway = get_gateway(tenant_id=tenant_id, force_fail=request.force_payment_fail)
@@ -132,6 +161,7 @@ def _run_with_streaming(
         autonomy_mode=request.autonomy_mode,
         requested_sites=request.requested_sites,
         buyer_approved=request.buyer_approved,
+        accept_upsell=request.accept_upsell,
         delivery_address=address,
         on_checkpoint=checkpoint_and_broadcast,
     )
