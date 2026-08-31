@@ -1,6 +1,6 @@
 import React from 'react';
 import { soundFX } from '../lib/soundFX';
-import { Zap, ShieldAlert, Sparkles, Send, Gift } from 'lucide-react';
+import { Zap, ShieldAlert, Sparkles, Send, Gift, ShoppingCart, Coins } from 'lucide-react';
 
 export interface PresetData {
   id: string;
@@ -140,7 +140,11 @@ export default function ScenarioPresetsBar({ onSelectPreset, activePresetId }: S
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '0.78rem', color: '#111111' }}>
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: '0.78rem', color: '#111111', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {preset.id === 'vip' && <Gift size={14} style={{ color: preset.color }} />}
+                  {preset.id === 'fraud' && <ShieldAlert size={14} style={{ color: preset.color }} />}
+                  {preset.id === 'abandonment' && <ShoppingCart size={14} style={{ color: preset.color }} />}
+                  {preset.id === 'crypto' && <Coins size={14} style={{ color: preset.color }} />}
                   {preset.name}
                 </span>
                 <span
