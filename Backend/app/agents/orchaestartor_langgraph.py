@@ -260,6 +260,7 @@ def run_transaction(
     autonomy_mode: str | None = None,
     requested_sites: list[str] | None = None,
     buyer_approved: bool = False,
+    accept_upsell: bool = False,
     delivery_address: dict[str, Any] | None = None,
     on_checkpoint: Callable[[TransactionState], None] | None = None,
 ) -> TransactionState:
@@ -298,6 +299,9 @@ def run_transaction(
             state["payment_status"] = "pending"
         if delivery_address and not state.get("buyer_approved"):
             state["delivery_address"] = delivery_address
+        # Always update accept_upsell from current request so a buyer
+        # can opt-in on the second call after reviewing the proposal.
+        state["accept_upsell"] = accept_upsell
     else:
         state = new_transaction_state(
             tenant_id=tenant_id, user_message=user_message, session_id=session_id
@@ -307,6 +311,7 @@ def run_transaction(
         if requested_sites:
             state["requested_sites"] = requested_sites
         state["buyer_approved"] = buyer_approved
+        state["accept_upsell"] = accept_upsell
         state["delivery_address"] = delivery_address
 
     event_index = len(state.get("audit_log", []))
