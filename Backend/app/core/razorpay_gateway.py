@@ -78,7 +78,16 @@ class RazorpayGateway:
             "amount": amount_paise,
             "currency": currency,
             "receipt": receipt[:40],  # Razorpay max 40 chars
-            "notes": {"idempotency_key": idempotency_key},
+            "notes": {
+                "idempotency_key": idempotency_key,
+                # AP2 / x402 agent protocol attribution metadata.
+                # Identifies this as an AI-originated transaction and enables
+                # future Razorpay Route fee-split for agent platform commissions.
+                "agent_protocol": "UAP-1.0",
+                "platform": "glassbox_agentic_commerce",
+                "ap2_fee_attribution": "standard",
+                "initiated_by": "ai_buyer_agent",
+            },
         }
         try:
             response = self._post("/orders", payload, idempotency_key=idempotency_key)

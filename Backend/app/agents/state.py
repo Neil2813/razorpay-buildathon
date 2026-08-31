@@ -61,6 +61,7 @@ class TransactionState(TypedDict, total=False):
     fulfilment: dict[str, Any] | None
     # --- Revenue Growth Engine (Upsell & Cross-Sell) ---
     upsell_offer: dict[str, Any] | None  # complement item bundle proposal
+    accept_upsell: bool  # True only when buyer explicitly opted into the bundle
 
 
 def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str | None = None) -> TransactionState:
@@ -94,6 +95,7 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         delivery_address=None,
         fulfilment=None,
         upsell_offer=None,
+        accept_upsell=False,
     )
 
 

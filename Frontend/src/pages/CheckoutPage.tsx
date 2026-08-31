@@ -371,6 +371,8 @@ export default function CheckoutPage() {
   const [trustOverrideActive, setTrustOverrideActive] = useState<boolean>(false);
   const [awaitingClarification, setAwaitingClarification] = useState<boolean>(false);
   const [upsellOffer, setUpsellOffer] = useState<Record<string, any> | null>(null);
+  const [acceptUpsell, setAcceptUpsell] = useState(false);
+  const [upsellDeclined, setUpsellDeclined] = useState(false);
 
   // Interactive Card & Preset State
   const [cardNumber, setCardNumber] = useState('4532 8920 1192 4892');
@@ -540,6 +542,8 @@ export default function CheckoutPage() {
       setDeliveryAddress(null);
       setTrustOverrideActive(false);
       setUpsellOffer(null);
+      setAcceptUpsell(false);
+      setUpsellDeclined(false);
     }
 
     setActiveAgent('concierge');
@@ -555,6 +559,7 @@ export default function CheckoutPage() {
         autonomy_mode: modeToUse,
         requested_sites: sitesToUse,
         buyer_approved: buyerApproved,
+        accept_upsell: acceptUpsell,
         address_id: selectedAddressId || undefined,
       });
 
@@ -1506,7 +1511,7 @@ export default function CheckoutPage() {
                           )}
 
                           {/* ---- Revenue Growth Upsell Offer ---- */}
-                          {msg.upsellOffer && msg.guardrailData?.passed && (
+                          {msg.upsellOffer && msg.guardrailData?.passed && !upsellDeclined && (
                             <div style={{
                               marginTop: '0.85rem',
                               padding: '1rem 1.15rem',
@@ -1553,6 +1558,70 @@ export default function CheckoutPage() {
                                   <span className="brutalist-text">Bundle Total: <strong style={{ color: '#111111' }}>₹{msg.upsellOffer.bundle_total.toLocaleString()}</strong> · Within ceiling ✓</span>
                                 </div>
                                 <span className="minimal-pill" style={{ background: '#7c3aed15', color: '#7c3aed', border: '1px solid #7c3aed30', fontSize: '0.62rem' }}>WITHIN CEILING</span>
+                              </div>
+
+                              {/* Upsell Accept / Decline — explicit buyer opt-in required */}
+                              {/* UAP-1.0: agent MUST NOT auto-charge bundle; buyer confirms here */}
+                              {!msg.upsellOffer.buyer_accepted && (
+                                <div style={{ marginTop: '0.85rem', display: 'flex', gap: '0.6rem' }}>
+                                  <button
+                                    id="upsell-accept-btn"
+                                    className="minimal-btn minimal-btn-primary"
+                                    style={{ flex: 1, fontSize: '0.78rem', padding: '0.55rem 0.75rem', background: '#7c3aed', border: 'none' }}
+                                    disabled={isRunning}
+                                    onClick={() => {
+                                      setAcceptUpsell(true);
+                                      handleSend(
+                                        `Yes, add the ${msg.upsellOffer!.name} bundle at ₹${msg.upsellOffer!.discounted_price} to my order.`,
+                                        autonomyMode,
+                                        undefined,
+                                        false,
+                                      );
+                                    }}
+                                  >
+                                    ✓ Accept Bundle — Pay ₹{msg.upsellOffer.bundle_total.toLocaleString()}
+                                  </button>
+                                  <button
+                                    id="upsell-decline-btn"
+                                    className="minimal-btn"
+                                    style={{ fontSize: '0.78rem', padding: '0.55rem 0.75rem', background: '#f4f4f5', color: '#71717a', border: '1px solid #e4e4e7' }}
+                                    disabled={isRunning}
+                                    onClick={() => {
+                                      setUpsellDeclined(true);
+                                      setAcceptUpsell(false);
+                                    }}
+                                  >
+                                    ✕ No thanks
+                                  </button>
+                                </div>
+                              )}
+                              {msg.upsellOffer.buyer_accepted && (
+                                <div style={{ marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                                  <span>✓ Bundle accepted — charging ₹{msg.upsellOffer.bundle_total.toLocaleString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* ---- Delivery Address Clarification Prompt ---- */}
+                          {msg.role === 'agent' && msg.content && typeof msg.content === 'string' && msg.content.includes('delivery address') && !selectedAddressId && (
+                            <div style={{
+                              marginTop: '0.85rem',
+                              padding: '0.9rem 1rem',
+                              borderRadius: '2px',
+                              border: '1px solid #f59e0b40',
+                              borderLeft: '4px solid #f59e0b',
+                              background: '#fffbeb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.65rem',
+                            }}>
+                              <span style={{ fontSize: '1.1rem' }}>📍</span>
+                              <div style={{ flex: 1 }}>
+                                <div className="brutalist-subtitle" style={{ color: '#92400e', fontSize: '0.72rem', marginBottom: '0.2rem' }}>DELIVERY ADDRESS NEEDED</div>
+                                <div className="brutalist-text" style={{ fontSize: '0.8rem', color: '#78350f' }}>
+                                  Add a delivery address in the left panel to see products available in your area.
+                                </div>
                               </div>
                             </div>
                           )}
