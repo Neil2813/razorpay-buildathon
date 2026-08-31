@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play, TrendingUp, Sparkles, CreditCard as CreditCardIcon } from 'lucide-react';
+import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play, TrendingUp, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { AuditEvent } from '../components/KnowledgeGraph';
 import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
@@ -7,7 +7,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { soundFX } from '../lib/soundFX';
 import InteractiveCard3D from '../components/InteractiveCard3D';
-import ScenarioPresetsBar, { PRESET_SCENARIOS, PresetData } from '../components/ScenarioPresetsBar';
+import ScenarioPresetsBar, { PresetData } from '../components/ScenarioPresetsBar';
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import GlassReceiptModal from '../components/GlassReceiptModal';
 
@@ -76,6 +76,7 @@ interface Message {
     revenue_lift_inr: number;
     pitch?: string;
     within_ceiling: boolean;
+    buyer_accepted?: boolean;
   };
 }
 
@@ -375,18 +376,18 @@ export default function CheckoutPage() {
   const [upsellDeclined, setUpsellDeclined] = useState(false);
 
   // Interactive Card & Preset State
-  const [cardNumber, setCardNumber] = useState('4532 8920 1192 4892');
+  const [cardNumber, _setCardNumber] = useState('4532 8920 1192 4892');
   const [cardHolder, setCardHolder] = useState('AARAV SHARMA');
-  const [expiry, setExpiry] = useState('12/28');
-  const [cvv, setCvv] = useState('882');
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [expiry, _setExpiry] = useState('12/28');
+  const [cvv, _setCvv] = useState('882');
+  const [focusedField, _setFocusedField] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   // Interactive Confetti & Glass Receipt State
   const [showConfetti, setShowConfetti] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptData, setReceiptData] = useState<any>(null);
+  const [receiptData, _setReceiptData] = useState<any>(null);
 
   // Buyer Address Management
   const [addresses, setAddresses] = useState<any[]>([]);
