@@ -14,10 +14,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.auth.deps import get_current_user
+from app.auth.deps import get_current_user, get_optional_user
 from app.db.database import get_db_connection, query_catalog
 
 router_root = APIRouter(tags=["Agent Protocol"])
@@ -224,18 +224,31 @@ def agent_catalog(
     in_stock: bool | None = None,
     min_rating: float | None = None,
     has_return_policy: bool | None = None,
-    current_user: dict = Depends(get_current_user),
+    # `tenant_id` lets unauthenticated AI buyer agents target a specific merchant.
+    # Falls back to "demo_tenant" when absent so the endpoint is always functional.
+    tenant_id: str = Query(default="demo_tenant", description="Merchant tenant ID to query"),
+    # Authentication is OPTIONAL: authenticated users get their own tenant's catalog;
+    # unauthenticated AI buyers use the `tenant_id` query param.
+    # This complies with UAP-1.0 which requires open catalog discovery.
+    current_user: dict | None = Depends(get_optional_user),
 ):
     """
     **Machine-readable product catalog** in schema.org JSON-LD format.
 
-    AI buyers can query this endpoint with optional filter parameters before
-    initiating a transaction. All products include `_agentMeta` policy flags
-    indicating structured data completeness and AI acceptance signals.
+    **Unauthenticated access is permitted** per UAP-1.0 / ACP-2024 open agent
+    commerce standards. AI buyer agents can query this endpoint to discover
+    products, `_agentMeta` policy flags, and return policies before initiating
+    a transaction.
 
-    Query params: `category`, `in_stock`, `min_rating`, `has_return_policy`
+    Authenticated users' tenant catalog takes precedence over the `tenant_id` param.
+
+    Query params: `category`, `in_stock`, `min_rating`, `has_return_policy`, `tenant_id`
     """
-    products = query_catalog(current_user["tenant_id"])
+    # Authenticated users always see their own tenant's catalog.
+    # Unauthenticated AI buyer agents use the ?tenant_id= query param.
+    resolved_tenant_id = (current_user or {}).get("tenant_id") or tenant_id
+
+    products = query_catalog(resolved_tenant_id)
 
     # Apply optional filters
     if category is not None:
@@ -249,23 +262,33 @@ def agent_catalog(
 
     jsonld_items = _catalog_to_jsonld(products)
 
-    return {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        "name": "GlassBox Agent-Readable Product Catalog",
-        "description": (
-            "Structured product catalog optimised for AI buyer agents. "
-            "Each product includes schema.org markup and _agentMeta policy flags."
-        ),
-        "numberOfItems": len(jsonld_items),
-        "itemListElement": jsonld_items,
-        "_protocolMeta": {
-            "standards": ["UAP-1.0", "ACP-2024"],
-            "transactionEndpoint": f"{_base_url(request)}/api/transaction/run",
-            "spendCeilingEnforced": True,
-            "riskGatingEnabled": True,
+    return JSONResponse(
+        content={
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "GlassBox Agent-Readable Product Catalog",
+            "description": (
+                "Structured product catalog optimised for AI buyer agents. "
+                "Each product includes schema.org markup and _agentMeta policy flags."
+            ),
+            "numberOfItems": len(jsonld_items),
+            "itemListElement": jsonld_items,
+            "_protocolMeta": {
+                "standards": ["UAP-1.0", "ACP-2024"],
+                "tenant_id": resolved_tenant_id,
+                "transactionEndpoint": f"{_base_url(request)}/api/transaction/run",
+                "authRequired": True,  # transactions require JWT; catalog does not
+                "spendCeilingEnforced": True,
+                "riskGatingEnabled": True,
+                "agentBuyerOptIn": "pass accept_upsell=true to confirm bundle purchases",
+            },
         },
-    }
+        headers={
+            # Cache for 60s so AI crawlers do not hammer the endpoint
+            "Cache-Control": "public, max-age=60",
+            "X-Protocol-Standards": "UAP-1.0, ACP-2024, AP2-draft, x402-preview",
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
