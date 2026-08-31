@@ -63,12 +63,19 @@ def init_db():
         razorpay_key_id TEXT,
         razorpay_key_secret TEXT,
         unattended_spend_ceiling REAL NOT NULL DEFAULT 5000.0,
+        max_upsell_discount_pct REAL NOT NULL DEFAULT 15.0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
 
     # Column migrations for existing databases
-    for col in [("razorpay_key_id", "TEXT"), ("razorpay_key_secret", "TEXT")]:
+    for col in [
+        ("razorpay_key_id", "TEXT"),
+        ("razorpay_key_secret", "TEXT"),
+        # Merchant margin control — max discount the upsell agent can apply.
+        # Default 15% protects merchants with thin margins from automated margin erosion.
+        ("max_upsell_discount_pct", "REAL NOT NULL DEFAULT 15.0"),
+    ]:
         try:
             cursor.execute(f"ALTER TABLE tenants ADD COLUMN {col[0]} {col[1]};")
         except sqlite3.OperationalError:
@@ -362,8 +369,13 @@ def get_tenant(tenant_id: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def update_tenant_settings(tenant_id: str, name: str | None = None, unattended_spend_ceiling: float | None = None) -> dict[str, Any] | None:
-    """Update spend ceiling or tenant metadata."""
+def update_tenant_settings(
+    tenant_id: str,
+    name: str | None = None,
+    unattended_spend_ceiling: float | None = None,
+    max_upsell_discount_pct: float | None = None,
+) -> dict[str, Any] | None:
+    """Update spend ceiling, upsell margin cap, or tenant metadata."""
     conn = get_db_connection()
     cursor = conn.cursor()
     fields = []
@@ -375,6 +387,11 @@ def update_tenant_settings(tenant_id: str, name: str | None = None, unattended_s
     if unattended_spend_ceiling is not None:
         fields.append("unattended_spend_ceiling = ?")
         values.append(float(unattended_spend_ceiling))
+    if max_upsell_discount_pct is not None:
+        # Clamp to a sane range: 0% (no automated discount) to 50% (max dealer)
+        clamped = max(0.0, min(50.0, float(max_upsell_discount_pct)))
+        fields.append("max_upsell_discount_pct = ?")
+        values.append(clamped)
 
     if fields:
         values.append(tenant_id)
@@ -589,13 +606,28 @@ def create_fulfilment_order(
 
 
 def get_tenant_ceiling(tenant_id: str) -> float:
-    """Get the spend ceiling for a tenant, fallback to 5000.0 if not found."""
+    """Get the unattended spend ceiling for a tenant, fallback to 5000.0 if not found."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT unattended_spend_ceiling FROM tenants WHERE tenant_id = ?;", (tenant_id,))
     row = cursor.fetchone()
     conn.close()
     return float(row["unattended_spend_ceiling"]) if row else 5000.0
+
+
+def get_tenant_max_upsell_discount(tenant_id: str) -> float:
+    """Get the maximum automated upsell discount pct the merchant permits.
+
+    Default 15%. Caps the bundle discount the Decision Agent is allowed to
+    apply autonomously, protecting merchant gross margin from being eroded
+    by the upsell engine giving away too much discount to fit in the ceiling.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT max_upsell_discount_pct FROM tenants WHERE tenant_id = ?;", (tenant_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return float(row["max_upsell_discount_pct"]) if row else 15.0
 
 
 # ---------------------------------------------------------------------------
