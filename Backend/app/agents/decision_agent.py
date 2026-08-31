@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from .groq_client import FAST_MODEL, REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
+from app.db.database import get_tenant_max_upsell_discount
 
 
 # ---------------------------------------------------------------------------
@@ -83,10 +84,13 @@ def _find_upsell(
     return eligible[0]
 
 
-def _compute_discount(upsell_item: dict, primary_price: float, ceiling: float) -> dict:
+def _compute_discount(upsell_item: dict, primary_price: float, ceiling: float, max_discount_pct: float = 15.0) -> dict:
     """
     Compute the dynamic discount for the upsell bundle.
-    Discount is bounded so the bundle total never exceeds the spend ceiling.
+    Discount is bounded so:
+      (a) the bundle total never exceeds the spend ceiling, AND
+      (b) the discount never exceeds the merchant's configured max_upsell_discount_pct
+          (prevents automated margin erosion below the merchant's profit floor).
     """
     upsell_price = float(upsell_item.get("price", 0))
     bundle_full = primary_price + upsell_price
@@ -99,7 +103,8 @@ def _compute_discount(upsell_item: dict, primary_price: float, ceiling: float) -
     else:
         discount_pct = _UPSELL_DISCOUNT_PCT
 
-    discount_pct = min(discount_pct, 30)  # hard cap: never > 30 %
+    # Hard cap at merchant-configured max — protects gross margin
+    discount_pct = min(discount_pct, max_discount_pct)
     discounted_price = round(upsell_price * (1 - discount_pct / 100), 2)
     bundle_total = round(primary_price + discounted_price, 2)
     revenue_lift = round(discounted_price, 2)  # incremental revenue from upsell
@@ -178,13 +183,18 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
     # ---------------------------------------------------------------------------
     upsell_offer: dict | None = None
     if passed:
+        # Fetch the merchant-configured max discount from the database.
+        # This prevents the engine from automatically discounting below the
+        # merchant's profit floor to force items under the spend ceiling.
+        merchant_max_discount = get_tenant_max_upsell_discount(state["tenant_id"])
+
         upsell_item = _find_upsell(chosen, candidates, state["guardrail_ceiling"])
         if upsell_item:
-            discount_info = _compute_discount(upsell_item, price, state["guardrail_ceiling"])
+            discount_info = _compute_discount(
+                upsell_item, price, state["guardrail_ceiling"],
+                max_discount_pct=merchant_max_discount,
+            )
             # Re-enforce the spend ceiling against the full bundle total.
-            # The initial guardrail only checked the primary product price; without
-            # this second check a discounted bundle could silently exceed the ceiling
-            # and charge the buyer above their unattended spend limit.
             bundle_within_ceiling = discount_info["within_ceiling"] and discount_info["bundle_total"] <= state["guardrail_ceiling"]
             if bundle_within_ceiling:
                 # Ask LLM for a brief, persuasive upsell pitch (soft signal only — not a decision)
@@ -220,9 +230,20 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
                     "revenue_lift_inr": discount_info["revenue_lift_inr"],
                     "pitch": upsell_pitch,
                     "within_ceiling": True,
+                    # Track whether buyer accepted. Agents reading the audit log
+                    # can verify mandate compliance from this field.
+                    "buyer_accepted": state.get("accept_upsell", False),
                 }
                 state["upsell_offer"] = upsell_offer
 
+                # CRITICAL: Only merge the bundle total into chosen_product when
+                # the buyer (or buyer's delegated agent) has EXPLICITLY opted in.
+                # Default False — the upsell_offer is a PROPOSAL, not an automatic charge.
+                if state.get("accept_upsell"):
+                    chosen["total_amount"] = discount_info["bundle_total"]
+                    chosen["upsell_accepted"] = True
+                    chosen["upsell_product"] = upsell_item.get("name")
+                    state["chosen_product"] = chosen
 
     if not passed:
         state["payment_status"] = "escalated"
@@ -245,7 +266,8 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
             # Revenue Growth Engine output
             "upsell_offer": upsell_offer,
             "upsell_triggered": upsell_offer is not None,
-            "revenue_lift_inr": upsell_offer["revenue_lift_inr"] if upsell_offer else 0.0,
+            "upsell_accepted": bool(state.get("accept_upsell")) and upsell_offer is not None,
+            "revenue_lift_inr": upsell_offer["revenue_lift_inr"] if upsell_offer and state.get("accept_upsell") else 0.0,
             "upsell_discount_applied": upsell_offer["discount_pct"] if upsell_offer else None,
         },
     )
