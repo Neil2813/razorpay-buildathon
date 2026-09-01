@@ -381,8 +381,7 @@ export default function CheckoutPage() {
   const [expiry, _setExpiry] = useState('12/28');
   const [cvv, _setCvv] = useState('882');
   const [focusedField, _setFocusedField] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [paymentMethod] = useState('card');
 
   // Interactive Confetti & Glass Receipt State
   const [showConfetti, setShowConfetti] = useState(false);
@@ -529,6 +528,7 @@ export default function CheckoutPage() {
   }, [sessionId]);
 
   const handleSend = async (queryOverride?: string, forceMode?: 'autonomous' | 'guided' | null, _siteOverride?: string, buyerApproved = false) => {
+    soundFX.playClick();
     const query = queryOverride || input;
     if (!query.trim() || isRunning) return;
 
@@ -841,8 +841,11 @@ export default function CheckoutPage() {
 
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: 'calc(100vh - 60px)', background: '#f6f1e5' }}>
-      {/* Left Sidebar */}
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f6f1e5' }}>
+      <Navbar />
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', flex: 1, minHeight: 'calc(100vh - 60px)', background: '#f6f1e5' }}>
+        {/* Left Sidebar */}
+
       <div style={{ 
         background: '#060e26', 
         borderRight: '2px solid #060e26', 
@@ -1085,8 +1088,8 @@ export default function CheckoutPage() {
             <span className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 800 }}>TRANSACTION TIMELINE LEDGER</span>
             {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
           </div>
-          <div className="brutalist-mono" style={{ fontSize: '0.75rem', color: '#060e26', fontWeight: 700 }}>
-            Mode: <strong style={{ color: '#060e26', textTransform: 'uppercase' }}>{autonomyMode}</strong>
+          <div className="brutalist-mono" style={{ fontSize: '0.82rem', color: '#060e26', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif" }}>
+            Mode : <strong style={{ color: '#060e26', textTransform: 'uppercase', fontWeight: 900, marginLeft: '0.25rem' }}>{autonomyMode}</strong>
           </div>
         </div>
 

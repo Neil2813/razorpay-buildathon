@@ -211,9 +211,9 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           }}
           style={{
             fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: '0.72rem',
+            fontSize: '0.75rem',
             fontWeight: 800,
-            padding: '0.4rem 0.75rem',
+            padding: '0.4rem 0.8rem',
             borderRadius: '0px',
             background: '#ffffff',
             border: '2px solid #000000',
@@ -224,8 +224,8 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
             gap: '0.4rem'
           }}
         >
-          <Command size={13} style={{ color: '#060e26' }} />
-          <span>Cmd+K</span>
+          <Command size={14} style={{ color: '#060e26' }} />
+          <span style={{ color: '#060e26', fontWeight: 800 }}>Cmd+K</span>
         </button>
 
         {/* Sound FX Toggle Button */}
@@ -233,21 +233,22 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           onClick={toggleSound}
           title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
           style={{
+            fontFamily: "'Space Grotesk', sans-serif",
             background: '#ffffff',
             border: '2px solid #000000',
             borderRadius: '0px',
-            padding: '0.4rem 0.75rem',
-            fontSize: '0.72rem',
+            padding: '0.4rem 0.8rem',
+            fontSize: '0.75rem',
             fontWeight: 800,
             color: '#060e26',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.3rem'
+            gap: '0.4rem'
           }}
         >
-          {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-          <span>AUDIO</span>
+          {soundEnabled ? <Volume2 size={14} style={{ color: '#060e26' }} /> : <VolumeX size={14} style={{ color: '#060e26' }} />}
+          <span style={{ color: '#060e26', fontWeight: 800 }}>AUDIO</span>
         </button>
 
         {user ? (
