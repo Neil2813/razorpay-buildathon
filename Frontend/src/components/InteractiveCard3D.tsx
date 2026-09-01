@@ -8,6 +8,7 @@ interface InteractiveCard3DProps {
   cvv: string;
   focusedField: string | null;
   paymentMethod: string;
+  cardTheme?: 'dark' | 'light';
 }
 
 export default function InteractiveCard3D({
@@ -16,7 +17,8 @@ export default function InteractiveCard3D({
   expiry,
   cvv,
   focusedField,
-  paymentMethod
+  paymentMethod,
+  cardTheme = 'dark'
 }: InteractiveCard3DProps) {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
 
@@ -48,6 +50,8 @@ export default function InteractiveCard3D({
 
   const formattedNum = cardNumber || '•••• •••• •••• ••••';
 
+  const isLight = cardTheme === 'light';
+
   return (
     <div
       style={{
@@ -78,14 +82,14 @@ export default function InteractiveCard3D({
             inset: 0,
             backfaceVisibility: 'hidden',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #111111 0%, #1e1e24 50%, #0044ff 100%)',
-            color: '#ffffff',
+            background: isLight ? '#ffffff' : 'linear-gradient(135deg, #111111 0%, #1e1e24 50%, #0044ff 100%)',
+            color: isLight ? '#060e26' : '#ffffff',
             padding: '1.25rem 1.5rem',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255,255,255,0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: isLight ? '0 12px 28px rgba(0, 0, 0, 0.25)' : '0 16px 36px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255,255,255,0.3)',
+            border: isLight ? '2px solid #060e26' : '1px solid rgba(255, 255, 255, 0.15)',
             overflow: 'hidden'
           }}
         >
@@ -97,7 +101,7 @@ export default function InteractiveCard3D({
               left: '-50%',
               width: '200%',
               height: '200%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+              background: isLight ? 'radial-gradient(circle, rgba(0,0,0,0.05) 0%, transparent 60%)' : 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
               pointerEvents: 'none',
               transform: `translate(${rotate.y * 2}px, ${rotate.x * 2}px)`
             }}
@@ -111,27 +115,25 @@ export default function InteractiveCard3D({
                   width: '32px',
                   height: '24px',
                   borderRadius: '4px',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  border: '1px solid rgba(255,255,255,0.4)',
+                  background: isLight ? '#f59e0b' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  border: isLight ? '1px solid #060e26' : '1px solid rgba(255,255,255,0.4)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
-                <div style={{ width: '18px', height: '14px', border: '1px solid rgba(255,255,255,0.6)', borderRadius: '2px' }} />
+                <div style={{ width: '18px', height: '14px', border: isLight ? '1px solid #060e26' : '1px solid rgba(255,255,255,0.6)', borderRadius: '2px' }} />
               </div>
               <Wifi size={18} style={{ opacity: 0.8 }} />
             </div>
 
             <div
               style={{
-                fontFamily: "'Antonio', sans-serif",
-                fontWeight: 800,
-                fontSize: '0.95rem',
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 900,
+                fontSize: '1rem',
                 letterSpacing: '0.08em',
-                background: 'linear-gradient(90deg, #ffffff 0%, #a1a1aa 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
+                color: isLight ? '#060e26' : '#ffffff'
               }}
             >
               {getBrandLogo()}
@@ -141,12 +143,13 @@ export default function InteractiveCard3D({
           {/* Card Number */}
           <div
             style={{
-              fontFamily: 'monospace',
+              fontFamily: "'Space Grotesk', monospace",
+              fontWeight: 800,
               fontSize: '1.25rem',
               letterSpacing: '0.15em',
-              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
               zIndex: 1,
-              marginTop: '0.5rem'
+              marginTop: '0.5rem',
+              color: isLight ? '#060e26' : '#ffffff'
             }}
           >
             {formattedNum}
@@ -155,16 +158,17 @@ export default function InteractiveCard3D({
           {/* Bottom Row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
             <div>
-              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', opacity: 0.7, letterSpacing: '0.05em', fontWeight: 700 }}>
                 CARD HOLDER
               </div>
               <div
                 style={{
                   fontFamily: "'Space Grotesk', sans-serif",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: '0.85rem',
                   letterSpacing: '0.05em',
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  color: isLight ? '#060e26' : '#ffffff'
                 }}
               >
                 {cardHolder || 'VALUED CUSTOMER'}
@@ -172,20 +176,21 @@ export default function InteractiveCard3D({
             </div>
 
             <div>
-              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', opacity: 0.7, letterSpacing: '0.05em', fontWeight: 700 }}>
                 EXPIRES
               </div>
-              <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 700 }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 800 }}>
                 {expiry || 'MM/YY'}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.85, fontSize: '0.68rem' }}>
-              <ShieldCheck size={14} style={{ color: '#10b981' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.85, fontSize: '0.65rem', fontWeight: 700 }}>
+              <ShieldCheck size={14} style={{ color: isLight ? '#060e26' : '#10b981' }} />
               <span>GLASSBOX SECURE</span>
             </div>
           </div>
         </div>
+
 
         {/* CARD BACK */}
         <div

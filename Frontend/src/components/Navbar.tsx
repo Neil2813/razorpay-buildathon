@@ -123,25 +123,27 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
     );
   }
 
+  const isCheckout = location.pathname === '/checkout';
+
   // Premium Minimalist Brutalist Typography Navbar for other pages
   return (
     <nav style={{
-      background: '#ffffff',
-      borderBottom: '1px solid #111111',
+      background: isCheckout ? '#060e26' : '#ffffff',
+      borderBottom: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111',
       display: 'grid',
-      gridTemplateColumns: '240px 1fr auto auto',
+      gridTemplateColumns: '240px 1fr auto',
       height: '60px',
       position: 'sticky',
       top: 0,
       zIndex: 100
     }}>
       {/* Brand Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderRight: '1px solid #111111' }}>
-        <Link to="/" className="brutalist-title" style={{ textDecoration: 'none', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderRight: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
+        <Link to="/" className="brutalist-title" style={{ textDecoration: 'none', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: isCheckout ? '#ffffff' : '#111111' }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: '26px', height: '26px', borderRadius: '2px',
-            background: '#0044ff',
+            background: isCheckout ? '#0044ff' : '#0044ff',
             color: '#ffffff', fontSize: '0.75rem', fontWeight: 800,
             flexShrink: 0,
           }}>
@@ -152,57 +154,55 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
       </div>
 
       {/* Nav Links Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0px', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', height: '100%', paddingLeft: '1.5rem' }}>
         <Link to="/checkout" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
           textDecoration: 'none', 
-          color: isActive('/checkout') ? '#0044ff' : '#71717a',
-          height: '100%',
+          color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#71717a'),
+          fontSize: '0.8rem',
+          fontWeight: 800,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 1.5rem',
-          borderRight: '1px solid #e4e4e7',
-          background: isActive('/checkout') ? '#faf9f6' : 'transparent',
-          transition: 'all 0.15s'
+          gap: '0.75rem'
         }}>
-          Checkout Cockpit
+          <span>CHECKOUT COCKPIT</span>
         </Link>
         
         {user && (
           <>
+            <span style={{ color: isCheckout ? 'rgba(255,255,255,0.3)' : '#d4d4d8' }}>|</span>
             {user.role === 'merchant_admin' && (
-              <Link to="/dashboard" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
-                textDecoration: 'none', 
-                color: isActive('/dashboard') ? '#0044ff' : '#71717a',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 1.5rem',
-                borderRight: '1px solid #e4e4e7',
-                background: isActive('/dashboard') ? '#faf9f6' : 'transparent',
-                transition: 'all 0.15s'
-              }}>
-                Revenue Intel
-              </Link>
+              <>
+                <Link to="/dashboard" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
+                  textDecoration: 'none', 
+                  color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#71717a'),
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase'
+                }}>
+                  REVENUE INTEL
+                </Link>
+                <span style={{ color: isCheckout ? 'rgba(255,255,255,0.3)' : '#d4d4d8' }}>|</span>
+              </>
             )}
             <Link to="/history" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
               textDecoration: 'none', 
-              color: isActive('/history') ? '#0044ff' : '#71717a',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 1.5rem',
-              borderRight: '1px solid #e4e4e7',
-              background: isActive('/history') ? '#faf9f6' : 'transparent',
-              transition: 'all 0.15s'
+              color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#71717a'),
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase'
             }}>
-              Audit Ledger
+              AUDIT LEDGER
             </Link>
           </>
         )}
       </div>
 
       {/* Right User Controls Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 1.5rem', borderLeft: '1px solid #111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
         {/* Command Palette Trigger Button */}
         <button
           onClick={() => {
@@ -212,19 +212,19 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           style={{
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: '0.72rem',
-            fontWeight: 700,
-            padding: '0.35rem 0.65rem',
-            borderRadius: '2px',
-            background: '#faf9f6',
-            border: '1px solid #d4d4d8',
-            color: '#111111',
+            fontWeight: 800,
+            padding: '0.4rem 0.75rem',
+            borderRadius: '0px',
+            background: '#ffffff',
+            border: '2px solid #000000',
+            color: '#060e26',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem'
           }}
         >
-          <Command size={13} style={{ color: '#0044ff' }} />
+          <Command size={13} style={{ color: '#060e26' }} />
           <span>Cmd+K</span>
         </button>
 
@@ -233,35 +233,63 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           onClick={toggleSound}
           title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
           style={{
-            background: '#faf9f6',
-            border: '1px solid #d4d4d8',
-            borderRadius: '2px',
-            padding: '0.35rem 0.6rem',
+            background: '#ffffff',
+            border: '2px solid #000000',
+            borderRadius: '0px',
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#060e26',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            color: soundEnabled ? '#0044ff' : '#71717a'
+            gap: '0.3rem'
           }}
         >
-          {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          <span>AUDIO</span>
         </button>
 
         {user ? (
           <>
-            <Link to="/profile" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
-              Profile
+            <Link to="/profile" onClick={() => soundFX.playClick()} style={{
+              background: '#ffffff',
+              border: '2px solid #000000',
+              borderRadius: '0px',
+              padding: '0.4rem 0.85rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#060e26',
+              textDecoration: 'none',
+              fontFamily: "'Space Grotesk', sans-serif"
+            }}>
+              PROFILE
             </Link>
-            <button onClick={handleLogout} className="minimal-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
-              Logout
+            <button onClick={handleLogout} style={{
+              background: isCheckout ? '#060e26' : '#111111',
+              border: '2px solid #ffffff',
+              borderRadius: '0px',
+              padding: '0.4rem 0.85rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#ffffff',
+              cursor: 'pointer',
+              fontFamily: "'Space Grotesk', sans-serif"
+            }}>
+              LOGOUT
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
-              Login
+            <Link to="/login" onClick={() => soundFX.playClick()} style={{
+              background: '#ffffff', border: '2px solid #000000', borderRadius: '0px', padding: '0.4rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#060e26', textDecoration: 'none'
+            }}>
+              LOGIN
             </Link>
-            <Link to="/register" onClick={() => soundFX.playClick()} className="minimal-btn minimal-btn-primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '2px' }}>
-              Register
+            <Link to="/register" onClick={() => soundFX.playClick()} style={{
+              background: '#0044ff', border: '2px solid #000000', borderRadius: '0px', padding: '0.4rem 0.85rem', fontSize: '0.72rem', fontWeight: 800, color: '#ffffff', textDecoration: 'none'
+            }}>
+              REGISTER
             </Link>
           </>
         )}
@@ -269,4 +297,5 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
     </nav>
   );
 }
+
 
