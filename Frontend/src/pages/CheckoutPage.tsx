@@ -1088,9 +1088,6 @@ export default function CheckoutPage() {
             <span className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 800 }}>TRANSACTION TIMELINE LEDGER</span>
             {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
           </div>
-          <div className="brutalist-mono" style={{ fontSize: '0.82rem', color: '#060e26', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif" }}>
-            Mode : <strong style={{ color: '#060e26', textTransform: 'uppercase', fontWeight: 900, marginLeft: '0.25rem' }}>{autonomyMode}</strong>
-          </div>
         </div>
 
 

@@ -203,54 +203,6 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
 
       {/* Right User Controls Cell */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
-        {/* Command Palette Trigger Button */}
-        <button
-          onClick={() => {
-            soundFX.playClick();
-            if (onOpenCommandPalette) onOpenCommandPalette();
-          }}
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            padding: '0.4rem 0.8rem',
-            borderRadius: '0px',
-            background: '#ffffff',
-            border: '2px solid #000000',
-            color: '#060e26',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem'
-          }}
-        >
-          <Command size={14} style={{ color: '#060e26' }} />
-          <span style={{ color: '#060e26', fontWeight: 800 }}>Cmd+K</span>
-        </button>
-
-        {/* Sound FX Toggle Button */}
-        <button
-          onClick={toggleSound}
-          title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            background: '#ffffff',
-            border: '2px solid #000000',
-            borderRadius: '0px',
-            padding: '0.4rem 0.8rem',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            color: '#060e26',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem'
-          }}
-        >
-          {soundEnabled ? <Volume2 size={14} style={{ color: '#060e26' }} /> : <VolumeX size={14} style={{ color: '#060e26' }} />}
-          <span style={{ color: '#060e26', fontWeight: 800 }}>AUDIO</span>
-        </button>
-
         {user ? (
           <>
             <Link to="/profile" onClick={() => soundFX.playClick()} style={{
