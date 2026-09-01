@@ -7,7 +7,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { soundFX } from '../lib/soundFX';
 import InteractiveCard3D from '../components/InteractiveCard3D';
-import ScenarioPresetsBar, { PresetData } from '../components/ScenarioPresetsBar';
+
 import ConfettiCanvas from '../components/ConfettiCanvas';
 import GlassReceiptModal from '../components/GlassReceiptModal';
 
@@ -412,8 +412,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (user) {
       fetchAddresses();
+      if (user.card_holder) setCardHolder(user.card_holder);
+      else if (user.full_name) setCardHolder(user.full_name.toUpperCase());
+      if (user.card_number) _setCardNumber(user.card_number);
+      if (user.card_expiry) _setExpiry(user.card_expiry);
+      if (user.card_cvv) _setCvv(user.card_cvv);
     }
   }, [user]);
+
 
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -833,13 +839,6 @@ export default function CheckoutPage() {
     setBuyerApproved(false);
   };
 
-  const handleSelectPreset = (preset: PresetData) => {
-    setActivePresetId(preset.id);
-    setCardHolder(preset.customerName.toUpperCase());
-    setPaymentMethod(preset.paymentMethod);
-    soundFX.playClick();
-    handleSend(`Execute preset transaction flow for ${preset.customerName}: ${preset.description}`, 'autonomous');
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
@@ -861,7 +860,7 @@ export default function CheckoutPage() {
           {/* Section 1: Delivery Address Selection */}
           <div>
             <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              [01 // DELIVERY ADDRESS]
+              DELIVERY ADDRESS
             </div>
             
             {addresses.length > 0 ? (
@@ -977,60 +976,12 @@ export default function CheckoutPage() {
           </div>
 
 
-          {/* Section 2: Autonomy Level */}
-          <div>
-            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              [02 // BUYER CONTROL]
-            </div>
-            
-            <div style={{ display: 'flex', background: '#ffffff', padding: '3px', borderRadius: '2px', border: '1px solid #e4e4e7' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (autonomyMode !== 'autonomous') {
-                    setAutonomyMode('autonomous');
-                    setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
-                    setMessages([]);
-                  }
-                }}
-                disabled={isRunning}
-                style={{
-                  flex: 1, padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', border: 'none', cursor: 'pointer',
-                  background: autonomyMode === 'autonomous' ? '#0044ff' : 'transparent',
-                  color: autonomyMode === 'autonomous' ? '#ffffff' : '#71717a',
-                  transition: 'all 0.15s',
-                  fontFamily: 'Space Grotesk'
-                }}
-              >
-                Agent Recommend
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (autonomyMode !== 'guided') {
-                    setAutonomyMode('guided');
-                    setSessionId(`sess_${Math.random().toString(36).substring(2, 9)}`);
-                    setMessages([]);
-                  }
-                }}
-                disabled={isRunning}
-                style={{
-                  flex: 1, padding: '0.4rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', border: 'none', cursor: 'pointer',
-                  background: autonomyMode === 'guided' ? '#0044ff' : 'transparent',
-                  color: autonomyMode === 'guided' ? '#ffffff' : '#71717a',
-                  transition: 'all 0.15s',
-                  fontFamily: 'Space Grotesk'
-                }}
-              >
-                Buyer Guided
-              </button>
-            </div>
-          </div>
+
 
           {/* Section 3: Interactive 3D Payment Instrument */}
           <div>
             <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              [03 // PAYMENT INSTRUMENT & 3D CARD]
+              PAYMENT CARD DETAILS
             </div>
             
             <InteractiveCard3D
@@ -1048,7 +999,7 @@ export default function CheckoutPage() {
           {chosenProduct && paymentStatus === 'pending' && !buyerApproved && !isRunning && (
             <div>
               <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                [03 // PAYMENT APPROVAL]
+                PAYMENT APPROVAL
               </div>
               <div style={{ padding: '1rem', background: '#ffffff', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#111111' }}>
@@ -1099,55 +1050,13 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Section 4: Live Exec Agents */}
-          <div>
-            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                [04 // REAL-TIME EXECUTION AGENTS]
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#e4e4e7', border: '1px solid #e4e4e7', borderRadius: '2px', overflow: 'hidden' }}>
-              {[
-                { id: 'concierge', name: 'Concierge Agent' },
-                { id: 'site_trust', name: 'Site Trust Agent' },
-                { id: 'discovery', name: 'Discovery Agent' },
-                { id: 'negotiation', name: 'Decision Agent' },
-                { id: 'risk', name: 'Risk Evaluator' },
-                { id: 'payment', name: 'Payment Agent' }
-              ].map((ag, index) => {
-                const status = _activeAgent === ag.id ? 'active' : _completedAgents.includes(ag.id) ? 'success' : 'pending';
-                return (
-                  <div key={ag.id} style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
-                    padding: '0.65rem 0.85rem', 
-                    background: '#ffffff',
-                    fontSize: '0.78rem'
-                  }}>
-                    <span className="brutalist-text" style={{ fontWeight: status === 'active' ? 700 : 500, color: status === 'active' ? '#111111' : '#71717a' }}>
-                      {index + 1}. {ag.name}
-                    </span>
-                    {status === 'active' ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0044ff', fontSize: '0.65rem', fontWeight: 700 }}>
-                        <span className="minimal-indicator-live" /> LIVE
-                      </span>
-                    ) : status === 'success' ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontSize: '0.65rem', fontWeight: 700 }}>
-                        <span className="minimal-indicator-success" /> OK
-                      </span>
-                    ) : (
-                      <span style={{ color: '#d4d4d8', fontSize: '0.65rem', fontWeight: 700 }}>IDLE</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+
 
           {/* Section 5: Live Controls Context / Clarification / Trust Overrides */}
           {(awaitingClarification || trustOverrideActive) && (
             <div>
               <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                [05 // ATTENTION REQUIRED]
+                ATTENTION REQUIRED
               </div>
               {/* Trust Override warnings */}
               {trustOverrideActive && (
@@ -1186,22 +1095,20 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Quick Scenario Preset Chips */}
-          <div style={{ padding: '0.75rem 1.75rem 0 1.75rem', background: '#faf9f6' }}>
-            <ScenarioPresetsBar onSelectPreset={handleSelectPreset} activePresetId={activePresetId} />
-          </div>
+
 
           {/* Transcript Log Stream */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#ffffff' }}>
             {messages.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '5rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="brutalist-title" style={{ fontSize: '3.5rem', marginBottom: '0.25rem', color: '#0044ff' }}>GLASSBOX</div>
-                <h3 className="brutalist-subtitle" style={{ fontSize: '0.85rem', margin: '0 0 1rem 0' }}>// TRANSACTION LEDGER CONSOLE</h3>
-                <p className="brutalist-text" style={{ fontSize: '0.88rem', maxWidth: '520px', margin: '0 auto 2rem auto', lineHeight: 1.6, color: '#71717a' }}>
-                  An AI-buyer checkout for this merchant's catalogue. The agent recommends a transactable SKU, then waits for your approval before Razorpay Test Checkout opens.
+                <div className="brutalist-title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: '#111111' }}>
+                  Hi, {user?.full_name || 'there'} 
+                </div>
+                <p className="brutalist-text" style={{ fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 2rem auto', lineHeight: 1.6, color: '#71717a' }}>
+                  What would you like to buy today? Tell me what you're looking for, and I'll find the best options in our store for you.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {['Buy me a shirt of ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
+                  {['Buy me a shirt under ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"

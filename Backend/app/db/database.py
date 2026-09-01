@@ -192,10 +192,23 @@ def init_db():
         full_name TEXT NOT NULL,
         role TEXT NOT NULL CHECK (role IN ('buyer', 'merchant_admin', 'platform_admin')),
         tenant_id TEXT NOT NULL DEFAULT 'demo_tenant',
+        card_number TEXT,
+        card_holder TEXT,
+        card_expiry TEXT,
+        card_cvv TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id) ON DELETE CASCADE
     );
     """)
+
+    # User table column migrations
+    user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users);")}
+    for col in [("card_number", "TEXT"), ("card_holder", "TEXT"), ("card_expiry", "TEXT"), ("card_cvv", "TEXT")]:
+        if col[0] not in user_columns:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col[0]} {col[1]};")
+            except sqlite3.OperationalError:
+                pass
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS warehouse_inventory (
@@ -291,6 +304,10 @@ def create_user(
     full_name: str,
     role: str = "buyer",
     tenant_id: str = "demo_tenant",
+    card_number: str | None = None,
+    card_holder: str | None = None,
+    card_expiry: str | None = None,
+    card_cvv: str | None = None,
 ) -> dict[str, Any]:
     """Insert a new user record."""
     conn = get_db_connection()
@@ -303,10 +320,10 @@ def create_user(
 
     cursor.execute(
         """
-        INSERT INTO users (user_id, email, password_hash, salt, full_name, role, tenant_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?);
+        INSERT INTO users (user_id, email, password_hash, salt, full_name, role, tenant_id, card_number, card_holder, card_expiry, card_cvv)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """,
-        (user_id, email.lower(), password_hash, salt, full_name, role, tenant_id),
+        (user_id, email.lower(), password_hash, salt, full_name, role, tenant_id, card_number, card_holder, card_expiry, card_cvv),
     )
     conn.commit()
     conn.close()
@@ -333,19 +350,39 @@ def get_user_by_id(user_id: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def update_user_profile(user_id: str, full_name: str | None = None, email: str | None = None) -> dict[str, Any] | None:
+def update_user_profile(
+    user_id: str,
+    full_name: str | None = None,
+    email: str | None = None,
+    card_number: str | None = None,
+    card_holder: str | None = None,
+    card_expiry: str | None = None,
+    card_cvv: str | None = None,
+) -> dict[str, Any] | None:
     """Update profile attributes for a user."""
     conn = get_db_connection()
     cursor = conn.cursor()
     fields = []
     values = []
 
-    if full_name:
+    if full_name is not None:
         fields.append("full_name = ?")
         values.append(full_name)
-    if email:
+    if email is not None:
         fields.append("email = ?")
         values.append(email.lower())
+    if card_number is not None:
+        fields.append("card_number = ?")
+        values.append(card_number)
+    if card_holder is not None:
+        fields.append("card_holder = ?")
+        values.append(card_holder)
+    if card_expiry is not None:
+        fields.append("card_expiry = ?")
+        values.append(card_expiry)
+    if card_cvv is not None:
+        fields.append("card_cvv = ?")
+        values.append(card_cvv)
 
     if fields:
         values.append(user_id)

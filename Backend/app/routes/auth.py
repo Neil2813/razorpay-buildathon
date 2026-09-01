@@ -52,6 +52,10 @@ def register(body: RegisterRequest):
         full_name=body.full_name,
         role=body.role,
         tenant_id=body.tenant_id,
+        card_number=body.card_number,
+        card_holder=body.card_holder,
+        card_expiry=body.card_expiry,
+        card_cvv=body.card_cvv,
     )
 
     if body.role == "buyer":
@@ -116,6 +120,10 @@ def register(body: RegisterRequest):
         role=user["role"],
         tenant_id=user["tenant_id"],
         created_at=str(user["created_at"]),
+        card_number=user.get("card_number"),
+        card_holder=user.get("card_holder"),
+        card_expiry=user.get("card_expiry"),
+        card_cvv=user.get("card_cvv"),
     )
 
     return AuthTokenResponse(
@@ -161,6 +169,10 @@ def login(body: LoginRequest):
         role=user["role"],
         tenant_id=user["tenant_id"],
         created_at=str(user["created_at"]),
+        card_number=user.get("card_number"),
+        card_holder=user.get("card_holder"),
+        card_expiry=user.get("card_expiry"),
+        card_cvv=user.get("card_cvv"),
     )
 
     return AuthTokenResponse(
@@ -184,7 +196,12 @@ def get_me(current_user: dict = Depends(get_current_user)):
         role=current_user["role"],
         tenant_id=current_user["tenant_id"],
         created_at=str(current_user["created_at"]),
+        card_number=current_user.get("card_number"),
+        card_holder=current_user.get("card_holder"),
+        card_expiry=current_user.get("card_expiry"),
+        card_cvv=current_user.get("card_cvv"),
     )
+
 
 
 @router.get(

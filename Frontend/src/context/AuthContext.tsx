@@ -7,12 +7,17 @@ export interface User {
   full_name: string;
   role: string;
   tenant_id: string;
+  card_number?: string;
+  card_holder?: string;
+  card_expiry?: string;
+  card_cvv?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (userData: any) => Promise<any>;
   register: (userData: any) => Promise<any>;
+  updateProfile: (data: Partial<User>) => Promise<User>;
   logout: () => void;
   loading: boolean;
 }
@@ -59,17 +64,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   };
 
+  const updateProfile = async (data: Partial<User>) => {
+    const updatedUser = await api.patch('/profile/me', data);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('glassbox_token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, updateProfile, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 }
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

@@ -19,6 +19,12 @@ class RegisterRequest(BaseModel):
     address_state: str | None = Field(default=None, example="Karnataka")
     address_pincode: str | None = Field(default=None, example="560001")
 
+    # Buyer card details
+    card_number: str | None = Field(default=None, example="4532 8920 1192 4892")
+    card_holder: str | None = Field(default=None, example="Jane Doe")
+    card_expiry: str | None = Field(default=None, example="12/28")
+    card_cvv: str | None = Field(default=None, example="882")
+
     # Merchant-specific details
     company_name: str | None = Field(default=None, example="Apex Store")
     support_email: str | None = Field(default=None, example="support@apex.com")
@@ -47,6 +53,11 @@ class UserResponse(BaseModel):
     role: str
     tenant_id: str
     created_at: str
+    card_number: str | None = None
+    card_holder: str | None = None
+    card_expiry: str | None = None
+    card_cvv: str | None = None
+
 
 
 class AuthTokenResponse(BaseModel):

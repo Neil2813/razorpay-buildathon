@@ -35,6 +35,10 @@ def get_profile(current_user: dict = Depends(get_current_user)):
         role=current_user["role"],
         tenant_id=current_user["tenant_id"],
         created_at=str(current_user["created_at"]),
+        card_number=current_user.get("card_number"),
+        card_holder=current_user.get("card_holder"),
+        card_expiry=current_user.get("card_expiry"),
+        card_cvv=current_user.get("card_cvv"),
     )
 
 
@@ -42,7 +46,7 @@ def get_profile(current_user: dict = Depends(get_current_user)):
     "/me",
     response_model=UserResponse,
     summary="Update user profile",
-    description="Updates user's name or email.",
+    description="Updates user's name, email, or payment card details.",
 )
 def update_profile(
     body: ProfileUpdateRequest,
@@ -60,6 +64,10 @@ def update_profile(
         user_id=current_user["user_id"],
         full_name=body.full_name,
         email=body.email,
+        card_number=body.card_number,
+        card_holder=body.card_holder,
+        card_expiry=body.card_expiry,
+        card_cvv=body.card_cvv,
     )
 
     if not updated:
@@ -75,7 +83,12 @@ def update_profile(
         role=updated["role"],
         tenant_id=updated["tenant_id"],
         created_at=str(updated["created_at"]),
+        card_number=updated.get("card_number"),
+        card_holder=updated.get("card_holder"),
+        card_expiry=updated.get("card_expiry"),
+        card_cvv=updated.get("card_cvv"),
     )
+
 
 
 @router.get(
