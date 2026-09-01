@@ -841,287 +841,309 @@ export default function CheckoutPage() {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
-      <Navbar />
+    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: 'calc(100vh - 60px)', background: '#f6f1e5' }}>
+      {/* Left Sidebar */}
+      <div style={{ 
+        background: '#060e26', 
+        borderRight: '2px solid #060e26', 
+        padding: '1.75rem', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '1.75rem', 
+        overflowY: 'auto'
+      }}>
 
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '360px 1fr', minHeight: 'calc(100vh - 60px)', background: '#ffffff' }}>
-        
-        {/* Left Side: Session Control Console */}
-        <div style={{ 
-          background: '#faf9f6', 
-          borderRight: '1px solid #111111', 
-          padding: '1.75rem', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '1.75rem', 
-          overflowY: 'auto'
-        }}>
-
-          {/* Section 1: Delivery Address Selection */}
-          <div>
-            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              DELIVERY ADDRESS
-            </div>
-            
-            {addresses.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <select
-                  value={selectedAddressId}
-                  onChange={(e) => setSelectedAddressId(e.target.value)}
-                  className="minimal-input"
-                  style={{ padding: '0.45rem', fontSize: '0.8rem', background: '#ffffff' }}
-                  disabled={isRunning}
-                >
-                  {addresses.map((addr) => (
-                    <option key={addr.address_id} value={addr.address_id}>
-                      {addr.label}: {addr.city} ({addr.pincode})
-                    </option>
-                  ))}
-                </select>
-                
-                {(() => {
-                  const curr = addresses.find(a => a.address_id === selectedAddressId);
-                  if (!curr) return null;
-                  return (
-                    <div style={{ fontSize: '0.72rem', color: '#71717a', padding: '0.35rem 0.5rem', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '2px', lineHeight: 1.4 }}>
-                      <strong>{curr.recipient_name}</strong> - {curr.line1}, {curr.city}, {curr.state} ({curr.pincode})
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : (
-              <p className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', margin: 0 }}>No addresses found. Add one below.</p>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowAddAddressForm(!showAddAddressForm)}
-              className="minimal-btn minimal-btn-ghost"
-              style={{ width: '100%', fontSize: '0.72rem', marginTop: '0.4rem', padding: '0.3rem' }}
-              disabled={isRunning}
-            >
-              {showAddAddressForm ? 'Cancel Add Address' : '+ Add New Address'}
-            </button>
-
-            {showAddAddressForm && (
-              <form onSubmit={handleAddAddress} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.5rem', padding: '0.65rem', background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: '2px' }}>
-                <input
-                  type="text"
-                  placeholder="Address Label (e.g. Work)"
-                  value={newAddress.label}
-                  onChange={e => setNewAddress({ ...newAddress, label: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="text"
-                  placeholder="Recipient Name"
-                  value={newAddress.recipient_name}
-                  onChange={e => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="tel"
-                  placeholder="Phone"
-                  value={newAddress.phone}
-                  onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="text"
-                  placeholder="Address Line 1"
-                  value={newAddress.line1}
-                  onChange={e => setNewAddress({ ...newAddress, line1: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="text"
-                  placeholder="City"
-                  value={newAddress.city}
-                  onChange={e => setNewAddress({ ...newAddress, city: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="text"
-                  placeholder="State"
-                  value={newAddress.state}
-                  onChange={e => setNewAddress({ ...newAddress, state: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <input
-                  type="text"
-                  placeholder="PIN Code (6 digits)"
-                  value={newAddress.pincode}
-                  onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })}
-                  required
-                  className="minimal-input"
-                  style={{ padding: '0.35rem', fontSize: '0.75rem' }}
-                />
-                <button type="submit" className="minimal-btn minimal-btn-primary" style={{ fontSize: '0.72rem', padding: '0.4rem', width: '100%', marginTop: '0.2rem' }}>
-                  Save Address
-                </button>
-              </form>
-            )}
+        {/* Section 1: Delivery Address Selection */}
+        <div>
+          <div className="brutalist-subtitle" style={{ color: '#ffffff', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            DELIVERY ADDRESS
           </div>
-
-
-
-
-          {/* Section 3: Interactive 3D Payment Instrument */}
-          <div>
-            <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-              PAYMENT CARD DETAILS
+          
+          {addresses.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <select
+                value={selectedAddressId}
+                onChange={(e) => setSelectedAddressId(e.target.value)}
+                style={{ padding: '0.65rem 0.75rem', fontSize: '0.85rem', fontWeight: 700, background: '#ffffff', color: '#060e26', border: '2px solid #000000', borderRadius: '0px', fontFamily: "'Space Grotesk', sans-serif" }}
+                disabled={isRunning}
+              >
+                {addresses.map((addr) => (
+                  <option key={addr.address_id} value={addr.address_id}>
+                    {addr.label}: {addr.city} ({addr.pincode})
+                  </option>
+                ))}
+              </select>
+              
+              {(() => {
+                const curr = addresses.find(a => a.address_id === selectedAddressId);
+                if (!curr) return null;
+                return (
+                  <div style={{ fontSize: '0.78rem', color: '#060e26', padding: '0.65rem 0.75rem', background: '#ffffff', border: '2px solid #000000', borderRadius: '0px', lineHeight: 1.4, fontWeight: 600 }}>
+                    <strong>{curr.recipient_name}</strong> - {curr.line1}, {curr.city}, {curr.state} ({curr.pincode})
+                  </div>
+                );
+              })()}
             </div>
-            
-            <InteractiveCard3D
-              cardNumber={cardNumber}
-              cardHolder={cardHolder}
-              expiry={expiry}
-              cvv={cvv}
-              focusedField={focusedField}
-              paymentMethod={paymentMethod}
-            />
-
-
-          </div>
-
-          {chosenProduct && paymentStatus === 'pending' && !buyerApproved && !isRunning && (
-            <div>
-              <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                PAYMENT APPROVAL
-              </div>
-              <div style={{ padding: '1rem', background: '#ffffff', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#111111' }}>
-                  {chosenProduct.name}
-                </p>
-
-                {/* Invoice Breakdown */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#faf9f6', padding: '0.75rem', border: '1px solid #e4e4e7', borderRadius: '2px', fontSize: '0.76rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#71717a' }}>Product Price:</span>
-                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#71717a' }}>Shipping Fee:</span>
-                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.shipping_fee || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#71717a' }}>Taxes (18% GST):</span>
-                    <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.tax_amount || 0).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800 }}>
-                    <span style={{ color: '#0044ff' }}>Total Checkout:</span>
-                    <span style={{ color: '#0044ff' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-
-                {/* Delivery Address & Estimate */}
-                {deliveryAddress && (
-                  <div style={{ fontSize: '0.74rem', border: '1px solid #e4e4e7', padding: '0.75rem', borderRadius: '2px', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ fontWeight: 700, color: '#111111', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Delivery Address</div>
-                    <div style={{ color: '#111111', fontWeight: 600 }}>{deliveryAddress.recipient_name} ({deliveryAddress.phone})</div>
-                    <div style={{ color: '#71717a' }}>{deliveryAddress.line1}{deliveryAddress.line2 ? `, ${deliveryAddress.line2}` : ''}</div>
-                    <div style={{ color: '#71717a' }}>{deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}</div>
-                    
-                    {chosenProduct.fulfilment?.delivery_estimate && (
-                      <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontWeight: 700 }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-                        Estimated Delivery: {chosenProduct.fulfilment.delivery_estimate}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.65rem' }}>
-                  <Lock size={13} /> Approve & Open Test Checkout
-                </button>
-              </div>
-            </div>
+          ) : (
+            <p className="brutalist-text" style={{ fontSize: '0.78rem', color: '#d4d4d8', margin: 0 }}>No addresses found. Add one below.</p>
           )}
 
+          <button
+            type="button"
+            onClick={() => setShowAddAddressForm(!showAddAddressForm)}
+            style={{ width: '100%', fontSize: '0.78rem', marginTop: '0.6rem', padding: '0.55rem', background: '#ffffff', color: '#060e26', border: '2px solid #000000', boxShadow: '3px 3px 0px #000000', fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer', borderRadius: '0px', fontFamily: "'Space Grotesk', sans-serif" }}
+            disabled={isRunning}
+          >
+            {showAddAddressForm ? 'Cancel Add Address' : '+ ADD NEW ADDRESS'}
+          </button>
 
-
-          {/* Section 5: Live Controls Context / Clarification / Trust Overrides */}
-          {(awaitingClarification || trustOverrideActive) && (
-            <div>
-              <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
-                ATTENTION REQUIRED
-              </div>
-              {/* Trust Override warnings */}
-              {trustOverrideActive && (
-                <div style={{ padding: '0.85rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '2px', marginBottom: '0.75rem' }}>
-                  <p className="brutalist-text" style={{ fontSize: '0.75rem', color: '#ef4444', margin: '0 0 0.5rem 0', lineHeight: 1.4 }}>
-                    WARNING: The destination merchant domain requires dynamic credentials verification. Proceed with bypass?
-                  </p>
-                  <button 
-                    className="minimal-btn minimal-btn-danger" 
-                    style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem' }}
-                    onClick={() => {
-                      if (wsRef.current) wsRef.current.send(JSON.stringify({ type: 'override_trust' }));
-                      setTrustOverrideActive(false);
-                    }}
-                  >
-                    Bypass & Verify Site
-                  </button>
-                </div>
-              )}
-            </div>
+          {showAddAddressForm && (
+            <form onSubmit={handleAddAddress} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.5rem', padding: '0.65rem', background: '#ffffff', border: '2px solid #000000', borderRadius: '0px' }}>
+              <input
+                type="text"
+                placeholder="Address Label (e.g. Work)"
+                value={newAddress.label}
+                onChange={e => setNewAddress({ ...newAddress, label: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                placeholder="Recipient Name"
+                value={newAddress.recipient_name}
+                onChange={e => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="tel"
+                placeholder="Phone"
+                value={newAddress.phone}
+                onChange={e => setNewAddress({ ...newAddress, phone: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                placeholder="Address Line 1"
+                value={newAddress.line1}
+                onChange={e => setNewAddress({ ...newAddress, line1: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={newAddress.city}
+                onChange={e => setNewAddress({ ...newAddress, city: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                placeholder="State"
+                value={newAddress.state}
+                onChange={e => setNewAddress({ ...newAddress, state: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                placeholder="PIN Code (6 digits)"
+                value={newAddress.pincode}
+                onChange={e => setNewAddress({ ...newAddress, pincode: e.target.value })}
+                required
+                className="minimal-input"
+                style={{ padding: '0.35rem', fontSize: '0.75rem' }}
+              />
+              <button type="submit" className="minimal-btn minimal-btn-primary" style={{ fontSize: '0.72rem', padding: '0.4rem', width: '100%', marginTop: '0.2rem' }}>
+                Save Address
+              </button>
+            </form>
           )}
+        </div>
+
+
+
+
+        {/* Section 3: Interactive 3D Payment Instrument */}
+        <div>
+          <div className="brutalist-subtitle" style={{ color: '#ffffff', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            PAYMENT CARD DETAILS
+          </div>
+          
+          <InteractiveCard3D
+            cardNumber={cardNumber}
+            cardHolder={cardHolder}
+            expiry={expiry}
+            cvv={cvv}
+            focusedField={focusedField}
+            paymentMethod={paymentMethod}
+            cardTheme="light"
+          />
+
 
         </div>
 
-        {/* Right Side: Conversation Transcript Workspace */}
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-          
-          {/* Header */}
-          <div style={{ padding: '0.85rem 1.75rem', borderBottom: '1px solid #111111', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span className="brutalist-title" style={{ fontSize: '1.15rem' }}>TRANSACTION TIMELINE LEDGER</span>
-              {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
+        {chosenProduct && paymentStatus === 'pending' && !buyerApproved && !isRunning && (
+          <div>
+            <div className="brutalist-subtitle" style={{ color: '#ffffff', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              PAYMENT APPROVAL
             </div>
-            <div className="brutalist-mono" style={{ fontSize: '0.75rem', color: '#71717a' }}>
-              Mode: <strong style={{ color: '#111111', textTransform: 'uppercase' }}>{autonomyMode}</strong>
-            </div>
-          </div>
+            <div style={{ padding: '1rem', background: '#ffffff', border: '2px solid #000000', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#111111' }}>
+                {chosenProduct.name}
+              </p>
 
-
-
-          {/* Transcript Log Stream */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#ffffff' }}>
-            {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '5rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="brutalist-title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: '#111111' }}>
-                  Hi, {user?.full_name || 'there'} 
+              {/* Invoice Breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#faf9f6', padding: '0.75rem', border: '1px solid #e4e4e7', borderRadius: '2px', fontSize: '0.76rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#71717a' }}>Product Price:</span>
+                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</span>
                 </div>
-                <p className="brutalist-text" style={{ fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 2rem auto', lineHeight: 1.6, color: '#71717a' }}>
-                  What would you like to buy today? Tell me what you're looking for, and I'll find the best options in our store for you.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {['Buy me a shirt under ₹4000', 'Find running shoes under ₹3000', 'Get me a blue formal shirt'].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => setInput(suggestion)}
-                      className="minimal-btn minimal-btn-ghost"
-                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.74rem' }}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#71717a' }}>Shipping Fee:</span>
+                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.shipping_fee || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#71717a' }}>Taxes (18% GST):</span>
+                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.tax_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800 }}>
+                  <span style={{ color: '#0044ff' }}>Total Checkout:</span>
+                  <span style={{ color: '#0044ff' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
                 </div>
               </div>
-            ) : (
+
+              {/* Delivery Address & Estimate */}
+              {deliveryAddress && (
+                <div style={{ fontSize: '0.74rem', border: '1px solid #e4e4e7', padding: '0.75rem', borderRadius: '2px', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ fontWeight: 700, color: '#111111', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Delivery Address</div>
+                  <div style={{ color: '#111111', fontWeight: 600 }}>{deliveryAddress.recipient_name} ({deliveryAddress.phone})</div>
+                  <div style={{ color: '#71717a' }}>{deliveryAddress.line1}{deliveryAddress.line2 ? `, ${deliveryAddress.line2}` : ''}</div>
+                  <div style={{ color: '#71717a' }}>{deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}</div>
+                  
+                  {chosenProduct.fulfilment?.delivery_estimate && (
+                    <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontWeight: 700 }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                      Estimated Delivery: {chosenProduct.fulfilment.delivery_estimate}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.65rem' }}>
+                <Lock size={13} /> Approve & Open Test Checkout
+              </button>
+            </div>
+          </div>
+        )}
+
+
+
+        {/* Section 5: Live Controls Context / Clarification / Trust Overrides */}
+        {(awaitingClarification || trustOverrideActive) && (
+          <div>
+            <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.6rem', fontSize: '0.68rem' }}>
+              ATTENTION REQUIRED
+            </div>
+            {/* Trust Override warnings */}
+            {trustOverrideActive && (
+              <div style={{ padding: '0.85rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '2px', marginBottom: '0.75rem' }}>
+                <p className="brutalist-text" style={{ fontSize: '0.75rem', color: '#ef4444', margin: '0 0 0.5rem 0', lineHeight: 1.4 }}>
+                  WARNING: The destination merchant domain requires dynamic credentials verification. Proceed with bypass?
+                </p>
+                <button 
+                  className="minimal-btn minimal-btn-danger" 
+                  style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem' }}
+                  onClick={() => {
+                    if (wsRef.current) wsRef.current.send(JSON.stringify({ type: 'override_trust' }));
+                    setTrustOverrideActive(false);
+                  }}
+                >
+                  Bypass & Verify Site
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+
+      {/* Right Side: Conversation Transcript Workspace */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f6f1e5' }}>
+        
+        {/* Header */}
+        <div style={{ padding: '0.85rem 1.75rem', borderBottom: '2px solid #060e26', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f6f1e5', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 800 }}>TRANSACTION TIMELINE LEDGER</span>
+            {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
+          </div>
+          <div className="brutalist-mono" style={{ fontSize: '0.75rem', color: '#060e26', fontWeight: 700 }}>
+            Mode: <strong style={{ color: '#060e26', textTransform: 'uppercase' }}>{autonomyMode}</strong>
+          </div>
+        </div>
+
+
+
+        {/* Transcript Log Stream */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#f6f1e5' }}>
+          {messages.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '5rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="brutalist-title" style={{ 
+                fontSize: '3.5rem', 
+                marginBottom: '1rem', 
+                color: '#060e26', 
+                fontWeight: 900, 
+                letterSpacing: '0.01em',
+                textTransform: 'uppercase',
+                fontFamily: "'Space Grotesk', sans-serif"
+              }}>
+                HI, {user?.full_name ? user.full_name.toUpperCase() : 'NEIL EMMANUEL MATHIAS'}
+              </div>
+              <p className="brutalist-text" style={{ 
+                fontSize: '1.05rem', 
+                maxWidth: '620px', 
+                margin: '0 auto 2.5rem auto', 
+                lineHeight: 1.5, 
+                color: '#060e26', 
+                fontWeight: 600,
+                fontFamily: "'Space Grotesk', sans-serif"
+              }}>
+                What would you like to buy today? Tell me what you're looking for, and I'll find the best options in our store for you.
+              </p>
+              <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {['BUY ME A SHIRT UNDER ₹4000', 'FIND RUNNING SHOES UNDER ₹3000', 'GET ME A BLUE FORMAL SHIRT'].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setInput(suggestion)}
+                    style={{ 
+                      padding: '0.85rem 1.4rem', 
+                      fontSize: '0.88rem', 
+                      background: '#ffffff',
+                      color: '#060e26',
+                      border: '3px solid #060e26',
+                      boxShadow: '4px 4px 0px #060e26',
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                      cursor: 'pointer',
+                      borderRadius: '0px',
+                      fontFamily: "'Space Grotesk', sans-serif"
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
               <>
                 {messages.map((msg, index) => {
                   const isUser = msg.role === 'user';
