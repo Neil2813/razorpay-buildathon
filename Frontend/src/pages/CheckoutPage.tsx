@@ -1591,8 +1591,8 @@ export default function CheckoutPage() {
           </div>
 
           {/* Input Bar */}
-          <div style={{ padding: '0.85rem 1.1rem', borderTop: '1px solid #e4e4e7', background: '#ffffff' }}>
-            <div style={{ display: 'flex', gap: '0.6rem' }}>
+          <div style={{ padding: '1.25rem 1.75rem', borderTop: '2px solid #060e26', background: '#f6f1e5' }}>
+            <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
               <input
                 type="text"
                 value={input}
@@ -1603,22 +1603,49 @@ export default function CheckoutPage() {
                     ? 'Fill in the details above or type a reply…'
                     : autonomyMode === 'guided'
                       ? 'E.g. Buy me a shirt of 4000 rupees…'
-                      : 'E.g. Find me running shoes under ₹4,000…'
+                      : 'E.g. Find me running shoes under ₹4,000...'
                 }
                 disabled={isRunning}
-                className="minimal-input"
-                style={{ flex: 1, opacity: isRunning ? 0.6 : 1 }}
+                style={{ 
+                  flex: 1, 
+                  opacity: isRunning ? 0.6 : 1,
+                  background: '#ffffff',
+                  border: '3px solid #060e26',
+                  boxShadow: '4px 4px 0px #060e26',
+                  padding: '1.1rem 1.5rem',
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  color: '#060e26',
+                  borderRadius: '0px',
+                  fontFamily: "'Space Grotesk', sans-serif"
+                }}
               />
               <button
-                className="minimal-btn minimal-btn-primary"
                 onClick={() => handleSend()}
                 disabled={isRunning || !input.trim()}
-                style={{ padding: '0.75rem 1.25rem', fontSize: '0.9rem', opacity: (isRunning || !input.trim()) ? 0.5 : 1 }}>
-                <Send size={15} /> Send
+                style={{ 
+                  padding: '1.1rem 1.8rem', 
+                  fontSize: '1.25rem', 
+                  fontWeight: 900,
+                  background: '#ffffff',
+                  color: '#060e26',
+                  border: '3px solid #060e26',
+                  boxShadow: '4px 4px 0px #060e26',
+                  cursor: (isRunning || !input.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: (isRunning || !input.trim()) ? 0.5 : 1,
+                  borderRadius: '0px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: '0.04em'
+                }}>
+                <span style={{ fontSize: '1.4rem' }}>↗</span> SEND
               </button>
             </div>
           </div>
         </div>
+
 
       </div>
 
