@@ -131,7 +131,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
       background: isCheckout ? '#060e26' : '#ffffff',
       borderBottom: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111',
       display: 'grid',
-      gridTemplateColumns: '240px 1fr auto',
+      gridTemplateColumns: '260px 1fr 260px',
       height: '60px',
       position: 'sticky',
       top: 0,
@@ -139,61 +139,63 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
     }}>
       {/* Brand Cell */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderRight: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
-        <Link to="/" className="brutalist-title" style={{ textDecoration: 'none', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: isCheckout ? '#ffffff' : '#111111' }}>
+        <Link to="/" style={{ textDecoration: 'none', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: '26px', height: '26px', borderRadius: '2px',
-            background: isCheckout ? '#0044ff' : '#0044ff',
-            color: '#ffffff', fontSize: '0.75rem', fontWeight: 800,
+            width: '28px', height: '28px', borderRadius: '4px',
+            background: '#0044ff',
+            color: '#ffffff', fontSize: '0.78rem', fontWeight: 900,
             flexShrink: 0,
           }}>
             GB
           </span>
-          <span>GLASSBOX</span>
+          <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.06em', fontFamily: "'Space Grotesk', sans-serif" }}>
+            GLASSBOX
+          </span>
         </Link>
       </div>
 
-      {/* Nav Links Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', height: '100%', paddingLeft: '1.5rem' }}>
-        <Link to="/checkout" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
+      {/* Nav Links Cell (Centered) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '100%' }}>
+        <Link to="/checkout" onClick={() => soundFX.playClick()} style={{ 
           textDecoration: 'none', 
-          color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#71717a'),
-          fontSize: '0.8rem',
+          color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#111111'),
+          fontSize: '0.85rem',
           fontWeight: 800,
-          letterSpacing: '0.05em',
+          letterSpacing: '0.06em',
           textTransform: 'uppercase',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
+          fontFamily: "'Space Grotesk', sans-serif"
         }}>
-          <span>CHECKOUT COCKPIT</span>
+          CHECKOUT COCKPIT
         </Link>
         
         {user && (
           <>
-            <span style={{ color: isCheckout ? 'rgba(255,255,255,0.3)' : '#d4d4d8' }}>|</span>
+            <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
             {user.role === 'merchant_admin' && (
               <>
-                <Link to="/dashboard" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
+                <Link to="/dashboard" onClick={() => soundFX.playClick()} style={{ 
                   textDecoration: 'none', 
-                  color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#71717a'),
-                  fontSize: '0.8rem',
+                  color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#111111'),
+                  fontSize: '0.85rem',
                   fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase'
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  fontFamily: "'Space Grotesk', sans-serif"
                 }}>
                   REVENUE INTEL
                 </Link>
-                <span style={{ color: isCheckout ? 'rgba(255,255,255,0.3)' : '#d4d4d8' }}>|</span>
+                <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
               </>
             )}
-            <Link to="/history" onClick={() => soundFX.playClick()} className="brutalist-subtitle" style={{ 
+            <Link to="/history" onClick={() => soundFX.playClick()} style={{ 
               textDecoration: 'none', 
-              color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#71717a'),
-              fontSize: '0.8rem',
+              color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#111111'),
+              fontSize: '0.85rem',
               fontWeight: 800,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase'
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              fontFamily: "'Space Grotesk', sans-serif"
             }}>
               AUDIT LEDGER
             </Link>
@@ -202,7 +204,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
       </div>
 
       {/* Right User Controls Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
         {user ? (
           <>
             <Link to="/profile" onClick={() => soundFX.playClick()} style={{

@@ -1018,9 +1018,9 @@ export default function CheckoutPage() {
                   <span style={{ color: '#71717a' }}>Taxes (18% GST):</span>
                   <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.tax_amount || 0).toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800 }}>
-                  <span style={{ color: '#0044ff' }}>Total Checkout:</span>
-                  <span style={{ color: '#0044ff' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
+                <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 900 }}>
+                  <span style={{ color: '#060e26' }}>Total Checkout:</span>
+                  <span style={{ color: '#060e26' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -1033,16 +1033,38 @@ export default function CheckoutPage() {
                   <div style={{ color: '#71717a' }}>{deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}</div>
                   
                   {chosenProduct.fulfilment?.delivery_estimate && (
-                    <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#10b981', fontWeight: 700 }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                    <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#060e26', fontWeight: 700 }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#060e26' }} />
                       Estimated Delivery: {chosenProduct.fulfilment.delivery_estimate}
                     </div>
                   )}
                 </div>
               )}
 
-              <button type="button" onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.65rem' }}>
-                <Lock size={13} /> Approve & Open Test Checkout
+              <button 
+                type="button" 
+                onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} 
+                style={{ 
+                  width: '100%', 
+                  fontSize: '0.82rem', 
+                  padding: '0.8rem', 
+                  background: '#ffffff',
+                  color: '#060e26',
+                  border: '3px solid #000000',
+                  boxShadow: '3px 3px 0px #000000',
+                  fontWeight: 900,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  cursor: 'pointer',
+                  borderRadius: '0px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Lock size={14} style={{ color: '#060e26' }} /> APPROVE & OPEN TEST CHECKOUT
               </button>
             </div>
           </div>
@@ -1142,19 +1164,19 @@ export default function CheckoutPage() {
                   return (
                     <div key={index} style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem' }}>
                       <div style={{ maxWidth: '88%', minWidth: 0 }}>
-                        {!isUser && label && <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.3rem', fontSize: '0.68rem' }}>{label}</div>}
+                        {!isUser && label && <div className="brutalist-subtitle" style={{ color: '#060e26', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>{label}</div>}
                         <div style={{
-                          padding: '0.85rem 1.1rem',
-                          borderRadius: '2px',
-                          background: isUser ? '#0044ff' : '#f4f4f5',
-                          color: isUser ? '#ffffff' : '#111111',
-                          border: isUser ? 'none' : '1px solid #e4e4e7',
-                          borderLeft: isUser ? 'none' : '3px solid #0044ff',
-                          fontSize: '0.875rem',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '0px',
+                          background: isUser ? '#060e26' : '#ffffff',
+                          color: isUser ? '#ffffff' : '#060e26',
+                          border: '2px solid #060e26',
+                          boxShadow: isUser ? '3px 3px 0px rgba(0,0,0,0.15)' : '4px 4px 0px #060e26',
+                          fontSize: '0.9rem',
                           lineHeight: 1.55,
-                          boxShadow: 'none'
+                          fontFamily: "'Space Grotesk', sans-serif"
                         }}>
-                          <div className="brutalist-text" style={{ fontWeight: 500 }}>{msg.content}</div>
+                          <div className="brutalist-text" style={{ fontWeight: 600 }}>{msg.content}</div>
 
                           {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (
@@ -1178,7 +1200,7 @@ export default function CheckoutPage() {
 
                           {/* ---- Site Trust Warning ---- */}
                           {msg.trustWarningPrompt && (
-                            <div style={{ marginTop: '0.85rem', padding: '1rem 1.15rem', background: '#fee2e2', borderRadius: '2px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444', color: '#991b1b', animation: 'slide-in-up 0.3s ease-out' }}>
+                            <div style={{ marginTop: '0.85rem', padding: '1rem 1.15rem', background: '#fee2e2', borderRadius: '0px', border: '2px solid #060e26', borderLeft: '4px solid #ef4444', color: '#991b1b', animation: 'slide-in-up 0.3s ease-out' }}>
                               <div className="brutalist-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', marginBottom: '0.4rem' }}>
                                 <ShieldX size={18} color="#ef4444" />
                                 Deterministic Site Trust Warning
@@ -1186,7 +1208,7 @@ export default function CheckoutPage() {
                               <p className="brutalist-text" style={{ margin: '0 0 0.6rem 0', fontSize: '0.82rem', lineHeight: 1.5, color: '#111111' }}>
                                 Target site <strong>{msg.trustWarningPrompt.site}</strong> failed deterministic safety checks (HTTPS, SSL, domain age, typosquatting pattern).
                               </p>
-                              <div className="brutalist-mono" style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', marginBottom: '0.85rem', color: '#111111' }}>
+                              <div className="brutalist-mono" style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '0px', border: '1px solid #060e26', marginBottom: '0.85rem', color: '#111111' }}>
                                 {msg.trustWarningPrompt.reason}
                               </div>
                               <div className="brutalist-text" style={{ fontSize: '0.75rem', color: '#71717a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1198,7 +1220,7 @@ export default function CheckoutPage() {
                                   type="button"
                                   onClick={() => handleSend('continue')}
                                   className="minimal-btn minimal-btn-danger"
-                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '2px' }}
+                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '0px' }}
                                 >
                                   <CheckCircle size={14} /> Continue & Override
                                 </button>
@@ -1206,7 +1228,7 @@ export default function CheckoutPage() {
                                   type="button"
                                   onClick={handleRestartSession}
                                   className="minimal-btn minimal-btn-ghost"
-                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '2px', background: '#ffffff' }}
+                                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: '0px', background: '#ffffff', border: '1px solid #060e26' }}
                                 >
                                   Restart Search
                                 </button>
@@ -1216,8 +1238,8 @@ export default function CheckoutPage() {
 
                           {/* ---- Autonomous Skipped Banner ---- */}
                           {msg.sitesRejectedCount !== undefined && msg.sitesRejectedCount > 0 && (
-                            <div className="brutalist-text" style={{ marginTop: '0.65rem', padding: '0.45rem 0.75rem', background: '#f4f4f5', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '3px solid #0044ff', fontSize: '0.78rem', color: '#0044ff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <Globe size={14} />
+                            <div className="brutalist-text" style={{ marginTop: '0.65rem', padding: '0.55rem 0.85rem', background: '#ffffff', borderRadius: '0px', border: '2px solid #060e26', fontSize: '0.78rem', color: '#060e26', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: "'Space Grotesk', sans-serif" }}>
+                              <Globe size={14} color="#060e26" />
                               Transparency Note: {msg.sitesRejectedCount} candidate site(s) skipped for failing trust check.
                             </div>
                           )}
@@ -1225,21 +1247,24 @@ export default function CheckoutPage() {
                           {/* ---- Discovered Product Candidates ---- */}
                           {msg.candidates && msg.candidates.length > 0 && (
                             <div style={{ marginTop: '1rem' }}>
-                              <div className="brutalist-subtitle" style={{ fontSize: '0.7rem', color: '#0044ff', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Filter size={12} /> {msg.candidates.length} matching candidate{msg.candidates.length !== 1 ? 's' : ''} found
+                              <div className="brutalist-subtitle" style={{ fontSize: '0.75rem', color: '#060e26', fontWeight: 800, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                                <Filter size={12} color="#060e26" /> {msg.candidates.length} matching candidate{msg.candidates.length !== 1 ? 's' : ''} found
                               </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem' }}>
                                 {msg.candidates.map((item: DiscoveredCandidate, idx: number) => (
-                                  <div key={idx} className="minimal-card" style={{
+                                  <div key={idx} style={{
                                     padding: 0,
                                     overflow: 'hidden',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    transition: 'border-color 0.15s',
+                                    background: '#ffffff',
+                                    border: '2px solid #060e26',
+                                    boxShadow: '3px 3px 0px #060e26',
+                                    borderRadius: '0px'
                                   }}>
                                     {/* Product Image */}
                                     {(item as any).image_url ? (
-                                      <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f4f4f5', flexShrink: 0 }}>
+                                      <div style={{ width: '100%', height: '140px', overflow: 'hidden', background: '#f6f1e5', flexShrink: 0, borderBottom: '2px solid #060e26' }}>
                                         <img
                                           src={(item as any).image_url}
                                           alt={item.name}
@@ -1248,40 +1273,40 @@ export default function CheckoutPage() {
                                         />
                                       </div>
                                     ) : (
-                                      <div style={{ width: '100%', height: '80px', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderBottom: '1px solid #e4e4e7' }}>
-                                        <Tag size={28} color="#0044ff" />
+                                      <div style={{ width: '100%', height: '80px', background: '#f6f1e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderBottom: '2px solid #060e26' }}>
+                                        <Tag size={28} color="#060e26" />
                                       </div>
                                     )}
 
-                                    <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
+                                    <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
                                       {/* Option badge + site */}
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span className="minimal-pill" style={{ fontSize: '0.58rem', padding: '0.1rem 0.4rem' }}>Option {idx + 1}</span>
+                                        <span style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem', background: '#060e26', color: '#ffffff', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif" }}>OPTION {idx + 1}</span>
                                         {item.source_site && (
-                                          <span className="brutalist-mono" style={{ fontSize: '0.6rem', color: '#71717a', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.source_site}</span>
+                                          <span className="brutalist-mono" style={{ fontSize: '0.62rem', color: '#71717a', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 700 }}>{item.source_site}</span>
                                         )}
                                       </div>
 
                                       {/* Product Name */}
-                                      <div className="brutalist-text" style={{ fontSize: '0.83rem', fontWeight: 700, color: '#111111', lineHeight: 1.3 }}>{item.name}</div>
+                                      <div className="brutalist-text" style={{ fontSize: '0.85rem', fontWeight: 800, color: '#060e26', lineHeight: 1.3, fontFamily: "'Space Grotesk', sans-serif" }}>{item.name}</div>
 
                                       {/* Brand */}
                                       {item.brand && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <Tag size={10} color="#71717a" />
+                                          <Tag size={10} color="#060e26" />
                                           <span className="brutalist-text" style={{ fontSize: '0.68rem', color: '#71717a', fontWeight: 600 }}>{item.brand}</span>
                                         </div>
                                       )}
 
                                       {/* Price */}
-                                      <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff' }}>&#8377;{item.price.toLocaleString()}</div>
+                                      <div className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 900, fontFamily: "'Space Grotesk', sans-serif" }}>&#8377;{item.price.toLocaleString()}</div>
 
                                       {/* Star Rating */}
                                       {item.rating != null && <StarRating rating={item.rating} />}
 
                                       {/* Match Reason */}
                                       {(item as any).match_reason && (
-                                        <div className="brutalist-text" style={{ fontSize: '0.67rem', color: '#0044ff', fontStyle: 'italic', lineHeight: 1.3, padding: '0.3rem 0.5rem', background: '#faf9f6', borderRadius: '2px', borderLeft: '2px solid #0044ff' }}>
+                                        <div className="brutalist-text" style={{ fontSize: '0.7rem', color: '#060e26', lineHeight: 1.35, padding: '0.4rem 0.6rem', background: '#f6f1e5', borderRadius: '0px', border: '1px solid #060e26', borderLeft: '3px solid #060e26', fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>
                                           {(item as any).match_reason}
                                         </div>
                                       )}
@@ -1299,10 +1324,9 @@ export default function CheckoutPage() {
                                           href={(item as any).source_url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="brutalist-subtitle"
-                                          style={{ marginTop: 'auto', paddingTop: '0.4rem', fontSize: '0.68rem', color: '#0044ff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                          style={{ marginTop: 'auto', paddingTop: '0.4rem', fontSize: '0.72rem', color: '#060e26', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', fontFamily: "'Space Grotesk', sans-serif" }}
                                         >
-                                          <Globe size={11} /> View Product
+                                          <Globe size={11} color="#060e26" /> View Product
                                         </a>
                                       )}
                                     </div>
@@ -1317,28 +1341,28 @@ export default function CheckoutPage() {
                             <div style={{ marginTop: '0.85rem' }}>
                               {/* Chosen Product Card */}
                               {msg.guardrailData?.chosenProduct && (
-                                <div style={{ marginBottom: '0.75rem', padding: '0.9rem 1rem', background: '#ffffff', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #0044ff' }}>
-                                  <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <CheckCircle size={13} color="#0044ff" /> Selected Optimal Choice
+                                <div style={{ marginBottom: '0.75rem', padding: '0.9rem 1rem', background: '#ffffff', borderRadius: '0px', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26' }}>
+                                  <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 800, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '0.04em' }}>
+                                    <CheckCircle size={13} color="#060e26" /> SELECTED OPTIMAL CHOICE
                                   </div>
                                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                                     {msg.guardrailData?.chosenProduct?.image_url ? (
-                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '2px', flexShrink: 0 }} onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                                      <img src={msg.guardrailData.chosenProduct.image_url} alt={msg.guardrailData.chosenProduct.name} style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '0px', border: '1px solid #060e26', flexShrink: 0 }} onError={(e: React.SyntheticEvent) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                                     ) : (
-                                      <div style={{ width: '64px', height: '64px', borderRadius: '2px', background: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <Tag size={24} color="#0044ff" />
+                                      <div style={{ width: '64px', height: '64px', borderRadius: '0px', border: '1px solid #060e26', background: '#f6f1e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Tag size={24} color="#060e26" />
                                       </div>
                                     )}
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div className="brutalist-text" style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', lineHeight: 1.3 }}>{msg.guardrailData?.chosenProduct?.name}</div>
+                                      <div className="brutalist-text" style={{ fontWeight: 800, fontSize: '0.9rem', color: '#060e26', lineHeight: 1.3, fontFamily: "'Space Grotesk', sans-serif" }}>{msg.guardrailData?.chosenProduct?.name}</div>
                                       {msg.guardrailData?.chosenProduct?.brand && (
                                         <div className="brutalist-text" style={{ fontSize: '0.7rem', color: '#71717a', marginTop: '0.15rem' }}>{msg.guardrailData.chosenProduct.brand}</div>
                                       )}
-                                      <div className="brutalist-title" style={{ fontSize: '1.1rem', color: '#0044ff', marginTop: '0.2rem' }}>&#8377;{Number(msg.guardrailData?.price).toLocaleString()}</div>
+                                      <div className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 900, marginTop: '0.2rem', fontFamily: "'Space Grotesk', sans-serif" }}>&#8377;{Number(msg.guardrailData?.price).toLocaleString()}</div>
                                       {msg.guardrailData?.chosenProduct?.rating != null && <StarRating rating={msg.guardrailData.chosenProduct.rating} />}
                                       {msg.guardrailData?.chosenProduct?.source_url && (
-                                        <a href={msg.guardrailData.chosenProduct.source_url} target="_blank" rel="noopener noreferrer" className="brutalist-subtitle" style={{ fontSize: '0.68rem', color: '#0044ff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem' }}>
-                                          <Globe size={11} /> View on Store
+                                        <a href={msg.guardrailData.chosenProduct.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.72rem', color: '#060e26', fontWeight: 800, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem', fontFamily: "'Space Grotesk', sans-serif" }}>
+                                          <Globe size={11} color="#060e26" /> View on Store
                                         </a>
                                       )}
                                     </div>
@@ -1346,7 +1370,7 @@ export default function CheckoutPage() {
                                   {/* Candidates being compared */}
                                   {msg.guardrailData?.candidates && msg.guardrailData.candidates.length > 0 && (
                                     <div style={{ marginTop: '0.75rem', borderTop: '1px solid #e4e4e7', paddingTop: '0.65rem' }}>
-                                      <div className="brutalist-subtitle" style={{ fontSize: '0.62rem', color: '#71717a', marginBottom: '0.4rem' }}>
+                                      <div className="brutalist-subtitle" style={{ fontSize: '0.65rem', color: '#060e26', fontWeight: 700, marginBottom: '0.4rem', fontFamily: "'Space Grotesk', sans-serif" }}>
                                         Negotiated between candidate(s):
                                       </div>
                                       <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
@@ -1358,25 +1382,26 @@ export default function CheckoutPage() {
                                               alignItems: 'center',
                                               gap: '0.4rem',
                                               padding: '0.35rem 0.6rem',
-                                              background: isChosen ? '#faf9f6' : '#ffffff',
-                                              border: `1px solid ${isChosen ? '#0044ff' : '#e4e4e7'}`,
-                                              borderRadius: '2px',
+                                              background: isChosen ? '#060e26' : '#ffffff',
+                                              color: isChosen ? '#ffffff' : '#060e26',
+                                              border: '1px solid #060e26',
+                                              borderRadius: '0px',
                                               flexShrink: 0,
                                             }}>
                                               {cand.image_url ? (
-                                                <img src={cand.image_url} alt={cand.name} style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '2px' }} />
+                                                <img src={cand.image_url} alt={cand.name} style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '0px' }} />
                                               ) : (
-                                                <div style={{ width: '24px', height: '24px', background: '#f4f4f5', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                  <Tag size={12} color="#71717a" />
+                                                <div style={{ width: '24px', height: '24px', background: isChosen ? '#ffffff' : '#f6f1e5', borderRadius: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                  <Tag size={12} color={isChosen ? '#060e26' : '#060e26'} />
                                                 </div>
                                               )}
-                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isChosen ? '#ffffff' : '#060e26' }}>
                                                 {cand.name}
                                               </div>
-                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', fontWeight: 700, color: isChosen ? '#0044ff' : '#111111' }}>
+                                              <div className="brutalist-text" style={{ fontSize: '0.74rem', fontWeight: 800, color: isChosen ? '#ffffff' : '#060e26' }}>
                                                 ₹{cand.price}
                                               </div>
-                                              {isChosen && <span className="minimal-pill minimal-pill-primary" style={{ fontSize: '0.6rem' }}>CHOSEN</span>}
+                                              {isChosen && <span style={{ fontSize: '0.6rem', fontWeight: 800, padding: '0.1rem 0.35rem', background: '#ffffff', color: '#060e26' }}>CHOSEN</span>}
                                             </div>
                                           );
                                         })}
@@ -1386,19 +1411,19 @@ export default function CheckoutPage() {
 
                                   {/* Behind-the-scenes Agent Chat */}
                                   {msg.guardrailData?.dialogue && msg.guardrailData.dialogue.length > 0 && (
-                                    <div style={{ marginTop: '0.75rem', padding: '0.75rem 0.9rem', background: '#faf9f6', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #7c3aed' }}>
-                                      <div className="brutalist-subtitle" style={{ color: '#7c3aed', marginBottom: '0.5rem', fontSize: '0.62rem' }}>
+                                    <div style={{ marginTop: '0.75rem', padding: '0.75rem 0.9rem', background: '#f6f1e5', borderRadius: '0px', border: '1px solid #060e26', borderLeft: '4px solid #060e26' }}>
+                                      <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 800, marginBottom: '0.5rem', fontSize: '0.68rem', fontFamily: "'Space Grotesk', sans-serif" }}>
                                         Agent Negotiation Logs
                                       </div>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {msg.guardrailData.dialogue.map((bubble: any, bIdx: number) => (
                                           <div key={bIdx} style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
-                                            <div style={{ width: '18px', height: '18px', borderRadius: '2px', background: '#0044ff', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, flexShrink: 0 }}>
+                                            <div style={{ width: '18px', height: '18px', borderRadius: '0px', background: '#060e26', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, flexShrink: 0 }}>
                                               {bubble.avatar}
                                             </div>
                                             <div className="brutalist-text" style={{ flex: 1 }}>
-                                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111111', marginRight: '0.3rem' }}>{bubble.name}:</span>
-                                              <span style={{ fontSize: '0.72rem', color: '#71717a', lineHeight: 1.4 }}>{bubble.text}</span>
+                                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#060e26', marginRight: '0.3rem' }}>{bubble.name}:</span>
+                                              <span style={{ fontSize: '0.74rem', color: '#060e26', lineHeight: 1.4, fontWeight: 500 }}>{bubble.text}</span>
                                             </div>
                                           </div>
                                         ))}
@@ -1413,19 +1438,20 @@ export default function CheckoutPage() {
                                 alignItems: 'center',
                                 gap: '0.75rem',
                                 padding: '0.85rem 1.1rem',
-                                borderRadius: '2px',
+                                borderRadius: '0px',
                                 fontSize: '0.85rem',
-                                border: '1px solid #e4e4e7',
+                                border: '2px solid #060e26',
+                                boxShadow: '3px 3px 0px #060e26',
                                 marginTop: '0.75rem',
-                                background: msg.guardrailData?.passed ? '#ecfdf5' : '#fef2f2',
-                                color: msg.guardrailData?.passed ? '#047857' : '#b91c1c'
+                                background: msg.guardrailData?.passed ? '#ffffff' : '#fef2f2',
+                                color: '#060e26'
                               }}>
-                                <Lock size={16} style={{ flexShrink: 0 }} />
+                                <Lock size={16} color="#060e26" style={{ flexShrink: 0 }} />
                                 <div style={{ flex: 1 }}>
-                                  <div className="brutalist-subtitle" style={{ color: 'inherit', fontSize: '0.8rem' }}>Non-Negotiable Spend Guardrail</div>
-                                  <div className="brutalist-mono" style={{ fontSize: '0.74rem', marginTop: '0.1rem', opacity: 0.9 }}>Ceiling: &#8377;{msg.guardrailData?.ceiling?.toLocaleString()} · Item: &#8377;{msg.guardrailData?.price?.toLocaleString()}</div>
+                                  <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 800, fontSize: '0.8rem', fontFamily: "'Space Grotesk', sans-serif" }}>Non-Negotiable Spend Guardrail</div>
+                                  <div className="brutalist-mono" style={{ fontSize: '0.74rem', marginTop: '0.1rem', color: '#060e26', fontWeight: 700 }}>Ceiling: &#8377;{msg.guardrailData?.ceiling?.toLocaleString()} · Item: &#8377;{msg.guardrailData?.price?.toLocaleString()}</div>
                                 </div>
-                                <span className={`minimal-pill ${msg.guardrailData?.passed ? 'minimal-pill-success' : 'minimal-pill-danger'}`}>{msg.guardrailData?.passed ? 'PASSED' : 'BLOCKED'}</span>
+                                <span style={{ padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 900, background: msg.guardrailData?.passed ? '#060e26' : '#b91c1c', color: '#ffffff', fontFamily: "'Space Grotesk', sans-serif" }}>{msg.guardrailData?.passed ? 'PASSED' : 'BLOCKED'}</span>
                               </div>
                             </div>
                           )}
