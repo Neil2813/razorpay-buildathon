@@ -157,48 +157,48 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
 
       {/* Nav Links Cell (Centered) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '100%' }}>
-        <Link to="/checkout" onClick={() => soundFX.playClick()} style={{ 
-          textDecoration: 'none', 
-          color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#111111'),
-          fontSize: '0.85rem',
-          fontWeight: 800,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          fontFamily: "'Space Grotesk', sans-serif"
-        }}>
-          CHECKOUT COCKPIT
-        </Link>
-        
-        {user && (
+        {user?.role === 'merchant_admin' ? (
+          <Link to="/dashboard" onClick={() => soundFX.playClick()} style={{ 
+            textDecoration: 'none', 
+            color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#111111'),
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            fontFamily: "'Space Grotesk', sans-serif"
+          }}>
+            REVENUE INTEL
+          </Link>
+        ) : (
           <>
-            <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
-            {user.role === 'merchant_admin' && (
-              <>
-                <Link to="/dashboard" onClick={() => soundFX.playClick()} style={{ 
-                  textDecoration: 'none', 
-                  color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#111111'),
-                  fontSize: '0.85rem',
-                  fontWeight: 800,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  fontFamily: "'Space Grotesk', sans-serif"
-                }}>
-                  REVENUE INTEL
-                </Link>
-                <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
-              </>
-            )}
-            <Link to="/history" onClick={() => soundFX.playClick()} style={{ 
+            <Link to="/checkout" onClick={() => soundFX.playClick()} style={{ 
               textDecoration: 'none', 
-              color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#111111'),
+              color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#111111'),
               fontSize: '0.85rem',
               fontWeight: 800,
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
               fontFamily: "'Space Grotesk', sans-serif"
             }}>
-              AUDIT LEDGER
+              CHECKOUT COCKPIT
             </Link>
+            
+            {user && (
+              <>
+                <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
+                <Link to="/history" onClick={() => soundFX.playClick()} style={{ 
+                  textDecoration: 'none', 
+                  color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#111111'),
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  fontFamily: "'Space Grotesk', sans-serif"
+                }}>
+                  AUDIT LEDGER
+                </Link>
+              </>
+            )}
           </>
         )}
       </div>
