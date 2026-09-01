@@ -1082,16 +1082,6 @@ export default function CheckoutPage() {
       {/* Right Side: Conversation Transcript Workspace */}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f6f1e5' }}>
         
-        {/* Header */}
-        <div style={{ padding: '0.85rem 1.75rem', borderBottom: '2px solid #060e26', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f6f1e5', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span className="brutalist-title" style={{ fontSize: '1.15rem', color: '#060e26', fontWeight: 800 }}>TRANSACTION TIMELINE LEDGER</span>
-            {isRunning && <span className="minimal-pill minimal-pill-primary">SYS_PROCESSING</span>}
-          </div>
-        </div>
-
-
-
         {/* Transcript Log Stream */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#f6f1e5' }}>
           {messages.length === 0 ? (
