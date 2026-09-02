@@ -90,7 +90,12 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
 
           {user ? (
             <>
-              {isLanding && (
+              {isLanding && user.role === 'merchant_admin' && (
+                <Link to="/dashboard" className="btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
+                  Revenue Intel
+                </Link>
+              )}
+              {isLanding && user.role !== 'merchant_admin' && (
                 <Link to="/checkout" className="btn-primary" style={{ textDecoration: 'none', padding: '0.4rem 0.9rem', fontSize: '0.85rem' }}>
                   Enter Cockpit
                 </Link>

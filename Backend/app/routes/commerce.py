@@ -58,6 +58,25 @@ def add_delivery_zone(body: DeliveryZoneRequest, current_user: dict = Depends(re
         return {"zone_id": zone_id}
     finally: conn.close()
 
+@router.delete("/merchant/delivery-zones/{zone_id}")
+def delete_delivery_zone(zone_id: str, current_user: dict = Depends(require_role(["merchant_admin", "platform_admin"]))):
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM delivery_zones WHERE zone_id=? AND tenant_id=?", (zone_id, current_user["tenant_id"]))
+        return {"ok": True}
+    finally: conn.close()
+
+@router.delete("/merchant/warehouses/{warehouse_id}")
+def delete_warehouse(warehouse_id: str, current_user: dict = Depends(require_role(["merchant_admin", "platform_admin"]))):
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM warehouse_inventory WHERE warehouse_id=?", (warehouse_id,))
+            conn.execute("DELETE FROM warehouses WHERE warehouse_id=? AND tenant_id=?", (warehouse_id, current_user["tenant_id"]))
+        return {"ok": True}
+    finally: conn.close()
+
 @router.get("/merchant/products")
 def list_products(current_user: dict = Depends(require_role(["merchant_admin", "platform_admin"]))):
     conn = get_db_connection()

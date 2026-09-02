@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'insights' | 'setup' | 'protocol'>('insights');
+  const [activeTab, setActiveTab] = useState<'insights' | 'setup' | 'warehouse_sku' | 'protocol'>('insights');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   // Graph Node Inspector State
@@ -60,17 +60,8 @@ export default function DashboardPage() {
 
   // Merchant settings / setup state
   const [companyName, setCompanyName] = useState('');
-  const [supportEmail, setSupportEmail] = useState('');
-  const [supportPhone, setSupportPhone] = useState('');
-  const [razorpayKeyId, setRazorpayKeyId] = useState('');
-  const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
-  const [profileSaved, setProfileSaved] = useState(false);
 
   const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [newWarehouse, setNewWarehouse] = useState({ name: '', line1: '', city: '', state: '', pincode: '' });
-
-  const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
-  const [newZone, setNewZone] = useState({ coverage_type: 'state', coverage_value: '', shipping_fee: 0, delivery_days: 3 });
 
   const [products, setProducts] = useState<any[]>([]);
   const [newProduct, setNewProduct] = useState({ name: '', description: '', price: 0, category: 'shoe', color: 'black', sizes: '', return_policy: '', delivery_time_days: 3, rating: 4.5 });
@@ -78,43 +69,52 @@ export default function DashboardPage() {
   const [inventory, setInventory] = useState<any[]>([]);
   const [newInventory, setNewInventory] = useState({ warehouse_id: '', product_id: '', quantity: 0 });
 
-  const [ceiling, setCeiling] = useState<number | ''>('');
-  const [ceilingSaved, setCeilingSaved] = useState(false);
-
   const loadAllData = async () => {
     if (!user) return;
     try {
-      const [insRes, setupRes, prodRes, invRes] = await Promise.all([
-        api.get(`/transaction/insights/${user.tenant_id}`),
-        api.get('/commerce/merchant/setup'),
-        api.get('/commerce/merchant/products'),
-        api.get('/commerce/merchant/inventory')
-      ]);
-      setInsights(insRes.insights);
-      
-      const m = setupRes.merchant || {};
-      setCompanyName(m.company_name || m.name || '');
-      setSupportEmail(m.support_email || '');
-      setSupportPhone(m.support_phone || '');
-      setRazorpayKeyId(m.razorpay_key_id || '');
-      setRazorpayKeySecret(m.razorpay_key_secret || '');
-      setCeiling(m.unattended_spend_ceiling || 5000.0);
+      let loadedWarehouses: any[] = [];
+      let loadedProducts: any[] = [];
 
-      setWarehouses(setupRes.warehouses || []);
-      setDeliveryZones(setupRes.delivery_zones || []);
-      setProducts(prodRes.products || []);
-      setInventory(invRes.inventory || []);
+      try {
+        const insRes = await api.get(`/transaction/insights/${user.tenant_id}`);
+        setInsights(insRes.insights);
+      } catch (err) {
+        console.error('Failed to load insights:', err);
+      }
 
-      if (setupRes.warehouses?.length > 0 && prodRes.products?.length > 0) {
+      try {
+        const setupRes = await api.get('/commerce/merchant/setup');
+        const m = setupRes.merchant || {};
+        setCompanyName(m.company_name || m.name || '');
+        loadedWarehouses = setupRes.warehouses || [];
+        setWarehouses(loadedWarehouses);
+      } catch (err) {
+        console.error('Failed to load merchant setup:', err);
+      }
+
+      try {
+        const prodRes = await api.get('/commerce/merchant/products');
+        loadedProducts = prodRes.products || [];
+        setProducts(loadedProducts);
+      } catch (err) {
+        console.error('Failed to load products:', err);
+      }
+
+      try {
+        const invRes = await api.get('/commerce/merchant/inventory');
+        setInventory(invRes.inventory || []);
+      } catch (err) {
+        console.error('Failed to load inventory:', err);
+      }
+
+      if (loadedWarehouses.length > 0 && loadedProducts.length > 0) {
         setNewInventory(prev => ({
           ...prev,
-          warehouse_id: prev.warehouse_id || setupRes.warehouses[0].warehouse_id,
-          product_id: prev.product_id || prodRes.products[0].product_id,
+          warehouse_id: prev.warehouse_id || loadedWarehouses[0].warehouse_id,
+          product_id: prev.product_id || loadedProducts[0].product_id,
           quantity: prev.quantity || 10
         }));
       }
-    } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -124,59 +124,6 @@ export default function DashboardPage() {
     if (user?.role !== 'merchant_admin') { navigate('/checkout'); return; }
     loadAllData();
   }, [user, navigate]);
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.put('/commerce/merchant/profile', {
-        company_name: companyName,
-        support_email: supportEmail || null,
-        support_phone: supportPhone || null,
-        razorpay_key_id: razorpayKeyId || null,
-        razorpay_key_secret: razorpayKeySecret || null
-      });
-      setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 3000);
-      loadAllData();
-    } catch {
-      alert('Failed to update company profile');
-    }
-  };
-
-  const handleUpdateCeiling = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ceiling) return;
-    try {
-      await api.patch('/profile/tenant', { unattended_spend_ceiling: Number(ceiling) });
-      setCeilingSaved(true);
-      setTimeout(() => setCeilingSaved(false), 3000);
-      loadAllData();
-    } catch {
-      alert('Failed to update spend ceiling limit');
-    }
-  };
-
-  const handleAddWarehouse = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/commerce/merchant/warehouses', newWarehouse);
-      setNewWarehouse({ name: '', line1: '', city: '', state: '', pincode: '' });
-      loadAllData();
-    } catch {
-      alert('Failed to add warehouse. PIN must be 6 digits.');
-    }
-  };
-
-  const handleAddZone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/commerce/merchant/delivery-zones', newZone);
-      setNewZone({ coverage_type: 'state', coverage_value: '', shipping_fee: 0, delivery_days: 3 });
-      loadAllData();
-    } catch {
-      alert('Failed to add delivery zone.');
-    }
-  };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,9 +182,6 @@ export default function DashboardPage() {
 
         {/* Header */}
         <div style={{ marginBottom: '1.5rem' }}>
-          <div className="minimal-pill minimal-pill-primary" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.75rem' }}>
-            Merchant Control Dashboard
-          </div>
           <h2 className="brutalist-title" style={{ margin: 0, fontSize: '2rem', color: '#111111' }}>{companyName || 'Glassbox Merchant Console'}</h2>
         </div>
 
@@ -278,6 +222,24 @@ export default function DashboardPage() {
             }}
           >
             Merchant Configuration
+          </button>
+          <button
+            onClick={() => setActiveTab('warehouse_sku')}
+            style={{
+              padding: '0.65rem 1.25rem',
+              background: activeTab === 'warehouse_sku' ? '#ffffff' : 'transparent',
+              border: activeTab === 'warehouse_sku' ? '1px solid #111111' : 'none',
+              borderBottom: activeTab === 'warehouse_sku' ? '1px solid #ffffff' : 'none',
+              marginBottom: '-1px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              color: activeTab === 'warehouse_sku' ? '#0044ff' : '#71717a',
+              fontFamily: 'Space Grotesk',
+              borderRadius: '2px 2px 0 0'
+            }}
+          >
+            Warehouse SKU
           </button>
         </div>
 
@@ -464,7 +426,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* ── Main Analytics & Funnel Workspace ───────────────────────────────────── */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '2rem' }}>
 
                     {/* Left: Summary + Funnel */}
                     <div style={{ background: '#ffffff', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', padding: '1.5rem' }}>
@@ -490,51 +452,11 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Right: Insights & Spend Ceiling */}
-                    <div style={{ background: '#ffffff', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div>
-                        <div className="brutalist-subtitle" style={{ fontSize: '0.72rem', color: '#060e26', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                          AI Executive Summary
-                        </div>
-                        <div className="brutalist-text" style={{ background: '#f6f1e5', border: '1px solid #060e26', borderLeft: '4px solid #060e26', padding: '0.85rem', fontSize: '0.82rem', color: '#060e26', lineHeight: 1.5, fontWeight: 600 }}>
-                          {displayInsights.summary}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="brutalist-subtitle" style={{ fontSize: '0.72rem', color: '#060e26', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                          Spend Ceiling Guardrail
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                          <div style={{ background: '#f6f1e5', border: '1px solid #060e26', padding: '0.6rem', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#060e26' }}>PASSED</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>{displayInsights.ceiling_pass_count}</div>
-                          </div>
-                          <div style={{ background: '#f6f1e5', border: '1px solid #060e26', padding: '0.6rem', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#060e26' }}>BLOCKED</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ef4444' }}>{displayInsights.ceiling_hit_count}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                   </div>
 
                   {/* ── Bottom Section: History Logs Table ───────────────────────────────────── */}
                   <div style={{ border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', background: '#ffffff', overflow: 'hidden', marginBottom: '2rem' }}>
-                    <div style={{ padding: '1.25rem 1.5rem', background: '#060e26', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div className="brutalist-subtitle" style={{ fontSize: '0.75rem', color: '#ffffff', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
-                          TRANSACTION HISTORY LOGS
-                        </div>
-                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: '#e4e4e7', fontWeight: 500 }}>
-                          Audited buyer names, products, payment statuses, and delivery addresses
-                        </p>
-                      </div>
-                      <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', background: '#ffffff', color: '#060e26', fontWeight: 800 }}>
-                        {historyLogs.length} LOGS
-                      </span>
-                    </div>
+
 
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left', fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -598,13 +520,15 @@ export default function DashboardPage() {
               );
             })()}
           </>
-        ) : activeTab === 'setup' ? (
+        ) : (activeTab === 'setup' || activeTab === 'warehouse_sku') ? (
           /* Merchant Configuration Workspace */
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '0px', border: '1px solid #111111', borderRadius: '2px', background: '#ffffff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0px', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', borderRadius: '0px', background: '#ffffff' }}>
             
             {/* Left Column (Products & Inventory) */}
-            <div style={{ borderRight: '1px solid #111111', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               
+              {activeTab === 'setup' && (
+              <>
               {/* Product Catalogue Management */}
               <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
                 <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.4rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -613,7 +537,7 @@ export default function DashboardPage() {
                 <h3 className="brutalist-title" style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>Catalogue Products</h3>
                 
                 {/* Add Product Form */}
-                <form onSubmit={handleAddProduct} style={{ background: '#faf9f6', padding: '1rem', border: '1px solid #e4e4e7', borderRadius: '2px', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <form onSubmit={handleAddProduct} style={{ background: '#ffffff', padding: '1rem', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                   <div className="brutalist-subtitle" style={{ fontSize: '0.68rem', color: '#111111' }}>Create New Product Listing</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} required className="minimal-input" style={{ fontSize: '0.8rem', padding: '0.4rem' }} />
@@ -643,7 +567,7 @@ export default function DashboardPage() {
                 {/* Products List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {products.map(p => (
-                    <div key={p.product_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.65rem 0.85rem', border: '1px solid #e4e4e7', borderRadius: '2px' }}>
+                    <div key={p.product_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.65rem 0.85rem', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', marginBottom: '0.5rem', background: '#ffffff' }}>
                       <div>
                         <div className="brutalist-text" style={{ fontWeight: 700, fontSize: '0.85rem', color: '#111111' }}>{p.name}</div>
                         <div className="brutalist-mono" style={{ fontSize: '0.68rem', color: '#71717a', marginTop: '0.15rem' }}>
@@ -664,16 +588,18 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
+              </>
+              )}
 
+              {activeTab === 'warehouse_sku' && (
+              <>
               {/* Warehouse Inventory Stock Allocation */}
               <div style={{ padding: '1.75rem' }}>
-                <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.4rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Tag size={12} /> [INVENTORY // WAREHOUSE STOCK LEVEL]
-                </div>
+
                 <h3 className="brutalist-title" style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>Warehouse Inventory Stock</h3>
 
                 {warehouses.length > 0 && products.length > 0 ? (
-                  <form onSubmit={handleUpdateInventory} style={{ background: '#faf9f6', padding: '1rem', border: '1px solid #e4e4e7', borderRadius: '2px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <form onSubmit={handleUpdateInventory} style={{ background: '#ffffff', padding: '1rem', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#111111', marginRight: '0.25rem' }}>Set Stock:</div>
                     <select value={newInventory.warehouse_id} onChange={e => setNewInventory({...newInventory, warehouse_id: e.target.value})} className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem', background: '#ffffff', flex: 1, minWidth: '110px' }}>
                       {warehouses.map((w: any) => (
@@ -696,21 +622,21 @@ export default function DashboardPage() {
 
                 {/* Stock Table */}
                 {inventory.length > 0 && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                  <div style={{ overflowX: 'auto', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', background: '#ffffff', marginBottom: '1.5rem' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', fontFamily: "'Space Grotesk', sans-serif", textAlign: 'left' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #e4e4e7', background: '#faf9f6' }}>
-                          <th className="brutalist-subtitle" style={{ padding: '0.5rem 1rem', fontSize: '0.62rem' }}>Warehouse</th>
-                          <th className="brutalist-subtitle" style={{ padding: '0.5rem 1rem', fontSize: '0.62rem' }}>Product SKU</th>
-                          <th className="brutalist-subtitle" style={{ padding: '0.5rem 1rem', fontSize: '0.62rem', textAlign: 'right' }}>Stock Level</th>
+                        <tr style={{ background: '#060e26', color: '#ffffff' }}>
+                          <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', borderRight: '1px solid #1a233d' }}>Warehouse</th>
+                          <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', borderRight: '1px solid #1a233d' }}>Product SKU</th>
+                          <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', textAlign: 'right' }}>Stock Level</th>
                         </tr>
                       </thead>
                       <tbody>
                         {inventory.map((inv, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #e4e4e7' }}>
-                            <td className="brutalist-text" style={{ padding: '0.5rem 1rem', fontWeight: 600 }}>{inv.warehouse_name}</td>
-                            <td className="brutalist-text" style={{ padding: '0.5rem 1rem', color: '#71717a' }}>{inv.product_name} <span className="brutalist-mono" style={{ fontSize: '0.65rem' }}>({inv.product_id})</span></td>
-                            <td className="brutalist-text" style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 700, color: inv.quantity > 0 ? '#111111' : '#ef4444' }}>
+                          <tr key={idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f6f1e5', borderBottom: idx === inventory.length - 1 ? 'none' : '1px solid #e4e4e7' }}>
+                            <td style={{ padding: '0.55rem 0.85rem', fontWeight: 700, color: '#060e26', borderRight: '1px solid #e4e4e7' }}>{inv.warehouse_name}</td>
+                            <td style={{ padding: '0.55rem 0.85rem', color: '#060e26', fontWeight: 600, borderRight: '1px solid #e4e4e7' }}>{inv.product_name} <span className="brutalist-mono" style={{ fontSize: '0.65rem' }}>({inv.product_id})</span></td>
+                            <td style={{ padding: '0.55rem 0.85rem', fontWeight: 800, textAlign: 'right', color: inv.quantity > 0 ? '#060e26' : '#ef4444' }}>
                               {inv.quantity > 0 ? `${inv.quantity} units` : 'Out of Stock'}
                             </td>
                           </tr>
@@ -720,131 +646,10 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+              </>
+              )}
 
             </div>
-
-            {/* Right Column (Profile, Warehouses & Delivery Zones) */}
-            <div style={{ background: '#faf9f6', display: 'flex', flexDirection: 'column' }}>
-              
-              {/* Profile Config */}
-              <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
-                <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem' }}>[CONFIG // PROFILE & CEILING]</div>
-                <h3 className="brutalist-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem' }}>Merchant profile</h3>
-                
-                {profileSaved && (
-                  <span className="minimal-pill minimal-pill-success" style={{ marginBottom: '0.75rem', display: 'inline-flex' }}>
-                    Profile details updated
-                  </span>
-                )}
-                
-                <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                  <input type="text" placeholder="Company Name" value={companyName} onChange={e => setCompanyName(e.target.value)} required className="minimal-input" style={{ fontSize: '0.8rem', padding: '0.4rem' }} />
-                  <input type="email" placeholder="Support Email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="minimal-input" style={{ fontSize: '0.8rem', padding: '0.4rem' }} />
-                  <input type="tel" placeholder="Support Phone" value={supportPhone} onChange={e => setSupportPhone(e.target.value)} className="minimal-input" style={{ fontSize: '0.8rem', padding: '0.4rem' }} />
-                  
-                  <div style={{ borderTop: '1px solid #e4e4e7', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <div className="brutalist-subtitle" style={{ fontSize: '0.65rem', color: '#0044ff' }}>Razorpay Test Gateway Credentials</div>
-                    <input type="text" placeholder="Razorpay Key ID (rzp_test_...)" value={razorpayKeyId} onChange={e => setRazorpayKeyId(e.target.value)} className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                    <input type="password" placeholder="Razorpay Key Secret" value={razorpayKeySecret} onChange={e => setRazorpayKeySecret(e.target.value)} className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  </div>
-
-                  <button type="submit" className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.75rem', padding: '0.45rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
-                    <Save size={12} /> Save Merchant Profile & Credentials
-                  </button>
-                </form>
-
-                {/* Ceiling Limit */}
-                <div style={{ borderTop: '1px solid #e4e4e7', paddingTop: '1rem' }}>
-                  <div className="brutalist-subtitle" style={{ fontSize: '0.65rem', marginBottom: '0.35rem' }}>Spend ceiling guardrail</div>
-                  {ceilingSaved && (
-                    <span className="minimal-pill minimal-pill-success" style={{ marginBottom: '0.5rem', display: 'inline-flex' }}>
-                      Spend limit ceiling updated
-                    </span>
-                  )}
-                  <form onSubmit={handleUpdateCeiling} style={{ display: 'flex', gap: '0.45rem' }}>
-                    <input type="number" placeholder="₹5000" value={ceiling} onChange={e => setCeiling(Number(e.target.value) || '')} required className="minimal-input" style={{ fontSize: '0.8rem', padding: '0.4rem', flex: 1 }} />
-                    <button type="submit" className="minimal-btn minimal-btn-primary" style={{ fontSize: '0.72rem', padding: '0.45rem 0.75rem' }}>Save Limit</button>
-                  </form>
-                </div>
-              </div>
-
-              {/* Warehouse Locations */}
-              <div style={{ padding: '1.75rem', borderBottom: '1px solid #e4e4e7' }}>
-                <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <MapPin size={12} /> [CONFIG // WAREHOUSES]
-                </div>
-                <h3 className="brutalist-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem' }}>Warehouses</h3>
-                
-                {/* Add Warehouse Form */}
-                <form onSubmit={handleAddWarehouse} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '1.25rem' }}>
-                  <input type="text" placeholder="Warehouse Name" value={newWarehouse.name} onChange={e => setNewWarehouse({...newWarehouse, name: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  <input type="text" placeholder="Line 1 Address" value={newWarehouse.line1} onChange={e => setNewWarehouse({...newWarehouse, line1: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-                    <input type="text" placeholder="City" value={newWarehouse.city} onChange={e => setNewWarehouse({...newWarehouse, city: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                    <input type="text" placeholder="State" value={newWarehouse.state} onChange={e => setNewWarehouse({...newWarehouse, state: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  </div>
-                  <input type="text" placeholder="PIN Code (6 digits)" value={newWarehouse.pincode} onChange={e => setNewWarehouse({...newWarehouse, pincode: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  <button type="submit" className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem' }}>
-                    + Create Warehouse
-                  </button>
-                </form>
-
-                {/* Warehouse List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  {warehouses.map((w: any) => (
-                    <div key={w.warehouse_id} style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', fontSize: '0.75rem' }}>
-                      <span className="brutalist-text" style={{ fontWeight: 700, color: '#111111' }}>{w.name}</span>
-                      <div style={{ color: '#71717a', fontSize: '0.68rem', marginTop: '0.15rem' }}>{w.line1}, {w.city}, {w.state} - {w.pincode}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Delivery zones */}
-              <div style={{ padding: '1.75rem' }}>
-                <div className="brutalist-subtitle" style={{ marginBottom: '0.5rem', fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Truck size={12} /> [CONFIG // DELIVERY COVERAGE]
-                </div>
-                <h3 className="brutalist-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem' }}>Delivery Coverage</h3>
-
-                {/* Add Zone Form */}
-                <form onSubmit={handleAddZone} style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginBottom: '1.25rem' }}>
-                  <select value={newZone.coverage_type} onChange={e => setNewZone({...newZone, coverage_type: e.target.value})} className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem', background: '#ffffff' }}>
-                    <option value="all_india">All India</option>
-                    <option value="state">State Limit</option>
-                    <option value="city">City Limit</option>
-                    <option value="pincode">Pincode Limit</option>
-                  </select>
-                  {newZone.coverage_type !== 'all_india' && (
-                    <input type="text" placeholder="Coverage Value (e.g. Karnataka / Bengaluru / 560001)" value={newZone.coverage_value} onChange={e => setNewZone({...newZone, coverage_value: e.target.value})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  )}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-                    <input type="number" placeholder="Fee (₹)" value={newZone.shipping_fee || ''} onChange={e => setNewZone({...newZone, shipping_fee: Number(e.target.value) || 0})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                    <input type="number" placeholder="Days" value={newZone.delivery_days || ''} onChange={e => setNewZone({...newZone, delivery_days: Number(e.target.value) || 1})} required className="minimal-input" style={{ fontSize: '0.75rem', padding: '0.35rem' }} />
-                  </div>
-                  <button type="submit" className="minimal-btn minimal-btn-primary" style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem' }}>
-                    + Create Delivery Zone
-                  </button>
-                </form>
-
-                {/* Zone List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                  {deliveryZones.map((z: any) => (
-                    <div key={z.zone_id} style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '2px', border: '1px solid #e4e4e7', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span className="brutalist-text" style={{ fontWeight: 700, color: '#111111', textTransform: 'capitalize' }}>{z.coverage_type.replace('_', ' ')}</span>
-                        <div style={{ color: '#71717a', fontSize: '0.68rem', marginTop: '0.15rem' }}>Scope: {z.coverage_value}</div>
-                      </div>
-                      <span className="minimal-pill minimal-pill-primary" style={{ fontSize: '0.65rem' }}>
-                        ₹{z.shipping_fee} · {z.delivery_days} days
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
           </div>
         ) : null}
       </div>
