@@ -93,15 +93,17 @@ const AGENT_LABELS: Record<string, string> = {
 
 // Param definitions per mode for UI clarification cards
 const GUIDED_PARAMS: MissingParam[] = [
+  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['any', 'men', 'women', 'unisex'] },
+  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
+  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_min', label: 'Floor Price (₹)', inputType: 'number', placeholder: 'e.g. 500' },
   { key: 'budget_max', label: 'Ceiling Price (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
   { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. Nike, or type "any"' },
-  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
-  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
   { key: 'min_rating', label: 'Minimum Rating (out of 5)', inputType: 'select', options: ['any', '3', '3.5', '4', '4.5'] },
 ];
 
 const AUTONOMOUS_PARAMS: MissingParam[] = [
+  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['any', 'men', 'women', 'unisex'] },
   { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
   { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_max', label: 'Max Budget / Ceiling (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
@@ -346,6 +348,36 @@ function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
       </span>
     </div>
   );
+}
+
+function getSizeOptionsForCategory(category?: string, userMsgText?: string): { label: string; options: string[] } {
+  const text = ((category || '') + ' ' + (userMsgText || '')).toLowerCase();
+
+  if (/\b(shoe|shoes|sneaker|sneakers|boot|boots|footwear|slipper|sandals?)\b/i.test(text)) {
+    return {
+      label: 'Shoe Size (UK/US)',
+      options: ['any', '6', '7', '8', '9', '10', '11', '12'],
+    };
+  }
+
+  if (/\b(pant|pants|jeans|trouser|trousers|shorts?|skirt)\b/i.test(text)) {
+    return {
+      label: 'Pant Size (Waist / Fit)',
+      options: ['any', '28', '30', '32', '34', '36', '38', '40', 'S', 'M', 'L', 'XL'],
+    };
+  }
+
+  if (/\b(shirt|shirts|t-shirt|tshirt|tshirts|jacket|jackets|dress|dresses|kurta|kurtas|top|tops|hoodie|sweater)\b/i.test(text)) {
+    return {
+      label: 'Shirt Size',
+      options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
+    };
+  }
+
+  return {
+    label: 'Size',
+    options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -648,7 +680,17 @@ export default function CheckoutPage() {
           } else {
             const mode = conciergeEvent.inputs_summary?.mode || modeToUse || 'autonomous';
             const allParams = mode === 'guided' ? GUIDED_PARAMS : AUTONOMOUS_PARAMS;
-            missingParams = allParams.filter(p => missing.includes(p.key));
+            const cat = conciergeEvent.output_summary?.intent_so_far?.category || '';
+            const msgText = conciergeEvent.inputs_summary?.message || query || '';
+            missingParams = allParams
+              .filter(p => missing.includes(p.key))
+              .map(p => {
+                if (p.key === 'size') {
+                  const spec = getSizeOptionsForCategory(cat, msgText);
+                  return { ...p, label: spec.label, options: spec.options };
+                }
+                return p;
+              });
             setAwaitingClarification(true);
           }
 
@@ -814,6 +856,7 @@ export default function CheckoutPage() {
   const handleClarificationSubmit = async (values: Record<string, string>) => {
     // Build a natural language continuation message from the filled fields
     const parts: string[] = [];
+    if (values.gender && values.gender !== 'any') parts.push(`for ${values.gender}`);
     if (values.size && values.size !== 'any') parts.push(`size ${values.size}`);
     if (values.color && values.color !== 'any') parts.push(`${values.color} colour`);
     if (values.brand && values.brand.toLowerCase() !== 'any') parts.push(`brand ${values.brand}`);
@@ -1176,7 +1219,7 @@ export default function CheckoutPage() {
                           lineHeight: 1.55,
                           fontFamily: "'Space Grotesk', sans-serif"
                         }}>
-                          <div className="brutalist-text" style={{ fontWeight: 600 }}>{msg.content}</div>
+                          <div className="brutalist-text" style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
 
                           {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (

@@ -40,15 +40,15 @@ _PARAM_LABELS: dict[str, str] = {
     "budget_max":      "ceiling / max price (e.g. ₹4000)",
     "brand":           "brand preference (or type 'any')",
     "color":           "colour preference (or type 'any')",
+    "gender":          "gender / department (e.g. Men, Women, Unisex)",
     "size":            "size (e.g. M, L, 9, 10)",
     "min_rating":      "minimum star rating out of 5 (e.g. 4)",
     "requested_sites": "website to shop from (e.g. myntra.com)",
 }
 
-_GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "size", "min_rating", "requested_sites"]
-# In autonomous mode, only the item category and maximum budget are needed.
-# Colour, size and rating are optional filters when the buyer supplies them.
-_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_max"]
+_GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating", "requested_sites"]
+# Autonomous mode checklist - collects user's gender/department, size, color, budget range, rating
+_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "color", "gender", "size", "min_rating"]
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +198,17 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
     if _ANY_RE.search(text) and brand is None:
         brand = "any"
 
+    gender_match = re.search(r"\b(men|man|male|women|woman|female|unisex|boys?|girls?|gents|ladies)\b", text, re.I)
+    gender = None
+    if gender_match:
+        g_raw = gender_match.group(1).lower()
+        if g_raw in ("men", "man", "male", "gents", "boy", "boys"):
+            gender = "men"
+        elif g_raw in ("women", "woman", "female", "ladies", "girl", "girls"):
+            gender = "women"
+        else:
+            gender = "unisex"
+
     rating_match = _RATING_RE.search(text)
     min_rating: float | None = None
     if rating_match:
@@ -213,6 +224,7 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         "budget_max": budget_max,
         "brand": brand,
         "color": color,
+        "gender": gender,
         "size": size,
         "min_rating": min_rating,
     }
@@ -238,14 +250,31 @@ def _find_missing_params(intent: dict[str, Any], mode: str, state: TransactionSt
     return missing
 
 
-def _build_clarification_message(missing: list[str]) -> str:
+def _get_size_label_for_intent(intent: dict[str, Any] | None) -> str:
+    if not intent:
+        return "size (e.g. M, L, 9, 10)"
+    cat = str(intent.get("category") or "").lower()
+    if any(w in cat for w in ("shoe", "sneaker", "boot", "footwear", "slipper", "sandal")):
+        return "shoe size (e.g. 7, 8, 9, 10, 11)"
+    elif any(w in cat for w in ("pant", "jeans", "trouser", "short")):
+        return "waist / pant size (e.g. 28, 30, 32, 34, 36)"
+    elif any(w in cat for w in ("shirt", "dress", "jacket", "kurta", "top", "hoodie", "t-shirt", "tshirt", "sweater")):
+        return "clothing size (e.g. S, M, L, XL, XXL)"
+    return "size (e.g. M, L, 9, 10)"
+
+
+def _build_clarification_message(missing: list[str], intent: dict[str, Any] | None = None) -> str:
     """Build a friendly, ordered clarification prompt for the missing params."""
+    labels = dict(_PARAM_LABELS)
+    if "size" in missing:
+        labels["size"] = _get_size_label_for_intent(intent)
+
     if len(missing) == 1:
-        label = _PARAM_LABELS.get(missing[0], missing[0])
+        label = labels.get(missing[0], missing[0])
         return f"Just one more thing: please provide your {label}."
     lines = ["I still need a few details before I search:"]
     for i, key in enumerate(missing, 1):
-        label = _PARAM_LABELS.get(key, key)
+        label = labels.get(key, key)
         lines.append(f"  {i}. {label}")
     lines.append("Please reply with these details and I’ll start the search.")
     return "\n".join(lines)
@@ -319,6 +348,7 @@ def run(state: TransactionState) -> TransactionState:
             "category, budget_min (floor price as number or null), "
             "budget_max (ceiling price as number or null), "
             "brand (string or null), color (string or null), "
+            "gender (one of: men, women, unisex, or null), "
             "size (string or null), min_rating (float 0-5 or null), "
             "deadline (string or null), "
             "autonomy_mode (one of: guided, autonomous, or null), "
@@ -330,7 +360,7 @@ def run(state: TransactionState) -> TransactionState:
     )
 
     # Merge fallback regex extraction non-destructively
-    for key in ("category", "size", "color", "brand", "min_rating"):
+    for key in ("category", "size", "color", "gender", "brand", "min_rating"):
         val = fallback.get(key)
         if val is not None:
             existing_intent[key] = val
@@ -342,7 +372,7 @@ def run(state: TransactionState) -> TransactionState:
 
     # Merge LLM extraction non-destructively
     if isinstance(llm_intent, dict):
-        for key in ("category", "size", "color", "brand"):
+        for key in ("category", "size", "color", "gender", "brand"):
             cand = llm_intent.get(key)
             if isinstance(cand, str) and cand.strip() and cand.lower() != "null":
                 existing_intent[key] = cand
@@ -409,7 +439,7 @@ def run(state: TransactionState) -> TransactionState:
     missing_params = _find_missing_params(intent, mode, state=state)
 
     if missing_params:
-        clarification_msg = _build_clarification_message(missing_params)
+        clarification_msg = _build_clarification_message(missing_params, intent=intent)
         intent["needs_clarification"] = True
         intent["clarification_reason"] = clarification_msg
         intent["missing_parameters"] = missing_params
@@ -424,7 +454,7 @@ def run(state: TransactionState) -> TransactionState:
                 "clarification": clarification_msg,
                 "intent_so_far": {
                     k: intent.get(k)
-                    for k in ("category", "budget_min", "budget_max", "brand", "color", "size", "min_rating")
+                    for k in ("category", "budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating")
                 },
             },
         )
@@ -445,7 +475,7 @@ def run(state: TransactionState) -> TransactionState:
         output_summary={
             "intent": {
                 k: intent.get(k)
-                for k in ("category", "budget_min", "budget_max", "brand", "color", "size", "min_rating")
+                for k in ("category", "budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating")
             },
             "autonomy_mode": mode,
             "requested_sites": state.get("requested_sites"),

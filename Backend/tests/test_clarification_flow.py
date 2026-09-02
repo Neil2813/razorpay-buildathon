@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import sys
 import os
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 from unittest.mock import patch
 
 # Allow running from the tests directory
@@ -63,11 +65,11 @@ def _run_concierge_with_mode(message: str, mode: str):
 
 
 # ---------------------------------------------------------------------------
-# Test 1: Generalised guided message → should ask all 7 params
+# Test 1: Generalised guided message → should ask all 8 params
 # ---------------------------------------------------------------------------
 
 def test_guided_mode_generalised_message_asks_all_params():
-    """'buy me a shirt of 4000 rupees' in Guided should ask for all 7 params."""
+    """'buy me a shirt of 4000 rupees' in Guided should ask for missing params."""
     state = _run_concierge_with_mode("buy me a shirt of 4000 rupees", "guided")
     intent = state["intent"]
 
@@ -78,6 +80,7 @@ def test_guided_mode_generalised_message_asks_all_params():
     assert "budget_min" in missing, "Floor price should be missing."
     assert "brand" in missing, "Brand should be missing."
     assert "color" in missing, "Colour should be missing."
+    assert "gender" in missing, "Gender should be missing."
     assert "size" in missing, "Size should be missing."
     assert "min_rating" in missing, "Min rating should be missing."
     assert "requested_sites" in missing, "Website should be missing in guided mode."
@@ -85,7 +88,7 @@ def test_guided_mode_generalised_message_asks_all_params():
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Generalised autonomous message → should ask for 4 params
+# Test 2: Generalised autonomous message → should ask for missing params
 # ---------------------------------------------------------------------------
 
 def test_autonomous_mode_generalised_message_uses_broad_search_defaults():
@@ -98,11 +101,12 @@ def test_autonomous_mode_generalised_message_uses_broad_search_defaults():
     intent = state["intent"]
     assert intent["needs_clarification"] is True, "Should ask for full info in autonomous mode."
     missing = intent["missing_parameters"]
+    assert "gender" in missing
     assert "size" in missing
     assert "color" in missing
     assert "budget_min" in missing
     assert "min_rating" in missing
-    print("  ✓ Autonomous mode asks for missing parameters (size, color, floor price, rating).")
+    print("  ✓ Autonomous mode asks for missing parameters (gender, size, color, floor price, rating).")
 
 
 def test_resumed_turn_preserves_original_category():
@@ -112,10 +116,11 @@ def test_resumed_turn_preserves_original_category():
         state["autonomy_mode"] = "autonomous"
         concierge_agent.run(state)
 
-        state["user_message"] = "size M, black colour, minimum budget ₹500"
+        state["user_message"] = "for men, size M, black colour, minimum budget ₹500"
         concierge_agent.run(state)
 
     assert state["intent"]["category"] == "shirt"
+    assert state["intent"]["gender"] == "men"
     assert state["intent"]["size"] == "M"
     assert state["intent"]["color"] == "black"
     assert state["intent"]["budget_min"] == 500.0
@@ -128,7 +133,7 @@ def test_resumed_turn_preserves_original_category():
 def test_guided_mode_complete_message_no_clarification():
     """Full guided prompt should proceed without clarification."""
     full_message = (
-        "Find me a Nike blue formal shirt, size L, "
+        "Find me a Nike blue formal shirt for men, size L, "
         "between ₹1000 and ₹4000, minimum rating 4 stars, from myntra.com"
     )
     state = new_transaction_state(tenant_id="test", user_message=full_message)
@@ -141,14 +146,13 @@ def test_guided_mode_complete_message_no_clarification():
     state["intent"] = intent
 
     missing = _find_missing_params(intent, "guided")
-    # requested_sites already set in state
 
     print(f"  Intent extracted: {intent}")
     print(f"  Missing params: {missing}")
 
-    # At minimum, category, budget_max, color, brand should be extracted
     assert intent.get("budget_max") is not None, "Budget max should be extracted."
     assert intent.get("color") is not None, "Colour should be extracted."
+    assert intent.get("gender") == "men", "Gender should be extracted."
     print("  ✓ Guided mode full prompt — key fields extracted correctly.")
 
 
@@ -159,8 +163,8 @@ def test_guided_mode_complete_message_no_clarification():
 def test_autonomous_mode_complete_message_no_clarification():
     """A detailed autonomous prompt should proceed without clarification."""
     full_message = (
-        "Find me a shirt, size M, blue colour, "
-        "budget between ₹500 and ₹3500"
+        "Find me a shirt for men, size M, blue colour, "
+        "minimum rating 4 stars, budget between ₹500 and ₹3500"
     )
     state = new_transaction_state(tenant_id="test", user_message=full_message)
     state["autonomy_mode"] = "autonomous"  # type: ignore[assignment]
@@ -174,11 +178,12 @@ def test_autonomous_mode_complete_message_no_clarification():
 
     print(f"  Intent extracted: {intent}")
     print(f"  Missing params: {missing}")
+    assert "gender" not in missing, "Gender should NOT be missing."
     assert "size" not in missing, "Size should NOT be missing."
     assert "color" not in missing, "Colour should NOT be missing."
     assert "budget_max" not in missing, "Budget ceiling should NOT be missing."
     assert "budget_min" not in missing, "Budget floor should NOT be missing."
-    print("  ✓ Autonomous mode full prompt — all 4 required params present.")
+    print("  ✓ Autonomous mode full prompt — all required params present.")
 
 
 # ---------------------------------------------------------------------------
@@ -194,14 +199,15 @@ def test_parse_intent_extracts_budget_range():
 
 
 # ---------------------------------------------------------------------------
-# Test 6: parse_intent_fallback extracts rating
+# Test 6: parse_intent_fallback extracts rating and gender
 # ---------------------------------------------------------------------------
 
 def test_parse_intent_extracts_rating():
     """Test that 'minimum rating 4 stars' extracts min_rating = 4.0."""
-    intent = parse_intent_fallback("Give me a shirt with minimum rating 4 stars")
+    intent = parse_intent_fallback("Give me a shirt for women with minimum rating 4 stars")
     assert intent["min_rating"] == 4.0, f"Expected 4.0, got {intent['min_rating']}"
-    print(f"  ✓ Rating extracted: {intent['min_rating']} ★")
+    assert intent["gender"] == "women", f"Expected women, got {intent['gender']}"
+    print(f"  ✓ Rating extracted: {intent['min_rating']} ★, Gender: {intent['gender']}")
 
 
 # ---------------------------------------------------------------------------
@@ -210,10 +216,11 @@ def test_parse_intent_extracts_rating():
 
 def test_clarification_message_is_readable():
     """Clarification message should list items cleanly."""
-    missing = ["budget_min", "color", "size"]
+    missing = ["budget_min", "color", "gender", "size"]
     msg = _build_clarification_message(missing)
     assert "floor price" in msg.lower(), "Should mention floor price"
     assert "colour" in msg.lower() or "color" in msg.lower(), "Should mention colour"
+    assert "gender" in msg.lower(), "Should mention gender"
     assert "size" in msg.lower(), "Should mention size"
     print(f"  ✓ Clarification message: {msg[:80]}...")
 
