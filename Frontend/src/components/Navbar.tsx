@@ -123,22 +123,22 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
     );
   }
 
-  const isCheckout = location.pathname === '/checkout';
+  const isDarkNav = location.pathname === '/checkout' || location.pathname === '/history';
 
   // Premium Minimalist Brutalist Typography Navbar for other pages
   return (
     <nav style={{
-      background: isCheckout ? '#060e26' : '#ffffff',
-      borderBottom: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111',
+      background: isDarkNav ? '#060e26' : '#ffffff',
+      borderBottom: isDarkNav ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111',
       display: 'grid',
-      gridTemplateColumns: '260px 1fr 260px',
+      gridTemplateColumns: '320px 1fr 320px',
       height: '60px',
       position: 'sticky',
       top: 0,
       zIndex: 100
     }}>
       {/* Brand Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderRight: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 1.5rem', borderRight: isDarkNav ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
         <Link to="/" style={{ textDecoration: 'none', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -149,7 +149,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           }}>
             GB
           </span>
-          <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.06em', fontFamily: "'Space Grotesk', sans-serif" }}>
+          <span style={{ color: isDarkNav ? '#ffffff' : '#111111', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.06em', fontFamily: "'Space Grotesk', sans-serif" }}>
             GLASSBOX
           </span>
         </Link>
@@ -160,7 +160,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
         {user?.role === 'merchant_admin' ? (
           <Link to="/dashboard" onClick={() => soundFX.playClick()} style={{ 
             textDecoration: 'none', 
-            color: isCheckout ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#111111'),
+            color: isDarkNav ? '#ffffff' : (isActive('/dashboard') ? '#0044ff' : '#111111'),
             fontSize: '0.85rem',
             fontWeight: 800,
             letterSpacing: '0.06em',
@@ -173,7 +173,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
           <>
             <Link to="/checkout" onClick={() => soundFX.playClick()} style={{ 
               textDecoration: 'none', 
-              color: isCheckout ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#111111'),
+              color: isDarkNav ? '#ffffff' : (isActive('/checkout') ? '#0044ff' : '#111111'),
               fontSize: '0.85rem',
               fontWeight: 800,
               letterSpacing: '0.06em',
@@ -185,10 +185,10 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
             
             {user && (
               <>
-                <span style={{ color: isCheckout ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
+                <span style={{ color: isDarkNav ? '#ffffff' : '#111111', fontWeight: 700, opacity: 0.6 }}>|</span>
                 <Link to="/history" onClick={() => soundFX.playClick()} style={{ 
                   textDecoration: 'none', 
-                  color: isCheckout ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#111111'),
+                  color: isDarkNav ? '#ffffff' : (isActive('/history') ? '#0044ff' : '#111111'),
                   fontSize: '0.85rem',
                   fontWeight: 800,
                   letterSpacing: '0.06em',
@@ -204,9 +204,22 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
       </div>
 
       {/* Right User Controls Cell */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isCheckout ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', padding: '0 1.5rem', borderLeft: isDarkNav ? '1px solid rgba(255,255,255,0.2)' : '1px solid #111111' }}>
         {user ? (
           <>
+            <button onClick={() => soundFX.playClick()} style={{
+              background: '#0044ff',
+              border: '2px solid #000000',
+              borderRadius: '0px',
+              padding: '0.4rem 0.85rem',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#ffffff',
+              cursor: 'pointer',
+              fontFamily: "'Space Grotesk', sans-serif"
+            }}>
+              DEMO
+            </button>
             <Link to="/profile" onClick={() => soundFX.playClick()} style={{
               background: '#ffffff',
               border: '2px solid #000000',
@@ -221,7 +234,7 @@ export default function Navbar({ onOpenCommandPalette }: NavbarProps) {
               PROFILE
             </Link>
             <button onClick={handleLogout} style={{
-              background: isCheckout ? '#060e26' : '#111111',
+              background: isDarkNav ? '#060e26' : '#111111',
               border: '2px solid #ffffff',
               borderRadius: '0px',
               padding: '0.4rem 0.85rem',

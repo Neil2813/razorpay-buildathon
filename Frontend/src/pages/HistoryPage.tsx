@@ -63,77 +63,72 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#ffffff' }}>
         <Navbar />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: '#71717a' }}>
-          <div style={{ width: '36px', height: '36px', border: '3px solid #e4e4e7', borderTop: '3px solid #0044ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', color: '#060e26' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid #e4e4e7', borderTop: '3px solid #060e26', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <span className="brutalist-subtitle" style={{ fontSize: '0.85rem' }}>Loading Transaction History…</span>
+          <span className="brutalist-subtitle" style={{ fontSize: '0.85rem', color: '#060e26', fontWeight: 900 }}>Loading Transaction History…</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#faf9f6' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#ffffff' }}>
       <Navbar />
       <div className="container" style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
 
         {/* Page Header */}
         <div style={{ marginBottom: '2rem' }}>
-          <div className="minimal-pill minimal-pill-primary" style={{ marginBottom: '0.75rem', padding: '0.25rem 0.75rem' }}>
-            Immutable Audit Ledger
-          </div>
-          <h2 className="brutalist-title" style={{ margin: 0, fontSize: '2rem', color: '#111111' }}>Transaction History</h2>
-          <p className="brutalist-text" style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', color: '#71717a' }}>
+          <h2 className="brutalist-title" style={{ margin: 0, fontSize: '2.2rem', color: '#060e26', fontWeight: 900, textTransform: 'uppercase' }}>Transaction History</h2>
+          <p className="brutalist-text" style={{ margin: '0.45rem 0 0 0', fontSize: '0.875rem', color: '#52525b', fontWeight: 600 }}>
             Explore past agent decisions, guardrail events, and payment outcomes logged immutably.
           </p>
         </div>
 
         {/* Metric Cards - Connected Mesh */}
-        <div className="minimal-grid-mesh" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '1.75rem', borderRadius: '2px' }}>
-          <div className="minimal-grid-mesh-item">
-            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Total Sessions</p>
-            <p className="brutalist-title" style={{ fontSize: '1.75rem', margin: '0.2rem 0 0 0' }}>{history.length}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+          <div style={{ border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', background: '#ffffff', padding: '1.25rem' }}>
+            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0, color: '#060e26', fontWeight: 900 }}>Total Sessions</p>
+            <p className="brutalist-title" style={{ fontSize: '1.75rem', margin: '0.2rem 0 0 0', color: '#060e26' }}>{history.length}</p>
           </div>
-          <div className="minimal-grid-mesh-item">
-            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Successful Payments</p>
-            <p className="brutalist-title" style={{ fontSize: '1.75rem', color: '#0044ff', margin: '0.2rem 0 0 0' }}>{totalSuccess}</p>
+          <div style={{ border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', background: '#ffffff', padding: '1.25rem' }}>
+            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0, color: '#060e26', fontWeight: 900 }}>Successful Payments</p>
+            <p className="brutalist-title" style={{ fontSize: '1.75rem', color: '#10b981', margin: '0.2rem 0 0 0' }}>{totalSuccess}</p>
           </div>
-          <div className="minimal-grid-mesh-item">
-            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Escalated / Blocked</p>
-            <p className="brutalist-title" style={{ fontSize: '1.75rem', margin: '0.2rem 0 0 0' }}>{totalEscalated}</p>
+          <div style={{ border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', background: '#ffffff', padding: '1.25rem' }}>
+            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0, color: '#060e26', fontWeight: 900 }}>Escalated / Blocked</p>
+            <p className="brutalist-title" style={{ fontSize: '1.75rem', margin: '0.2rem 0 0 0', color: '#ef4444' }}>{totalEscalated}</p>
           </div>
-          <div className="minimal-grid-mesh-item">
-            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0 }}>Total Audit Events</p>
-            <p className="brutalist-title" style={{ fontSize: '1.75rem', color: '#0044ff', margin: '0.2rem 0 0 0' }}>{totalAudit}</p>
-            <p className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', margin: 0 }}>Across all sessions</p>
+          <div style={{ border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', borderRadius: '0px', background: '#ffffff', padding: '1.25rem' }}>
+            <p className="brutalist-subtitle" style={{ fontSize: '0.65rem', margin: 0, color: '#060e26', fontWeight: 900 }}>Total Audit Events</p>
+            <p className="brutalist-title" style={{ fontSize: '1.75rem', color: '#060e26', margin: '0.2rem 0 0 0' }}>{totalAudit}</p>
+            <p className="brutalist-text" style={{ fontSize: '0.74rem', color: '#52525b', margin: 0, fontWeight: 600 }}>Across all sessions</p>
           </div>
         </div>
 
         {/* Ledger Console Board Wrapper */}
-        <div style={{ border: '1px solid #111111', borderRadius: '2px', background: '#ffffff', overflow: 'hidden' }}>
+        <div style={{ border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', borderRadius: '0px', background: '#ffffff', overflow: 'hidden' }}>
           
           {/* Toolbar Header Row */}
-          <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #111111', background: '#faf9f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="brutalist-subtitle" style={{ fontSize: '0.65rem' }}>Status Filters:</span>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '2px solid #060e26', background: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="brutalist-subtitle" style={{ fontSize: '0.75rem', color: '#060e26', fontWeight: 900 }}>Status Filters:</span>
               {STATUS_FILTERS.map(s => {
                 const isActive = filterStatus === s;
                 return (
                   <button key={s} onClick={() => setFilterStatus(s)}
-                    className={`minimal-pill ${isActive ? 'minimal-pill-primary' : ''}`}
-                    style={{ cursor: 'pointer', padding: '0.3rem 0.75rem', textTransform: 'capitalize' }}>
+                    style={{ cursor: 'pointer', padding: '0.35rem 0.85rem', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.75rem', fontWeight: 800, border: '1.5px solid #060e26', background: isActive ? '#060e26' : '#ffffff', color: isActive ? '#ffffff' : '#060e26', borderRadius: '0px', boxShadow: isActive ? '2px 2px 0px #060e26' : 'none', transition: 'all 0.1s' }}>
                     {s}
                   </button>
                 );
               })}
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <input type="text" placeholder="Search intent, SKU, or session ID…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                className="minimal-input"
-                style={{ minWidth: '250px', padding: '0.5rem 0.9rem', fontSize: '0.85rem' }} />
-              <button className="minimal-btn minimal-btn-primary" onClick={() => navigate('/checkout')} style={{ padding: '0.5rem 1rem', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+              <input type="text" placeholder="Search intent or SKU…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                style={{ minWidth: '250px', padding: '0.55rem 0.9rem', fontSize: '0.85rem', border: '1.5px solid #060e26', borderRadius: '0px', color: '#060e26', fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", outline: 'none' }} />
+              <button onClick={() => navigate('/checkout')} style={{ padding: '0.65rem 1.15rem', fontSize: '0.78rem', whiteSpace: 'nowrap', background: '#060e26', color: '#ffffff', border: '2px solid #060e26', boxShadow: '3px 3px 0px #000000', fontWeight: 900, textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif", borderRadius: '0px', cursor: 'pointer' }}>
                 + New Transaction
               </button>
             </div>
@@ -141,8 +136,8 @@ export default function HistoryPage() {
 
           {/* Table Ledger Grid */}
           {filtered.length === 0 ? (
-            <div className="brutalist-text" style={{ textAlign: 'center', padding: '4rem 1rem', color: '#71717a' }}>
-              <p style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.35rem 0', color: '#111111' }}>
+            <div className="brutalist-text" style={{ textAlign: 'center', padding: '4rem 1rem', color: '#52525b' }}>
+              <p style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.35rem 0', color: '#060e26' }}>
                 {history.length === 0 ? 'No transaction history yet.' : 'No matching transactions.'}
               </p>
               <p style={{ fontSize: '0.82rem', margin: 0 }}>
@@ -151,67 +146,56 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left', fontFamily: "'Space Grotesk', sans-serif" }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #e4e4e7', background: '#faf9f6' }}>
-                    {['Session','Buyer Intent','Chosen Product','Status','ML Risk','Audit Events','Time'].map(h => (
-                      <th key={h} className="brutalist-subtitle" style={{ padding: '0.75rem 1.25rem', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>{h}</th>
+                  <tr style={{ borderBottom: '2px solid #060e26', background: '#060e26', color: '#ffffff' }}>
+                    {['Buyer Intent','Chosen Product','Status','Audit Events','Time'].map(h => (
+                      <th key={h} className="brutalist-subtitle" style={{ padding: '0.85rem 1.25rem', fontSize: '0.7rem', whiteSpace: 'nowrap', color: '#ffffff', fontWeight: 800, letterSpacing: '0.04em' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(item => {
+                  {filtered.map((item, idx) => {
                     const isSuccess = item.payment_status === 'success';
                     const isEscalated = item.payment_status === 'escalated';
                     const isExpanded = expandedSessionId === item.session_id;
-                    const pillClass = isSuccess ? 'minimal-pill-success' : isEscalated ? 'minimal-pill-danger' : '';
+                    const rowBg = isExpanded ? '#f6f1e5' : (idx % 2 === 0 ? '#ffffff' : '#f6f1e5');
                     return (
                       <React.Fragment key={item.session_id}>
-                        <tr style={{ borderBottom: '1px solid #e4e4e7', cursor: 'pointer', background: isExpanded ? '#faf9f6' : '' }}
+                        <tr style={{ borderBottom: '1px solid #e4e4e7', cursor: 'pointer', background: rowBg, transition: 'background 0.15s' }}
                           onClick={() => handleRowClick(item.session_id)}
-                          onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#faf9f6' }}
-                          onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '' }}>
-                          <td className="brutalist-mono" style={{ padding: '0.75rem 1.25rem', fontSize: '0.7rem', color: '#71717a', whiteSpace: 'nowrap' }}>{item.session_id}</td>
-                          <td className="brutalist-text" style={{ padding: '0.75rem 1.25rem', color: '#111111', maxWidth: '260px' }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{item.user_message}</div>
-                            {item.escalation_message && <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '0.2rem' }}>{item.escalation_message}</div>}
+                          onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#e4e4e7' }}
+                          onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = rowBg }}>
+                          <td className="brutalist-text" style={{ padding: '0.85rem 1.25rem', color: '#060e26', maxWidth: '260px' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.82rem' }}>{item.user_message}</div>
+                            {item.escalation_message && <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.3rem', fontWeight: 600 }}>{item.escalation_message}</div>}
                           </td>
-                          <td className="brutalist-text" style={{ padding: '0.75rem 1.25rem', color: '#111111', whiteSpace: 'nowrap' }}>
+                          <td className="brutalist-text" style={{ padding: '0.85rem 1.25rem', color: '#060e26', whiteSpace: 'nowrap' }}>
                             {item.chosen_product ? (
                               <div>
-                                <div style={{ fontWeight: 600, color: '#111111', fontSize: '0.82rem' }}>{item.chosen_product.name || item.chosen_product.product_id}</div>
-                                <div className="brutalist-title" style={{ fontSize: '0.74rem', color: '#0044ff' }}>&#8377;{item.chosen_product.price?.toLocaleString()}</div>
+                                <div style={{ fontWeight: 800, color: '#060e26', fontSize: '0.82rem' }}>{item.chosen_product.name || item.chosen_product.product_id}</div>
+                                <div className="brutalist-title" style={{ fontSize: '0.8rem', color: '#060e26', fontWeight: 900 }}>&#8377;{item.chosen_product.price?.toLocaleString()}</div>
                               </div>
-                            ) : <span style={{ color: '#d4d4d8' }}>—</span>}
+                            ) : <span style={{ color: '#a1a1aa', fontWeight: 600 }}>—</span>}
                           </td>
-                          <td style={{ padding: '0.75rem 1.25rem' }}>
-                            <span className={`minimal-pill ${pillClass}`}>{item.payment_status}</span>
+                          <td style={{ padding: '0.85rem 1.25rem' }}>
+                            <span style={{ padding: '0.25rem 0.65rem', border: '1.5px solid #060e26', background: isSuccess ? '#dcfce7' : isEscalated ? '#fee2e2' : '#ffffff', color: '#060e26', fontWeight: 900, textTransform: 'uppercase', fontSize: '0.7rem', fontFamily: "'Space Grotesk', sans-serif", borderRadius: '0px', boxShadow: '2px 2px 0px #060e26', display: 'inline-block' }}>{item.payment_status}</span>
                           </td>
-                          <td className="brutalist-text" style={{ padding: '0.75rem 1.25rem' }}>
-                            {item.risk_score !== null && item.risk_score !== undefined ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <div style={{ width: '48px', height: '6px', background: '#e4e4e7', borderRadius: '2px', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${item.risk_score * 100}%`, background: item.risk_score > 0.7 ? '#ef4444' : item.risk_score > 0.3 ? '#f97316' : '#0044ff' }} />
-                                </div>
-                                <span className="brutalist-title" style={{ fontSize: '0.78rem', color: '#111111' }}>{(item.risk_score * 100).toFixed(1)}%</span>
-                              </div>
-                            ) : <span style={{ color: '#d4d4d8' }}>—</span>}
+                          <td className="brutalist-text" style={{ padding: '0.85rem 1.25rem', color: '#060e26' }}>
+                            <span style={{ fontWeight: 900 }}>{item.audit_count}</span>
+                            <span style={{ color: '#52525b', fontWeight: 600 }}> events</span>
                           </td>
-                          <td className="brutalist-text" style={{ padding: '0.75rem 1.25rem', color: '#111111' }}>
-                            <span style={{ fontWeight: 700 }}>{item.audit_count}</span>
-                            <span style={{ color: '#71717a' }}> events</span>
-                          </td>
-                          <td className="brutalist-mono" style={{ padding: '0.75rem 1.25rem', color: '#71717a', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                          <td className="brutalist-mono" style={{ padding: '0.85rem 1.25rem', color: '#52525b', fontSize: '0.75rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
                             {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}
                           </td>
                         </tr>
                         
                         {isExpanded && (
                           <tr style={{ borderBottom: '1px solid #e4e4e7', background: '#ffffff' }}>
-                            <td colSpan={7} style={{ padding: '0 1.25rem 1.5rem 1.25rem' }}>
+                            <td colSpan={5} style={{ padding: '0 1.25rem 1.5rem 1.25rem' }}>
                               {loadingDetails[item.session_id] ? (
-                                <div className="brutalist-text" style={{ padding: '2rem', textAlign: 'center', color: '#71717a' }}>
-                                  <div style={{ width: '24px', height: '24px', border: '2px solid #e4e4e7', borderTop: '2px solid #0044ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.5rem auto' }} />
+                                <div className="brutalist-text" style={{ padding: '2rem', textAlign: 'center', color: '#52525b', fontWeight: 600 }}>
+                                  <div style={{ width: '24px', height: '24px', border: '3px solid #e4e4e7', borderTop: '3px solid #060e26', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 0.5rem auto' }} />
                                   Loading graph data...
                                 </div>
                               ) : sessionDetails[item.session_id] ? (
@@ -228,7 +212,7 @@ export default function HistoryPage() {
                                   />
                                 </div>
                               ) : (
-                                <div className="brutalist-text" style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>Failed to load details.</div>
+                                <div className="brutalist-text" style={{ padding: '2rem', textAlign: 'center', color: '#ef4444', fontWeight: 800 }}>Failed to load details.</div>
                               )}
                             </td>
                           </tr>
@@ -241,7 +225,7 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
-        {filtered.length > 0 && <div className="brutalist-subtitle" style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#71717a', textAlign: 'right' }}>Showing {filtered.length} of {history.length} sessions</div>}
+        {filtered.length > 0 && <div className="brutalist-subtitle" style={{ marginTop: '0.85rem', fontSize: '0.75rem', color: '#52525b', textAlign: 'right', fontWeight: 800 }}>Showing {filtered.length} of {history.length} sessions</div>}
       </div>
     </div>
   );

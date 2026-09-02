@@ -25,7 +25,6 @@ export interface KnowledgeGraphProps {
 // Active → #0149ae, Completed → #1250b2, Blocked → #032676, Idle → #f5f5f5
 const AGENT_NODES = [
   { id: 'concierge',   label: 'Concierge',      subtitle: 'Intent & Autonomy' },
-  { id: 'site_trust',  label: 'Site Trust',     subtitle: 'Deterministic Gate' },
   { id: 'discovery',   label: 'Discovery',      subtitle: 'Live Multi-Source' },
   { id: 'negotiation', label: 'Negotiation',      subtitle: 'Spend Guardrails' },
   { id: 'risk',        label: 'Risk Agent',       subtitle: 'ML Hybrid Ensemble' },
@@ -70,10 +69,6 @@ export default function KnowledgeGraph({
     const events = eventsByAgent[agentId] || [];
     if (agentId === activeAgent) return 'active';
     if (!events.length) return 'idle';
-    if (agentId === 'site_trust' && events.find(e => e.output_summary?.status === 'blocked' || e.output_summary?.status === 'suspicious')) {
-      if (events.find(e => e.output_summary?.trust_override)) return 'completed';
-      return 'blocked';
-    }
     if (agentId === 'negotiation' && events.find(e => e.output_summary?.guardrail_passed === false)) return 'blocked';
     if (agentId === 'payment' && paymentStatus === 'escalated') return 'failed';
     return 'completed';
@@ -122,7 +117,8 @@ export default function KnowledgeGraph({
               <div
                 onClick={() => setSelectedIdx(index)}
                 style={{
-                  flex: 'none', width: '128px',
+                  flex: 'none', width: '128px', height: '100%',
+                  display: 'flex', flexDirection: 'column',
                   background: s.bg, border: `1.5px solid ${s.border}`,
                   borderRadius: '2px', padding: '0.85rem',
                   cursor: 'pointer', transition: 'all 0.2s ease',
@@ -147,12 +143,9 @@ export default function KnowledgeGraph({
                 </div>
 
                 {/* Summary metric */}
-                <div className="brutalist-text" style={{ marginTop: '0.6rem', paddingTop: '0.5rem', borderTop: `1px solid #e4e4e7`, fontSize: '0.7rem', color: '#71717a' }}>
+                <div className="brutalist-text" style={{ marginTop: 'auto', paddingTop: '0.5rem', borderTop: `1px solid #e4e4e7`, fontSize: '0.7rem', color: '#71717a' }}>
                   {node.id === 'concierge' && events[0]?.output_summary && (
                     <span>Mode: <strong style={{ color: '#111111', textTransform: 'capitalize' }}>{events[0].output_summary.autonomy_mode || 'Guided'}</strong></span>
-                  )}
-                  {node.id === 'site_trust' && events[0]?.output_summary && (
-                    <span>Trust: <strong style={{ color: '#111111', textTransform: 'capitalize' }}>{events[0].output_summary.status || 'Verified'}</strong></span>
                   )}
                   {node.id === 'discovery' && events[0]?.output_summary && (
                     <span>Found: <strong style={{ color: '#111111' }}>{events[0].output_summary.candidate_count || events[0].output_summary.candidates?.length || '0'}</strong></span>
@@ -160,8 +153,8 @@ export default function KnowledgeGraph({
                   {node.id === 'negotiation' && guardrailCeiling && (
                     <span>Ceiling: <strong style={{ color: '#111111' }}>&#8377;{guardrailCeiling.toLocaleString()}</strong></span>
                   )}
-                  {node.id === 'risk' && riskScore !== null && riskScore !== undefined && (
-                    <span>Score: <strong style={{ color: '#111111' }}>{(riskScore * 100).toFixed(1)}%</strong></span>
+                  {node.id === 'risk' && (
+                    <span>Status: <strong style={{ color: '#111111' }}>Checked</strong></span>
                   )}
                   {node.id === 'payment' && paymentStatus && (
                     <span style={{ textTransform: 'capitalize' }}>Status: <strong style={{ color: '#111111' }}>{paymentStatus}</strong></span>
@@ -212,25 +205,6 @@ export default function KnowledgeGraph({
             </div>
 
             {/* Specialised panels */}
-            {selectedNode.id === 'site_trust' && selectedEvents.length > 0 && selectedEvents[0]?.output_summary && (
-              <div style={{ padding: '0.85rem 1rem', background: '#faf9f6', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #ef4444', marginBottom: '1.25rem' }}>
-                <div className="brutalist-subtitle" style={{ color: '#ef4444', marginBottom: '0.4rem', fontSize: '0.68rem' }}>Site Trust Checks (Deterministic Gate)</div>
-                <div className="brutalist-text" style={{ fontSize: '0.85rem', color: '#111111', fontWeight: 600 }}>Target: {selectedEvents[0].output_summary.site || selectedEvents[0].inputs_summary?.site || 'Candidate Domains'}</div>
-                <div className="brutalist-subtitle" style={{ fontSize: '0.8rem', marginTop: '0.35rem', color: selectedEvents[0].output_summary.status === 'trusted' ? '#0044ff' : '#ef4444' }}>
-                  Status: {selectedEvents[0].output_summary.status?.toUpperCase() || 'CHECKED'}
-                </div>
-                {selectedEvents[0].output_summary.reason && (
-                  <div className="brutalist-text" style={{ fontSize: '0.78rem', color: '#71717a', marginTop: '0.25rem' }}>
-                    Reason: {selectedEvents[0].output_summary.reason}
-                  </div>
-                )}
-                {selectedEvents[0].output_summary.user_overrode_trust_warning && (
-                  <div className="minimal-pill minimal-pill-danger" style={{ marginTop: '0.4rem' }}>
-                    TRUST OVERRIDDEN BY USER
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Specialised panels */}
             {selectedNode.id === 'negotiation' && chosenProduct && (
@@ -254,11 +228,6 @@ export default function KnowledgeGraph({
               <div style={{ padding: '0.85rem 1rem', background: '#faf9f6', borderRadius: '2px', border: '1px solid #e4e4e7', borderLeft: '4px solid #f97316', marginBottom: '1.25rem' }}>
                 <div className="brutalist-subtitle" style={{ color: '#f97316', marginBottom: '0.4rem', fontSize: '0.68rem' }}>Risk Model</div>
                 <div className="brutalist-text" style={{ fontSize: '0.85rem', color: '#111111', fontWeight: 600 }}>{riskFeatures.model || 'XGBoost+LightGBM Hybrid'}</div>
-                {riskScore !== null && riskScore !== undefined && (
-                  <div className="brutalist-text" style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: '#111111' }}>
-                    Score: <strong>{(riskScore * 100).toFixed(2)}%</strong> / Threshold: <strong>{((riskFeatures.threshold || 0.8) * 100).toFixed(0)}%</strong>
-                  </div>
-                )}
               </div>
             )}
 
