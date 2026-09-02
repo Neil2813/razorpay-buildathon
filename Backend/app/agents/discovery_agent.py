@@ -324,8 +324,19 @@ def _qualifies(product: dict[str, Any], intent: dict[str, Any]) -> bool:
 
 
 def _scrape_site(hostname: str) -> list[dict[str, Any]]:
-    """Return mock product data for a hostname. Empty list if not pre-vetted."""
-    return _MOCK_CATALOG.get(hostname, [])
+    """Return product data from mock catalog and database catalog."""
+    items = list(_MOCK_CATALOG.get(hostname, []))
+    try:
+        from app.db.database import query_catalog
+        db_items = query_catalog("demo_tenant")
+        for item in db_items:
+            item_copy = dict(item)
+            item_copy["source_site"] = hostname
+            item_copy["source_url"] = f"https://www.{hostname}/p/{item_copy['product_id']}"
+            items.append(item_copy)
+    except Exception:
+        pass
+    return items
 
 
 # ---------------------------------------------------------------------------
