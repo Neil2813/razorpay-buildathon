@@ -757,11 +757,15 @@ export default function CheckoutPage() {
             });
 
             if (chosen) {
+              const cleanReason = (selectionReason || '')
+                .replace(/\s*\(\s*prod_[a-zA-Z0-9_-]+\s*\)/g, '')
+                .replace(/\bprod_[a-zA-Z0-9_-]+\b/g, '')
+                .trim();
               dialogue.push({
                 agent: 'decision',
                 name: 'Decision Agent',
                 avatar: 'A',
-                text: `Evaluating candidates. Selected "${chosen.name}" (₹${chosen.price}) as the optimal choice. Reason: ${selectionReason}`
+                text: cleanReason || `Selected "${chosen.name}" (₹${chosen.price}) based on highest rating and best fit within budget.`
               });
 
               const passed = Number(chosen.price) <= (data.guardrail_ceiling || 5000);
@@ -1479,27 +1483,7 @@ export default function CheckoutPage() {
                                   )}
                                 </div>
                               )}
-                              {/* Guardrail Lock Bar */}
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                padding: '0.85rem 1.1rem',
-                                borderRadius: '0px',
-                                fontSize: '0.85rem',
-                                border: '2px solid #060e26',
-                                boxShadow: '3px 3px 0px #060e26',
-                                marginTop: '0.75rem',
-                                background: msg.guardrailData?.passed ? '#ffffff' : '#fef2f2',
-                                color: '#060e26'
-                              }}>
-                                <Lock size={16} color="#060e26" style={{ flexShrink: 0 }} />
-                                <div style={{ flex: 1 }}>
-                                  <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 800, fontSize: '0.8rem', fontFamily: "'Space Grotesk', sans-serif" }}>Non-Negotiable Spend Guardrail</div>
-                                  <div className="brutalist-mono" style={{ fontSize: '0.74rem', marginTop: '0.1rem', color: '#060e26', fontWeight: 700 }}>Ceiling: &#8377;{msg.guardrailData?.ceiling?.toLocaleString()} · Item: &#8377;{msg.guardrailData?.price?.toLocaleString()}</div>
-                                </div>
-                                <span style={{ padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 900, background: msg.guardrailData?.passed ? '#060e26' : '#b91c1c', color: '#ffffff', fontFamily: "'Space Grotesk', sans-serif" }}>{msg.guardrailData?.passed ? 'PASSED' : 'BLOCKED'}</span>
-                              </div>
+
                             </div>
                           )}
 

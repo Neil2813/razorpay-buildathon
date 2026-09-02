@@ -148,20 +148,35 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
     ranked = sorted(candidates, key=_composite_score, reverse=True)
     top5 = ranked[:5]
 
-    # Ask LLM to pick the best product_id AND explain why over the others
+    # Format clean candidate representations for LLM prompt (without technical noise)
+    top5_formatted = [
+        {
+            "id": c.get("product_id"),
+            "name": c.get("name"),
+            "price": c.get("price"),
+            "total_amount": c.get("total_amount", c.get("price")),
+            "rating": c.get("rating"),
+            "color": c.get("color"),
+            "sizes": c.get("sizes"),
+        }
+        for c in top5
+    ]
+
+    # Ask LLM to pick the best product_id AND explain comparison over the others
     _t0 = time.perf_counter()
     proposal = complete_json(
         model=REASONING_MODEL,
         system=(
-            "You are an autonomous shopping agent. You have been given the top 5 candidate products."
-            " Select the single best product_id based on: (1) buyer preferences (color, size, brand, price range),"
-            " (2) highest individual product rating, (3) best value within budget."
-            "\n\nReturn JSON: {\"product_id\": string, \"selection_reason\": string}."
-            "\nselection_reason MUST be 2-3 sentences explaining SPECIFICALLY why you chose this product over"
-            " each of the other candidate options. Explicitly mention why you rejected the others"
-            " (e.g., lower rating, wrong gender, higher price, wrong style). Cite product names, ratings, prices."
+            "You are an autonomous shopping agent evaluating the top 5 candidate products.\n"
+            "Select the single best product ID based on buyer preferences, highest rating, and best value.\n\n"
+            "Return JSON: {\"product_id\": string, \"selection_reason\": string}.\n\n"
+            "CRITICAL CONSTRAINTS FOR selection_reason:\n"
+            "1. MUST compare the selected product against the other 4 candidate options.\n"
+            "2. ALWAYS refer to products ONLY by their human product names (e.g. 'Apex Women's Black Formal Oxford Shirt'), prices (₹X), and ratings (Y★).\n"
+            "3. NEVER write technical product IDs, database keys, or codes like 'prod_shirt_0211' or '(prod_...)' in selection_reason.\n"
+            "4. Explain clearly why each alternative was rejected (e.g., lower rating, higher price, wrong gender fit)."
         ),
-        user=str({"intent": state["intent"], "top5_candidates": top5}),
+        user=str({"intent": state["intent"], "top5_candidates": top5_formatted}),
     )
     _elapsed = time.perf_counter() - _t0
     if proposal is None:
@@ -174,10 +189,16 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         logger.info("[DECISION] ✅ LLM product selection completed (%.3fs).", _elapsed)
 
     chosen_id = (proposal or {}).get("product_id")
-    selection_reason = (proposal or {}).get(
-        "selection_reason",
-        "Best match for your specified requirements."
-    )
+    raw_reason = (proposal or {}).get("selection_reason", "")
+
+    # Strip out any technical product IDs (e.g. prod_shirt_0211) that LLM might have written despite instructions
+    import re
+    if isinstance(raw_reason, str) and raw_reason.strip():
+        clean_reason = re.sub(r"\s*\(\s*prod_[a-zA-Z0-9_-]+\s*\)", "", raw_reason)
+        clean_reason = re.sub(r"\bprod_[a-zA-Z0-9_-]+\b", "", clean_reason)
+        selection_reason = clean_reason.strip()
+    else:
+        selection_reason = ""
 
     chosen = next(
         (item for item in top5 if item.get("product_id") == chosen_id),

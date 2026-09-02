@@ -286,12 +286,16 @@ def _qualifies(product: dict[str, Any], intent: dict[str, Any]) -> bool:
             return False
 
     # Gender match (men, women, unisex)
+    # Rule: Only reject a product if it EXPLICITLY marks the opposite gender.
+    # Products with no gender signal (generic names like "Alpha Running Shoes") are treated as universal.
     gender = intent.get("gender")
     if gender and gender.lower() not in ("any", ""):
         g_target = gender.lower()
         prod_text = f"{product.get('name', '')} {product.get('description', '')}".lower()
-        # Unisex products match both men and women queries
-        if "unisex" not in prod_text and g_target not in prod_text:
+        opposite = "women" if g_target == "men" else "men"
+        # Reject only if the product explicitly signals the opposite gender
+        # AND does NOT also signal unisex/the target gender
+        if opposite in prod_text and g_target not in prod_text and "unisex" not in prod_text:
             return False
 
     # Budget floor (compare against listing price)

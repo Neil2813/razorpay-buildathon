@@ -384,6 +384,10 @@ def run(state: TransactionState) -> TransactionState:
             "[CONCIERGE] ✅ LLM intent extracted successfully (%.3fs).", _elapsed
         )
 
+    # Helper: check if message has explicit ceiling / floor keywords
+    has_ceiling_keyword = bool(_MAX_BUDGET_RE.search(state["user_message"]))
+    has_floor_keyword = bool(_FLOOR_RE.search(state["user_message"]))
+
     # Merge fallback regex extraction non-destructively
     for key in ("category", "size", "color", "gender", "brand", "min_rating"):
         val = fallback.get(key)
@@ -391,9 +395,12 @@ def run(state: TransactionState) -> TransactionState:
             existing_intent[key] = val
 
     if fallback.get("budget_min") is not None:
-        existing_intent["budget_min"] = fallback["budget_min"]
+        if existing_intent.get("budget_min") is None or has_floor_keyword:
+            existing_intent["budget_min"] = fallback["budget_min"]
+
     if fallback.get("budget_max") is not None:
-        existing_intent["budget_max"] = fallback["budget_max"]
+        if existing_intent.get("budget_max") is None or has_ceiling_keyword:
+            existing_intent["budget_max"] = fallback["budget_max"]
 
     # Merge LLM extraction non-destructively
     if isinstance(llm_intent, dict):
@@ -402,19 +409,34 @@ def run(state: TransactionState) -> TransactionState:
             if isinstance(cand, str) and cand.strip() and cand.lower() != "null":
                 existing_intent[key] = cand
         if isinstance(llm_intent.get("budget_min"), (int, float)) and llm_intent["budget_min"] >= 0:
-            existing_intent["budget_min"] = float(llm_intent["budget_min"])
+            if existing_intent.get("budget_min") is None or has_floor_keyword:
+                existing_intent["budget_min"] = float(llm_intent["budget_min"])
         if isinstance(llm_intent.get("budget_max"), (int, float)) and llm_intent["budget_max"] >= 0:
-            # Don't overwrite existing budget_max if user explicitly specified floor/minimum budget in this message
-            if not (existing_intent.get("budget_max") and ("minimum budget" in state["user_message"].lower() or "floor" in state["user_message"].lower() or "above" in state["user_message"].lower())):
+            if existing_intent.get("budget_max") is None or has_ceiling_keyword:
                 existing_intent["budget_max"] = float(llm_intent["budget_max"])
         if isinstance(llm_intent.get("min_rating"), (int, float)) and llm_intent["min_rating"] >= 0:
             existing_intent["min_rating"] = float(llm_intent["min_rating"])
 
-    # If user explicitly said "any" / "no minimum" / "zero" for floor price, treat budget_min as 0.0
-    # (this means they answered the floor question and checklist can proceed).
+    # Safety check: if budget_min >= budget_max (e.g. both extracted as same number), reset budget_min to 0.0
+    if (
+        existing_intent.get("budget_min") is not None
+        and existing_intent.get("budget_max") is not None
+        and existing_intent["budget_min"] >= existing_intent["budget_max"]
+    ):
+        existing_intent["budget_min"] = 0.0
+
+    # If budget_min is still None:
+    # 1. Look for any standalone number in the message that is < budget_max
+    # 2. Or if user said 'any' / 'no minimum' / 'zero'
+    # 3. Otherwise default budget_min to 0.0 so the search is never blocked for a floor price.
     if existing_intent.get("budget_min") is None:
         msg = state["user_message"]
-        if _ANY_RE.search(msg) or _NO_MINIMUM_RE.search(msg):
+        numbers = [float(n.replace(",", "")) for n in re.findall(r"\b\d+(?:,\d+)*(?:\.\d+)?\b", msg)]
+        b_max = existing_intent.get("budget_max")
+        valid_floors = [n for n in numbers if (b_max is None or n < b_max) and n not in (existing_intent.get("size"), existing_intent.get("min_rating"))]
+        if valid_floors:
+            existing_intent["budget_min"] = valid_floors[0]
+        else:
             existing_intent["budget_min"] = 0.0
 
     intent = existing_intent

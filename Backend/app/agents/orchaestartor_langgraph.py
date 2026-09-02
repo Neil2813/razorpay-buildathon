@@ -83,21 +83,15 @@ def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]
     if _should_skip_node(state, "risk"):
         return dict(state)
     product_list = state.get("catalog_candidates") or []
-    # Risk check runs on the catalogue before product selection.
-    # Use the highest-priced candidate as the worst-case amount estimate.
     transaction = config.get("configurable", {}).get("transaction", {})
     if product_list:
         max_price = max((float(p.get("price", 0)) for p in product_list), default=0.0)
         if max_price > 0:
             transaction["amount"] = max_price
     risk_agent.run(state, transaction)
-    if not state.get("requires_confirmation"):
-        audit_event(
-            state,
-            agent="risk",
-            decision_reason="Risk Agent: All security measures have been passed.",
-            output_summary={"status": "clear"},
-        )
+    # Clear the detailed ML features from state so the frontend ML card does not render.
+    if "risk_features" in state:
+        del state["risk_features"]  # type: ignore[misc]
     if state.get("payment_status") != "escalated":
         state["current_agent"] = "risk"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")

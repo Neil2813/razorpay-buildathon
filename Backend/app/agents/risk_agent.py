@@ -150,13 +150,8 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
         f"Top signal: {result['top_features'][0]['label']} = {result['top_features'][0]['value']:.2f}."
     )
 
-    state["risk_features"] = {
-        "top_features": result["top_features"],
-        "model": result["model"],
-        "source": source,
-        "explanation": explanation,
-        "threshold": actual_threshold,
-    }
+    # risk_features is intentionally NOT persisted to state — the frontend must not
+    # display the verbose ML card. Audit output_summary retains data for backend logs only.
 
     if risk_score > actual_threshold:
         state["requires_confirmation"] = True
@@ -168,7 +163,7 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
         decision_reason = "Risk Agent: Transaction flagged for human review."
     else:
         state["requires_confirmation"] = False
-        decision_reason = "Risk Agent: All security measures have been passed."
+        decision_reason = "All risks checked and cleared."
 
     audit_event(
         state,
