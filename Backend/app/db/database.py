@@ -442,18 +442,26 @@ def update_tenant_settings(
 # ---------------------------------------------------------------------------
 # Catalog Queries
 # ---------------------------------------------------------------------------
-def query_catalog(tenant_id: str) -> list[dict[str, Any]]:
-    """Return all catalog products for a tenant parsed into standard dictionaries."""
+def query_catalog(tenant_id: str | None = None) -> list[dict[str, Any]]:
+    """Return all catalog products (for a specific tenant or across all merchants if tenant_id is None)."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT product_id, tenant_id, name, description, price, category, color, sizes, in_stock, return_policy, delivery_time_days, rating
-        FROM catalog
-        WHERE tenant_id = ?;
-        """,
-        (tenant_id,),
-    )
+    if tenant_id:
+        cursor.execute(
+            """
+            SELECT product_id, tenant_id, name, description, price, category, color, sizes, in_stock, return_policy, delivery_time_days, rating
+            FROM catalog
+            WHERE tenant_id = ?;
+            """,
+            (tenant_id,),
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT product_id, tenant_id, name, description, price, category, color, sizes, in_stock, return_policy, delivery_time_days, rating
+            FROM catalog;
+            """
+        )
     rows = cursor.fetchall()
     conn.close()
 
@@ -497,56 +505,65 @@ def save_address(user_id: str, address: dict[str, Any]) -> dict[str, Any]:
         conn.close()
 
 
-def get_checkout_catalog(tenant_id: str, address: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return only merchant SKUs that can be fulfilled to the buyer's address."""
-    products = query_catalog(tenant_id)
+def get_checkout_catalog(tenant_id: str | None, address: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return merchant SKUs across ALL active merchants that can be fulfilled to the buyer's address."""
+    products = query_catalog(None)
     conn = get_db_connection()
     try:
-        zones = [dict(row) for row in conn.execute("SELECT * FROM delivery_zones WHERE tenant_id = ? AND active = 1;", (tenant_id,))]
-        warehouses = [dict(row) for row in conn.execute("SELECT w.*, COALESCE(SUM(i.quantity), 0) AS inventory_total FROM warehouses w LEFT JOIN warehouse_inventory i ON i.warehouse_id=w.warehouse_id WHERE w.tenant_id=? AND w.active=1 GROUP BY w.warehouse_id;", (tenant_id,))]
+        all_zones = [dict(row) for row in conn.execute("SELECT * FROM delivery_zones WHERE active = 1;")]
+        all_warehouses = [dict(row) for row in conn.execute("SELECT w.*, COALESCE(SUM(i.quantity), 0) AS inventory_total FROM warehouses w LEFT JOIN warehouse_inventory i ON i.warehouse_id=w.warehouse_id WHERE w.active=1 GROUP BY w.warehouse_id;")]
         
-        # Filter matching zones
-        matching_zones = []
-        for z in zones:
-            cov_type = z["coverage_type"]
-            cov_val = z["coverage_value"].lower()
-            if cov_type == "all_india":
-                matching_zones.append(z)
-            elif cov_type == "state" and cov_val == address["state"].lower():
-                matching_zones.append(z)
-            elif cov_type == "city" and cov_val == address["city"].lower():
-                matching_zones.append(z)
-            elif cov_type == "pincode" and cov_val == address["pincode"]:
-                matching_zones.append(z)
+        tenant_zones: dict[str, list[dict[str, Any]]] = {}
+        for z in all_zones:
+            tenant_zones.setdefault(z["tenant_id"], []).append(z)
 
-        if not matching_zones:
-            return []
+        tenant_whs: dict[str, list[dict[str, Any]]] = {}
+        for w in all_warehouses:
+            tenant_whs.setdefault(w["tenant_id"], []).append(w)
 
-        # Sort matching zones by specificity (narrowest/pincode first)
         specificity_priority = {"pincode": 0, "city": 1, "state": 2, "all_india": 3}
-        matching_zones = sorted(
-            matching_zones,
-            key=lambda z: (specificity_priority.get(z["coverage_type"], 4), z["shipping_fee"], z["delivery_days"])
-        )
-        zone = matching_zones[0]
 
         for product in products:
-            stock_rows = [dict(row) for row in conn.execute("SELECT w.*, i.quantity FROM warehouse_inventory i JOIN warehouses w ON w.warehouse_id=i.warehouse_id WHERE i.product_id=? AND w.tenant_id=? AND w.active=1 AND i.quantity > 0;", (product["product_id"], tenant_id))]
+            p_tenant = product["tenant_id"]
+            zones = tenant_zones.get(p_tenant, [])
+            warehouses = tenant_whs.get(p_tenant, [])
+
+            matching_zones = []
+            for z in zones:
+                cov_type = z["coverage_type"]
+                cov_val = z["coverage_value"].lower()
+                if cov_type == "all_india":
+                    matching_zones.append(z)
+                elif cov_type == "state" and cov_val == address.get("state", "").lower():
+                    matching_zones.append(z)
+                elif cov_type == "city" and cov_val == address.get("city", "").lower():
+                    matching_zones.append(z)
+                elif cov_type == "pincode" and cov_val == address.get("pincode", ""):
+                    matching_zones.append(z)
+
+            if not matching_zones:
+                continue
+
+            matching_zones = sorted(
+                matching_zones,
+                key=lambda z: (specificity_priority.get(z["coverage_type"], 4), z["shipping_fee"], z["delivery_days"])
+            )
+            zone = matching_zones[0]
+
+            stock_rows = [dict(row) for row in conn.execute("SELECT w.*, i.quantity FROM warehouse_inventory i JOIN warehouses w ON w.warehouse_id=i.warehouse_id WHERE i.product_id=? AND w.active=1 AND i.quantity > 0;", (product["product_id"],))]
             
-            # Sort stock_rows by distance score to choose the nearest eligible warehouse
             def get_distance_score(w: dict) -> int:
-                if w["pincode"] == address["pincode"]:
+                if w["pincode"] == address.get("pincode"):
                     return 0
-                if w["city"].lower() == address["city"].lower():
+                if w["city"].lower() == address.get("city", "").lower():
                     return 1
-                if w["state"].lower() == address["state"].lower():
+                if w["state"].lower() == address.get("state", "").lower():
                     return 2
                 return 3
 
             stock_rows = sorted(stock_rows, key=get_distance_score)
             warehouse = stock_rows[0] if stock_rows else None
             
-            # Backward-compatible product-level stock is fulfillable from the first warehouse if warehouses exist.
             if warehouse is None and product.get("in_stock") and warehouses:
                 warehouse = warehouses[0]
                 
