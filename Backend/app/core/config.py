@@ -42,5 +42,14 @@ class Settings(BaseModel):
         "localhost",
     ]
 
+    # AWS Architecture & Serverless Configuration (Local Fallback by Default)
+    ENABLE_AWS_SERVERLESS: bool = os.getenv("ENABLE_AWS_SERVERLESS", "false").lower() in ("true", "1")
+    ENABLE_AWS_STEP_FUNCTIONS: bool = os.getenv("ENABLE_AWS_STEP_FUNCTIONS", "false").lower() in ("true", "1")
+    ENABLE_AWS_EVENTBRIDGE: bool = os.getenv("ENABLE_AWS_EVENTBRIDGE", "false").lower() in ("true", "1")
+    AWS_REGION: str = os.getenv("AWS_REGION", "ap-south-1")
+    AWS_EVENTBUS_NAME: str = os.getenv("AWS_EVENTBUS_NAME", "glassbox-events")
+    AWS_STEP_FUNCTIONS_ARN: str = os.getenv("AWS_STEP_FUNCTIONS_ARN", "")
+    CLOUDFRONT_DOMAIN: str = os.getenv("CLOUDFRONT_DOMAIN", "")
+
 
 settings = Settings()

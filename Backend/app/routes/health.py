@@ -15,4 +15,21 @@ def root():
 
 @router.get("/health")
 def health():
-    return {"status": "ok"}
+    architecture_mode = (
+        "AWS Serverless (CloudFront + Step Functions + EventBridge)"
+        if settings.ENABLE_AWS_SERVERLESS
+        else "Local Fallback (FastAPI + LangGraph + SQLite)"
+    )
+    return {
+        "status": "ok",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "architecture_mode": architecture_mode,
+        "aws_features": {
+            "aws_serverless_enabled": settings.ENABLE_AWS_SERVERLESS,
+            "aws_step_functions_enabled": settings.ENABLE_AWS_STEP_FUNCTIONS,
+            "aws_eventbridge_enabled": settings.ENABLE_AWS_EVENTBRIDGE,
+            "cloudfront_domain": settings.CLOUDFRONT_DOMAIN or "Localhost / Direct Origin",
+            "region": settings.AWS_REGION,
+        },
+    }

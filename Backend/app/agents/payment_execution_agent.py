@@ -55,11 +55,11 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": status, "reason": result.get("reason"), "payment_id": result.get("payment_id")})
             if after_attempt:
                 after_attempt(state)
-            if status == "order_created":
-                state["payment_status"] = "pending"
+            if status in ("order_created", "success"):
+                state["payment_status"] = "pending" if status == "order_created" else "success"
                 state["razorpay_order_id"] = result.get("payment_id")
                 state["razorpay_key_id"] = result.get("key_id")
-                audit_event(state, agent="payment", decision_reason="Approved amount locked in a Razorpay order; awaiting buyer checkout and server-side signature verification.", output_summary={"attempts": attempt_number, "order_id": result.get("payment_id"), "idempotency_key_present": True, "payment_verified": False})
+                audit_event(state, agent="payment", decision_reason="Approved amount locked in a Razorpay order; awaiting buyer checkout and server-side signature verification.", output_summary={"attempts": attempt_number, "order_id": result.get("payment_id"), "idempotency_key_present": True, "payment_verified": (status == "success")})
                 return state
         except Exception as exc:
             state["payment_attempts"].append({"attempt": attempt_number, "timestamp": datetime.now(timezone.utc).isoformat(), "status": "failed", "reason": str(exc)})

@@ -10,9 +10,14 @@ The spend guardrail is re-applied to the bundle total — the LLM cannot overrid
 
 from __future__ import annotations
 
+import logging
+import time
+
 from .groq_client import FAST_MODEL, REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
 from app.db.database import get_tenant_max_upsell_discount
+
+logger = logging.getLogger("glassbox.decision")
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +138,7 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         return state
 
     # Ask LLM to pick the best product_id AND explain why
+    _t0 = time.perf_counter()
     proposal = complete_json(
         model=REASONING_MODEL,
         system=(
@@ -147,6 +153,15 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         ),
         user=str({"intent": state["intent"], "candidates": candidates}),
     )
+    _elapsed = time.perf_counter() - _t0
+    if proposal is None:
+        logger.warning(
+            "[DECISION] 🟡 LLM product selection FAILED (%.3fs) — falling back to candidates[0] (sort-order top item). "
+            "No AI reasoning will be shown for this selection.",
+            _elapsed,
+        )
+    else:
+        logger.info("[DECISION] ✅ LLM product selection completed (%.3fs).", _elapsed)
 
     chosen_id = (proposal or {}).get("product_id")
     selection_reason = (proposal or {}).get(
@@ -198,6 +213,7 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
             bundle_within_ceiling = discount_info["within_ceiling"] and discount_info["bundle_total"] <= state["guardrail_ceiling"]
             if bundle_within_ceiling:
                 # Ask LLM for a brief, persuasive upsell pitch (soft signal only — not a decision)
+                _t1 = time.perf_counter()
                 pitch = complete_json(
                     model=FAST_MODEL,
                     system=(
@@ -212,6 +228,13 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
                         "discounted_price": discount_info["discounted_price"],
                     }),
                 )
+                if pitch is None:
+                    logger.warning(
+                        "[DECISION] 🟡 Upsell pitch LLM FAILED (%.3fs) — using hardcoded fallback pitch string.",
+                        time.perf_counter() - _t1,
+                    )
+                else:
+                    logger.info("[DECISION] ✅ Upsell pitch generated (%.3fs).", time.perf_counter() - _t1)
                 upsell_pitch = (pitch or {}).get(
                     "pitch",
                     f"Bundle with {upsell_item.get('name')} and save {discount_info['discount_pct']}%!"

@@ -23,12 +23,16 @@ It never sets guardrail_ceiling or decides trust — those remain downstream cod
 
 from __future__ import annotations
 
+import logging
 import re
+import time
 from typing import Any
 from urllib.parse import urlparse
 
 from .groq_client import REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
+
+logger = logging.getLogger("glassbox.concierge")
 
 
 # ---------------------------------------------------------------------------
@@ -162,13 +166,16 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         if v1 is not None and v2 is not None:
             budget_min, budget_max = sorted([v1, v2])
 
-    if budget_max is None and not floor_match:
-        # Prefer an explicit maximum phrase; it handles both "under ₹4,000"
-        # and "max 4000" without the currency marker splitting the match.
-        max_match = _MAX_BUDGET_RE.search(text) or _CURRENCY_RE.search(text)
+    if budget_max is None:
+        max_match = _MAX_BUDGET_RE.search(text)
         if max_match:
             val_str = max_match.group(1) or max_match.group(2)
             budget_max = _extract_number(val_str)
+        elif not floor_match:
+            curr_match = _CURRENCY_RE.search(text)
+            if curr_match:
+                val_str = curr_match.group(1) or curr_match.group(2)
+                budget_max = _extract_number(val_str)
 
     size_match = _SIZE_RE.search(text)
     size = size_match.group(1).upper() if size_match else None
@@ -217,6 +224,9 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
             min_rating = float(val)
         except (ValueError, TypeError):
             pass
+    elif re.search(r"\b(?:rating|rated|stars?)\b", text, re.I):
+        if re.search(r"\b(any|anything|no preference|whatever)\b", text, re.I):
+            min_rating = 0.0
 
     return {
         "category": category,
@@ -341,6 +351,7 @@ def run(state: TransactionState) -> TransactionState:
     existing_intent = dict(state.get("intent", {}))
     fallback = parse_intent_fallback(state["user_message"])
 
+    _t0 = time.perf_counter()
     llm_intent = complete_json(
         model=REASONING_MODEL,
         system=(
@@ -358,6 +369,17 @@ def run(state: TransactionState) -> TransactionState:
         ),
         user=state["user_message"],
     )
+    _elapsed = time.perf_counter() - _t0
+    if llm_intent is None:
+        logger.warning(
+            "[CONCIERGE] 🟡 LLM intent extraction FAILED (%.3fs) — using regex-only fallback. "
+            "Intent quality will be degraded.",
+            _elapsed,
+        )
+    else:
+        logger.info(
+            "[CONCIERGE] ✅ LLM intent extracted successfully (%.3fs).", _elapsed
+        )
 
     # Merge fallback regex extraction non-destructively
     for key in ("category", "size", "color", "gender", "brand", "min_rating"):
@@ -367,7 +389,7 @@ def run(state: TransactionState) -> TransactionState:
 
     if fallback.get("budget_min") is not None:
         existing_intent["budget_min"] = fallback["budget_min"]
-    if fallback.get("budget_max") is not None and "minimum budget" not in state["user_message"].lower() and "floor" not in state["user_message"].lower():
+    if fallback.get("budget_max") is not None:
         existing_intent["budget_max"] = fallback["budget_max"]
 
     # Merge LLM extraction non-destructively

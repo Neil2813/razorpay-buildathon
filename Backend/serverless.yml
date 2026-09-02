@@ -1,0 +1,152 @@
+service: glassbox-backend-serverless
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'ap-south-1'}
+  memorySize: 512
+  timeout: 30
+  environment:
+    ENABLE_AWS_SERVERLESS: 'true'
+    ENABLE_AWS_STEP_FUNCTIONS: 'true'
+    ENABLE_AWS_EVENTBRIDGE: 'true'
+    AWS_EVENTBUS_NAME: glassbox-events
+    AWS_STEP_FUNCTIONS_ARN: !Ref GlassBoxStepFunctionsStateMachine
+    CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - events:PutEvents
+          Resource: !GetAtt GlassBoxEventBus.Arn
+        - Effect: Allow
+          Action:
+            - states:StartExecution
+            - states:DescribeExecution
+            - states:StopExecution
+          Resource: '*'
+
+functions:
+  api:
+    handler: lambda_handler.handler
+    events:
+      - httpApi:
+          path: '/{proxy+}'
+          method: '*'
+
+  conciergeWorker:
+    handler: app.agents.lambda_step_workers.concierge_step_handler
+  discoveryWorker:
+    handler: app.agents.lambda_step_workers.discovery_step_handler
+  negotiationWorker:
+    handler: app.agents.lambda_step_workers.negotiation_step_handler
+  riskWorker:
+    handler: app.agents.lambda_step_workers.risk_step_handler
+  paymentWorker:
+    handler: app.agents.lambda_step_workers.payment_step_handler
+  ledgerWorker:
+    handler: app.agents.lambda_step_workers.ledger_step_handler
+
+resources:
+  Resources:
+    # 1. AWS EventBridge Event Bus for AI Telemetry & Audit Stream
+    GlassBoxEventBus:
+      Type: AWS::Events::EventBus
+      Properties:
+        Name: glassbox-events
+
+    # 2. AWS Step Functions State Machine for 6-Agent Pipeline
+    GlassBoxStepFunctionsStateMachine:
+      Type: AWS::StepFunctions::StateMachine
+      Properties:
+        StateMachineName: GlassBoxAgentOrchestrator-${self:provider.stage}
+        RoleArn: !GetAtt StepFunctionsExecutionRole.Arn
+        DefinitionString: ${file(app/agents/statemachine.json)}
+
+    # IAM Role for Step Functions State Machine
+    StepFunctionsExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: states.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: StepFunctionsLambdaExecute
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - lambda:InvokeFunction
+                  Resource: '*'
+
+    # 3. S3 Bucket for Frontend Hosting
+    FrontendS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: glassbox-frontend-${self:provider.stage}-${aws:accountId}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html
+
+    # 4. AWS CloudFront Distribution for Edge Delivery & API Gateway Routing
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          Comment: GlassBox Secure Edge Delivery Distribution
+          Origins:
+            - Id: ApiGatewayOrigin
+              DomainName: !Sub "${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+              CustomOriginConfig:
+                HTTPPort: 80
+                HTTPSPort: 443
+                OriginProtocolPolicy: https-only
+            - Id: S3FrontendOrigin
+              DomainName: !GetAtt FrontendS3Bucket.RegionalDomainName
+              S3OriginConfig:
+                OriginAccessIdentity: ''
+          DefaultCacheBehavior:
+            TargetOriginId: S3FrontendOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+          CacheBehaviors:
+            - PathPattern: '/api/*'
+              TargetOriginId: ApiGatewayOrigin
+              ViewerProtocolPolicy: redirect-to-https
+              AllowedMethods: [GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS]
+              ForwardedValues:
+                QueryString: true
+                Headers: ['Authorization', 'Content-Type']
+                Cookies:
+                  Forward: all
+              MinTTL: 0
+              DefaultTTL: 0
+              MaxTTL: 0
+
+outputs:
+  CloudFrontUrl:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: CloudFront Secure Delivery URL
+  HttpApiUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Description: HTTP API Gateway Endpoint

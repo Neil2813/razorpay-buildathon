@@ -12,3 +12,5 @@ matplotlib
 langgraph
 httpx
 beautifulsoup4
+boto3
+mangum

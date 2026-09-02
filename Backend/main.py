@@ -2,6 +2,7 @@
 GlassBox Risk Agent -- FastAPI Application Entry Point
 """
 
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,13 @@ except (ImportError, ModuleNotFoundError):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Pre-load ML model during startup for zero cold-start latency."""
+    # Enable structured logging for all glassbox agents so LLM calls,
+    # fallbacks, and per-agent timing are visible in the local console.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+        datefmt="%H:%M:%S",
+    )
     print("[startup] Initializing database...")
     from app.db.database import init_db
     from app.db.seed import seed_db

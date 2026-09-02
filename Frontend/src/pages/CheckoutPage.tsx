@@ -93,8 +93,8 @@ const AGENT_LABELS: Record<string, string> = {
 
 // Param definitions per mode for UI clarification cards
 const GUIDED_PARAMS: MissingParam[] = [
-  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['any', 'men', 'women', 'unisex'] },
-  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
+  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['men', 'women', 'unisex'] },
+  { key: 'size', label: 'Size', inputType: 'select', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
   { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_min', label: 'Floor Price (₹)', inputType: 'number', placeholder: 'e.g. 500' },
   { key: 'budget_max', label: 'Ceiling Price (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
@@ -103,8 +103,8 @@ const GUIDED_PARAMS: MissingParam[] = [
 ];
 
 const AUTONOMOUS_PARAMS: MissingParam[] = [
-  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['any', 'men', 'women', 'unisex'] },
-  { key: 'size', label: 'Size', inputType: 'select', options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
+  { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['men', 'women', 'unisex'] },
+  { key: 'size', label: 'Size', inputType: 'select', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
   { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_max', label: 'Max Budget / Ceiling (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
   { key: 'budget_min', label: 'Min Budget / Floor (₹)', inputType: 'number', placeholder: 'e.g. 500' },
@@ -193,14 +193,14 @@ function ClarificationCard({
         I need a few more details before I start searching for your perfect product:
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '0.85rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
         {missing.map((param) => (
-          <div key={param.key}>
-            <label className="brutalist-subtitle" style={{ color: modeColor, display: 'block', marginBottom: '0.3rem', fontSize: '0.7rem' }}>
+          <div key={param.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label className="brutalist-subtitle" style={{ color: modeColor, display: 'block', fontSize: '0.72rem', fontWeight: 800 }}>
               {param.label}
             </label>
             {param.inputType === 'select' && param.options ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {param.options.map(opt => (
                   <button
                     key={opt}
@@ -208,12 +208,12 @@ function ClarificationCard({
                     onClick={() => setValues((v: Record<string, string>) => ({ ...v, [param.key]: opt }))}
                     disabled={disabled}
                     style={{
-                      padding: '0.3rem 0.7rem',
+                      padding: '0.35rem 0.8rem',
                       borderRadius: '2px',
                       border: `1px solid ${values[param.key] === opt ? modeColor : '#e4e4e7'}`,
                       background: values[param.key] === opt ? modeColor : '#ffffff',
                       color: values[param.key] === opt ? '#ffffff' : '#71717a',
-                      fontSize: '0.74rem',
+                      fontSize: '0.76rem',
                       fontWeight: 700,
                       cursor: disabled ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s',
@@ -231,7 +231,7 @@ function ClarificationCard({
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValues((v: Record<string, string>) => ({ ...v, [param.key]: e.target.value }))}
                 disabled={disabled}
                 className="minimal-input"
-                style={{ padding: '0.45rem 0.75rem', fontSize: '0.83rem' }}
+                style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
               />
             )}
           </div>
@@ -356,27 +356,27 @@ function getSizeOptionsForCategory(category?: string, userMsgText?: string): { l
   if (/\b(shoe|shoes|sneaker|sneakers|boot|boots|footwear|slipper|sandals?)\b/i.test(text)) {
     return {
       label: 'Shoe Size (UK/US)',
-      options: ['any', '6', '7', '8', '9', '10', '11', '12'],
+      options: ['6', '7', '8', '9', '10', '11', '12'],
     };
   }
 
   if (/\b(pant|pants|jeans|trouser|trousers|shorts?|skirt)\b/i.test(text)) {
     return {
       label: 'Pant Size (Waist / Fit)',
-      options: ['any', '28', '30', '32', '34', '36', '38', '40', 'S', 'M', 'L', 'XL'],
+      options: ['28', '30', '32', '34', '36', '38', '40', 'S', 'M', 'L', 'XL'],
     };
   }
 
   if (/\b(shirt|shirts|t-shirt|tshirt|tshirts|jacket|jackets|dress|dresses|kurta|kurtas|top|tops|hoodie|sweater)\b/i.test(text)) {
     return {
       label: 'Shirt Size',
-      options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
+      options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
     };
   }
 
   return {
     label: 'Size',
-    options: ['any', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'],
+    options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'],
   };
 }
 
@@ -856,13 +856,15 @@ export default function CheckoutPage() {
   const handleClarificationSubmit = async (values: Record<string, string>) => {
     // Build a natural language continuation message from the filled fields
     const parts: string[] = [];
-    if (values.gender && values.gender !== 'any') parts.push(`for ${values.gender}`);
-    if (values.size && values.size !== 'any') parts.push(`size ${values.size}`);
-    if (values.color && values.color !== 'any') parts.push(`${values.color} colour`);
-    if (values.brand && values.brand.toLowerCase() !== 'any') parts.push(`brand ${values.brand}`);
+    if (values.gender) parts.push(`for ${values.gender}`);
+    if (values.size) parts.push(`size ${values.size}`);
+    if (values.color) parts.push(`${values.color} colour`);
+    if (values.brand) parts.push(`brand ${values.brand}`);
     if (values.budget_min) parts.push(`minimum budget ₹${values.budget_min}`);
     if (values.budget_max) parts.push(`maximum budget ₹${values.budget_max}`);
-    if (values.min_rating && values.min_rating !== 'any') parts.push(`minimum rating ${values.min_rating} stars`);
+    if (values.min_rating) {
+      parts.push(values.min_rating === 'any' ? `minimum rating any` : `minimum rating ${values.min_rating} stars`);
+    }
 
     const clarificationMsg = parts.length > 0
       ? `I want: ${parts.join(', ')}.`
@@ -1205,8 +1207,8 @@ export default function CheckoutPage() {
                   const label = msg.agent ? AGENT_LABELS[msg.agent] || msg.agent : '';
                   
                   return (
-                    <div key={index} style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                      <div style={{ maxWidth: '88%', minWidth: 0 }}>
+                    <div key={index} style={{ display: 'flex', flexDirection: isUser ? 'row-reverse' : 'row', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.25rem', width: '100%' }}>
+                      <div style={{ width: isUser ? 'auto' : '100%', maxWidth: isUser ? '85%' : '100%', minWidth: 0 }}>
                         {!isUser && label && <div className="brutalist-subtitle" style={{ color: '#060e26', marginBottom: '0.35rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>{label}</div>}
                         <div style={{
                           padding: '1rem 1.25rem',
@@ -1217,7 +1219,9 @@ export default function CheckoutPage() {
                           boxShadow: isUser ? '3px 3px 0px rgba(0,0,0,0.15)' : '4px 4px 0px #060e26',
                           fontSize: '0.9rem',
                           lineHeight: 1.55,
-                          fontFamily: "'Space Grotesk', sans-serif"
+                          fontFamily: "'Space Grotesk', sans-serif",
+                          width: '100%',
+                          boxSizing: 'border-box'
                         }}>
                           <div className="brutalist-text" style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
 

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import logging
+import time
 from typing import Any
 
 from .groq_client import REASONING_MODEL, complete_json
 from .state import TransactionState, audit_event
+
+logger = logging.getLogger("glassbox.ledger")
 
 
 class SQLiteLedger:
@@ -51,9 +55,21 @@ def persist_new_events(state: TransactionState, ledger: InMemoryLedger, *, from_
 
 
 def finalize(state: TransactionState) -> TransactionState:
-    summary = complete_json(model=REASONING_MODEL, system="Return JSON {\"summary\": string}. Summarize only supplied transaction facts in one sentence.", user=str({"status": state["payment_status"], "events": len(state["audit_log"])}))
+    _t0 = time.perf_counter()
+    summary = complete_json(
+        model=REASONING_MODEL,
+        system="Return JSON {\"summary\": string}. Summarize only supplied transaction facts in one sentence.",
+        user=str({"status": state["payment_status"], "events": len(state["audit_log"])}),
+    )
+    _elapsed = time.perf_counter() - _t0
     output = {"payment_status": state["payment_status"]}
     if isinstance(summary, dict) and isinstance(summary.get("summary"), str):
         output["human_summary"] = summary["summary"]
+        logger.info("[LEDGER] ✅ LLM summary generated (%.3fs).", _elapsed)
+    else:
+        logger.warning(
+            "[LEDGER] 🟡 LLM summary FAILED (%.3fs) — audit log will have no human_summary field.",
+            _elapsed,
+        )
     audit_event(state, agent="ledger", decision_reason="Transaction graph finished; audit log remains append-only.", output_summary=output)
     return state

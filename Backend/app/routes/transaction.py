@@ -21,6 +21,8 @@ from app.agents import (
     ledger_agent, merchant_insights_agent, payment_execution_agent, risk_agent, site_trust_agent,
 )
 from app.agents.orchaestartor_langgraph import run_transaction
+from app.services.aws_step_functions import step_functions_orchestrator
+from app.services.aws_eventbridge import event_bridge
 from app.agents.state import TransactionState, audit_event, new_transaction_state
 from app.core.config import settings
 from app.core.security import verify_razorpay_payment_signature
@@ -142,14 +144,18 @@ def _run_with_streaming(
         new_events = audit_log[last_sent_index:]
         if new_events:
             last_sent_index = len(audit_log)
-            if loop and session_id and session_id in _ws_queues:
-                for event in new_events:
+            for event in new_events:
+                event_bridge.publish_event(
+                    event_type=f"GlassBox.Agent.{event.get('agent', 'system').capitalize()}",
+                    detail={"session_id": session_id, "tenant_id": tenant_id, **event},
+                )
+                if loop and session_id and session_id in _ws_queues:
                     loop.call_soon_threadsafe(
                         lambda e=event: asyncio.create_task(_broadcast(session_id, {"type": "agent_event", **e}))
                     )
 
     ledger = ledger_agent.get_default_sqlite_ledger()
-    state = run_transaction(
+    state = step_functions_orchestrator.run_pipeline(
         tenant_id=tenant_id,
         user_message=request.user_message,
         catalog=catalog,

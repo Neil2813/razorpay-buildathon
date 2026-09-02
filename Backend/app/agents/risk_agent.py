@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from .state import TransactionState, audit_event
+
+logger = logging.getLogger("glassbox.risk")
 
 # Safe import wrapper to prevent runtime crashes if ML dependencies are missing
 try:
@@ -114,6 +117,11 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
 
     # Fallback if ML module/inference is unavailable
     if result is None:
+        logger.warning(
+            "[RISK] 🟡 ML inference unavailable — using rule-based fallback scorer. "
+            "Risk evaluation will be deterministic (not learned). "
+            "Train the model and set up ml/inference.py to enable full ML scoring."
+        )
         result = predict_risk_fallback(
             amount=amount,
             transaction_type=transaction_type,
@@ -125,6 +133,8 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
             dest_name=dest_name,
         )
         source = "rule_based_fallback"
+    else:
+        logger.info("[RISK] ✅ ML inference completed successfully (source=%s).", source)
 
     risk_score = result["risk_score"]
     state["risk_score"] = risk_score
