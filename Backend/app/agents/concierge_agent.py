@@ -52,7 +52,9 @@ _PARAM_LABELS: dict[str, str] = {
 
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating", "requested_sites"]
 # Autonomous mode checklist — collects all user choices (brand, color, gender, size, rating, budget)
-_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating"]
+# Autonomous mode checklist — budget_min must be explicitly answered (user must state a floor or say 'any/no minimum')
+# brand and min_rating are asked but have 'any' / 0.0 defaults when user says 'any'.
+_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "color", "gender", "size"]
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +113,7 @@ _CONTINUE_RE = re.compile(r"\b(continue|proceed|yes|ok|go ahead|allow|override|a
 _RESTART_RE = re.compile(r"\b(restart|start over|different site|try again|no|cancel|stop)\b", re.I)
 
 _ANY_RE = re.compile(r"\b(any|anything|no preference|doesn.t matter|don.t care|whatever)\b", re.I)
+_NO_MINIMUM_RE = re.compile(r"\b(no minimum|no floor|no lower|zero|any minimum|no min|no budget floor|start from zero|from zero|from 0)\b", re.I)
 
 
 # ---------------------------------------------------------------------------
@@ -407,9 +410,12 @@ def run(state: TransactionState) -> TransactionState:
         if isinstance(llm_intent.get("min_rating"), (int, float)) and llm_intent["min_rating"] >= 0:
             existing_intent["min_rating"] = float(llm_intent["min_rating"])
 
-    # If budget_max is set but no floor was specified, default budget_min to 0.0
-    if existing_intent.get("budget_max") is not None and existing_intent.get("budget_min") is None:
-        existing_intent["budget_min"] = 0.0
+    # If user explicitly said "any" / "no minimum" / "zero" for floor price, treat budget_min as 0.0
+    # (this means they answered the floor question and checklist can proceed).
+    if existing_intent.get("budget_min") is None:
+        msg = state["user_message"]
+        if _ANY_RE.search(msg) or _NO_MINIMUM_RE.search(msg):
+            existing_intent["budget_min"] = 0.0
 
     intent = existing_intent
     intent["needs_clarification"] = False

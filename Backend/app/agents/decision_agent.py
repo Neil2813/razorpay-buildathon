@@ -137,26 +137,36 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
         audit_event(state, agent="negotiation", decision_reason="No eligible catalog candidates; payment is unavailable.")
         return state
 
-    # Ask LLM to pick the best product_id AND explain why
+    # Pre-rank by composite score: product_rating (60%) + normalised avg merchant rating (40%).
+    # Only pass the top 5 to the LLM — reduces noise and forces explicit comparison.
+    def _composite_score(p: dict) -> float:
+        prod_rating = float(p.get("rating") or 0)
+        # merchant_avg_rating may be set by discovery agent on the product dict
+        merchant_rating = float(p.get("merchant_avg_rating") or prod_rating)
+        return prod_rating * 0.6 + merchant_rating * 0.4
+
+    ranked = sorted(candidates, key=_composite_score, reverse=True)
+    top5 = ranked[:5]
+
+    # Ask LLM to pick the best product_id AND explain why over the others
     _t0 = time.perf_counter()
     proposal = complete_json(
         model=REASONING_MODEL,
         system=(
-            "You are an autonomous shopping agent. Select the single best product from the candidates list. "
-            "Primary Selection Criteria: Combine the user's specific choice preferences (color, size, brand, price range) "
-            "with the highest product rating and review count (most stars and votes).\n\n"
-            "Return JSON: {\"product_id\": string, \"selection_reason\": string}.\n"
-            "selection_reason MUST be 2-3 sentences explaining exactly why this product was chosen, and "
-            "explicitly compare it with the other candidate options (for example, explain that you chose it "
-            "over Option X because of its higher rating of Y★ or better price compatibility). Mention specific names, "
-            "brands, ratings, and prices of the rejected options to justify the choice. Be specific, clear, and trace-backed."
+            "You are an autonomous shopping agent. You have been given the top 5 candidate products."
+            " Select the single best product_id based on: (1) buyer preferences (color, size, brand, price range),"
+            " (2) highest individual product rating, (3) best value within budget."
+            "\n\nReturn JSON: {\"product_id\": string, \"selection_reason\": string}."
+            "\nselection_reason MUST be 2-3 sentences explaining SPECIFICALLY why you chose this product over"
+            " each of the other candidate options. Explicitly mention why you rejected the others"
+            " (e.g., lower rating, wrong gender, higher price, wrong style). Cite product names, ratings, prices."
         ),
-        user=str({"intent": state["intent"], "candidates": candidates}),
+        user=str({"intent": state["intent"], "top5_candidates": top5}),
     )
     _elapsed = time.perf_counter() - _t0
     if proposal is None:
         logger.warning(
-            "[DECISION] 🟡 LLM product selection FAILED (%.3fs) — falling back to candidates[0] (sort-order top item). "
+            "[DECISION] 🟡 LLM product selection FAILED (%.3fs) — falling back to top-ranked candidate. "
             "No AI reasoning will be shown for this selection.",
             _elapsed,
         )
@@ -170,18 +180,19 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
     )
 
     chosen = next(
-        (item for item in candidates if item.get("product_id") == chosen_id),
-        candidates[0],
+        (item for item in top5 if item.get("product_id") == chosen_id),
+        top5[0],
     )
     # If the LLM didn't give a reason, generate a fallback explanation
     if not selection_reason or not isinstance(selection_reason, str):
+        others = [p["name"] for p in top5 if p.get("product_id") != chosen.get("product_id")][:3]
         parts = []
         if chosen.get("rating"):
-            parts.append(f"highest rating of {chosen['rating']}★")
+            parts.append(f"highest rating of {chosen['rating']}")
         if chosen.get("price"):
-            parts.append(f"price ₹{chosen['price']:,.0f} within your budget")
-        if chosen.get("brand"):
-            parts.append(f"brand: {chosen['brand']}")
+            parts.append(f"price {chosen['price']:,.0f} within budget")
+        if others:
+            parts.append(f"chosen over {', '.join(others)}")
         selection_reason = f"Selected for {', '.join(parts)}." if parts else "Best match for your requirements."
 
     chosen["selection_reason"] = selection_reason
@@ -277,11 +288,12 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
 
     audit_event(
         state, agent="negotiation",
-        decision_reason="Code compared selected product price against tenant ceiling.",
+        decision_reason=f"Decision Agent: {selection_reason}",
         output_summary={
             "product_id": chosen.get("product_id"),
             "chosen_product": chosen,           # full product for frontend
             "selection_reason": selection_reason,
+            "top5_candidates_count": len(top5),
             "all_candidates_count": len(candidates),
             "price": price,
             "ceiling": state["guardrail_ceiling"],

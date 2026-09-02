@@ -23,7 +23,7 @@ from . import concierge_agent, decision_agent, discovery_agent, ledger_agent, pa
 from .state import TransactionState, audit_event, new_transaction_state
 
 
-_AGENT_SEQUENCE = ["concierge", "discovery", "negotiation", "risk", "payment", "ledger"]
+_AGENT_SEQUENCE = ["concierge", "discovery", "risk", "negotiation", "payment", "ledger"]
 
 def _should_skip_node(state: TransactionState, node_agent: str) -> bool:
     current = state.get("current_agent")
@@ -78,42 +78,48 @@ def discovery_node(state: TransactionState, config: RunnableConfig) -> dict[str,
     return dict(state)
 
 
-def negotiation_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
-    """Negotiation/Decision Agent node: Choose product & evaluate spend ceiling."""
-    if _should_skip_node(state, "negotiation"):
+def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
+    """Risk Agent node: ML risk evaluation — runs BEFORE negotiation/product selection."""
+    if _should_skip_node(state, "risk"):
         return dict(state)
-    guardrail_ceiling = config.get("configurable", {}).get("guardrail_ceiling", 5000.0)
-    decision_agent.run(state, guardrail_ceiling=guardrail_ceiling)
+    product_list = state.get("catalog_candidates") or []
+    # Risk check runs on the catalogue before product selection.
+    # Use the highest-priced candidate as the worst-case amount estimate.
+    transaction = config.get("configurable", {}).get("transaction", {})
+    if product_list:
+        max_price = max((float(p.get("price", 0)) for p in product_list), default=0.0)
+        if max_price > 0:
+            transaction["amount"] = max_price
+    risk_agent.run(state, transaction)
+    if not state.get("requires_confirmation"):
+        audit_event(
+            state,
+            agent="risk",
+            decision_reason="Risk Agent: All security measures have been passed.",
+            output_summary={"status": "clear"},
+        )
     if state.get("payment_status") != "escalated":
-        state["current_agent"] = "negotiation"
+        state["current_agent"] = "risk"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
     return dict(state)
 
 
-def risk_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
-    """Risk Agent node: ML risk evaluation & threshold check."""
-    if _should_skip_node(state, "risk"):
+def negotiation_node(state: TransactionState, config: RunnableConfig) -> dict[str, Any]:
+    """Negotiation/Decision Agent node: Choose best product from top 5 & evaluate spend ceiling."""
+    if _should_skip_node(state, "negotiation"):
         return dict(state)
-    product = state.get("chosen_product") or {}
-    # Discovery may have stopped with no eligible SKU.  A risk score for a
-    # non-existent ₹0 purchase is misleading and must never be shown.
-    if not product:
-        return dict(state)
-    transaction = config.get("configurable", {}).get("transaction", {})
-    if product.get("price"):
-        transaction["amount"] = float(product["price"])
-    risk_agent.run(state, transaction)
-    if not state.get("requires_confirmation") and not state.get("buyer_approved"):
-        audit_event(
-            state,
-            agent="risk",
-            decision_reason="Risk check passed; buyer approval is required before a Razorpay order can be created.",
-            output_summary={"buyer_approval_required": True, "amount": product.get("price")},
-        )
+    # Effective guardrail = min(external hard cap, buyer's stated budget_max)
+    external_ceiling = float(config.get("configurable", {}).get("guardrail_ceiling", 99999.0))
+    intent_budget_max = state.get("intent", {}).get("budget_max")
+    if intent_budget_max and float(intent_budget_max) > 0:
+        guardrail_ceiling = min(external_ceiling, float(intent_budget_max))
+    else:
+        guardrail_ceiling = external_ceiling
+    decision_agent.run(state, guardrail_ceiling=guardrail_ceiling)
     if state.get("payment_status") != "escalated":
-        state["current_agent"] = "risk"
+        state["current_agent"] = "negotiation"
     checkpoint_cb = config.get("configurable", {}).get("checkpoint_cb")
     if checkpoint_cb:
         checkpoint_cb(state)
@@ -172,17 +178,19 @@ def route_after_discovery(state: TransactionState) -> str:
     # Escalated can mean: trust-warning halt, no results, or resume-after-override handled.
     if not state.get("catalog_candidates") or state.get("payment_status") == "escalated":
         return "ledger"
+    return "risk"
+
+
+def route_after_risk(state: TransactionState) -> str:
+    if state.get("requires_confirmation") or state.get("payment_status") == "escalated":
+        return "ledger"
     return "negotiation"
 
 
 def route_after_negotiation(state: TransactionState) -> str:
     if not state.get("guardrail_passed") or state.get("payment_status") == "escalated":
         return "ledger"
-    return "risk"
-
-
-def route_after_risk(state: TransactionState) -> str:
-    if state.get("requires_confirmation") or not state.get("buyer_approved") or state.get("payment_status") == "escalated":
+    if not state.get("buyer_approved"):
         return "ledger"
     return "payment"
 
@@ -216,16 +224,16 @@ def _build_transaction_graph() -> Any:
     workflow.add_conditional_edges(
         "discovery",
         route_after_discovery,
-        {"negotiation": "negotiation", "ledger": "ledger"},
-    )
-    workflow.add_conditional_edges(
-        "negotiation",
-        route_after_negotiation,
         {"risk": "risk", "ledger": "ledger"},
     )
     workflow.add_conditional_edges(
         "risk",
         route_after_risk,
+        {"negotiation": "negotiation", "ledger": "ledger"},
+    )
+    workflow.add_conditional_edges(
+        "negotiation",
+        route_after_negotiation,
         {"payment": "payment", "ledger": "ledger"},
     )
 

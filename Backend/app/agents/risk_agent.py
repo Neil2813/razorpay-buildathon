@@ -165,21 +165,21 @@ def run(state: TransactionState, transaction: dict[str, Any], *, confirmation_th
             f"This order needs confirmation: risk score {risk_score:.2%} "
             f"exceeds the {actual_threshold:.0%} review threshold."
         )
+        decision_reason = "Risk Agent: Transaction flagged for human review."
     else:
         state["requires_confirmation"] = False
+        decision_reason = "Risk Agent: All security measures have been passed."
 
     audit_event(
         state,
         agent="risk",
-        decision_reason=f"Scored transaction via {source}; applied review threshold.",
+        decision_reason=decision_reason,
         output_summary={
             "risk_score": risk_score,
             "risk_level": result.get("risk_level", "LOW"),
             "threshold": confirmation_threshold,
             "requires_confirmation": state["requires_confirmation"],
             "model_source": source,
-            "explanation": result.get("explanation"),
-            "top_features": result.get("top_features", []),
         },
     )
     return state

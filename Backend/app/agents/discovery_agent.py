@@ -464,29 +464,52 @@ def _format_discovery_audit_reason(
     total_scanned: int,
     scanned_counts: dict[str, int],
     candidate_count: int,
-    rejected: int = 0
+    rejected: int = 0,
+    candidates: list[dict[str, Any]] | None = None,
 ) -> str:
-    """Format discovery audit cleanly with newlines and line gaps as requested by user."""
-    prod_word = "product" if total_scanned == 1 else "products"
-    header = f"Overall {total_scanned} {prod_word} discovered."
+    """Format discovery audit cleanly showing matching merchants, item counts, and average ratings."""
+    tenant_names = {}
+    try:
+        from app.db.database import get_db_connection
+        conn = get_db_connection()
+        rows = conn.execute("SELECT tenant_id, name FROM tenants;").fetchall()
+        tenant_names = {r["tenant_id"]: r["name"] for r in rows}
+        conn.close()
+    except Exception:
+        pass
 
-    merchant_lines = []
-    for site, count in scanned_counts.items():
-        if count > 0:
-            m_name = "merchant catalog" if site in ("merchant_catalog", "merchant_owned", "") else site
-            merchant_lines.append(f"  {count} in {m_name}")
+    if not candidates or candidate_count == 0:
+        skipped = f"\n\n({rejected} source{'s' if rejected != 1 else ''} skipped for failing safety check.)" if rejected > 0 else ""
+        return f"Scanned {total_scanned} products in catalogue.\nNo in-stock item matched all buyer criteria.{skipped}"
 
-    breakdown_text = "\n".join(merchant_lines) if merchant_lines else "  0 in merchant catalog"
+    # Group candidates by merchant (tenant_id or source_site)
+    merchant_stats: dict[str, list[dict[str, Any]]] = {}
+    for c in candidates:
+        t_id = c.get("tenant_id") or c.get("source_site") or "merchant_catalog"
+        merchant_stats.setdefault(t_id, []).append(c)
 
-    if candidate_count > 0:
-        c_word = "product" if candidate_count == 1 else "products"
-        outcome = f"Found {candidate_count} matching {c_word} passing all buyer criteria."
-    else:
-        outcome = "No in-stock item matched the buyer's requirements."
+    matching_merchant_count = len(merchant_stats)
 
-    skipped = f"\n\n({rejected} source{'s' if rejected != 1 else ''} skipped for failing safety check.)" if rejected > 0 else ""
+    # Build per-merchant rows and sort by avg rating descending
+    merchant_rows = []
+    for t_id, prods in merchant_stats.items():
+        m_name = tenant_names.get(t_id) or prods[0].get("brand") or t_id.replace("tenant_", "").replace("_", " ").title()
+        ratings = [float(p["rating"]) for p in prods if p.get("rating") is not None]
+        avg_rating = (sum(ratings) / len(ratings)) if ratings else 0.0
+        merchant_rows.append((m_name, len(prods), avg_rating))
 
-    return f"{header}\n\n{breakdown_text}\n\n{outcome}{skipped}"
+    merchant_rows.sort(key=lambda x: x[2], reverse=True)
+
+    lines = [
+        f"Found {candidate_count} matching product{'s' if candidate_count != 1 else ''} across {matching_merchant_count} merchant{'s' if matching_merchant_count != 1 else ''} in catalogue (sorted by rating):\n"
+    ]
+    for m_name, prod_count, avg_rating in merchant_rows:
+        lines.append(f"• {m_name}: {prod_count} product{'s' if prod_count != 1 else ''} — Avg Rating: {avg_rating:.1f} / 5")
+
+    if rejected > 0:
+        lines.append(f"\n({rejected} source{'s' if rejected != 1 else ''} skipped for failing safety check.)")
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -559,7 +582,7 @@ def _run_guided(state: TransactionState) -> TransactionState:
     state["discovered_candidates"] = candidates
     state["catalog_candidates"] = candidates
 
-    decision_note = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates))
+    decision_note = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates), candidates=candidates)
 
     audit_event(
         state, agent="discovery",
@@ -636,7 +659,7 @@ def _run_autonomous(state: TransactionState) -> TransactionState:
     state["discovered_candidates"] = candidates
     state["catalog_candidates"] = candidates
 
-    decision_note = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates), rejected=rejected)
+    decision_note = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates), rejected=rejected, candidates=candidates)
 
     audit_event(
         state, agent="discovery",
@@ -678,47 +701,13 @@ def run(state: TransactionState, merchant_catalog: list[dict[str, Any]] | None =
         [dict(product) for product in merchant_catalog if _qualifies(product, intent)],
         intent,
     )
-    cross_check_notes = []
     addr = state.get("delivery_address")
-    
-    import urllib.request
-    import urllib.parse
-    from app.core.config import settings
 
     for candidate in candidates:
         candidate["source_site"] = "merchant_catalog"
         candidate["source_url"] = None
         candidate["has_return_policy"] = bool(candidate.get("return_policy"))
         candidate["has_delivery_time"] = candidate.get("delivery_time_days") is not None
-        
-        fulf = candidate.get("fulfilment")
-        if fulf and addr:
-            wh_name = fulf.get("warehouse_name", "Merchant Warehouse")
-            dest_city = addr.get("city", "Buyer City")
-            dest_pincode = addr.get("pincode", "Buyer Pincode")
-
-            serp_snippet = None
-            if settings.SERPAPI_API_KEY:
-                try:
-                    query = f"shipping transit time from {wh_name} to {dest_city} {dest_pincode} India"
-                    url = f"https://serpapi.com/search.json?q={urllib.parse.quote(query)}&api_key={settings.SERPAPI_API_KEY}"
-                    req = urllib.request.Request(url, headers={"User-Agent": "GlassBox/1.0"})
-                    with urllib.request.urlopen(req, timeout=5) as resp:
-                        data = json.loads(resp.read().decode())
-                        results = data.get("organic_results", [])
-                        if results:
-                            serp_snippet = results[0].get("snippet")
-                except Exception:
-                    pass
-
-            carrier_est = f"SerpAPI organic snippet: '{serp_snippet[:100]}...'" if serp_snippet else "Public carrier estimate: 2-5 days"
-            cc_note = (
-                f"SERP API search cross-checked public shipping transit times from '{wh_name}' to '{dest_city} ({dest_pincode})'. "
-                f"{carrier_est}. Merchant delivery zone configured timeline: {fulf.get('delivery_days')} days. "
-                f"Merchant timeline remains source of truth."
-            )
-            cross_check_notes.append(cc_note)
-            fulf["public_transit_cross_check"] = cc_note
 
     state["sites_rejected_count"] = 0
     state["discovered_candidates"] = candidates
@@ -730,11 +719,7 @@ def run(state: TransactionState, merchant_catalog: list[dict[str, Any]] | None =
         scanned_counts[site] = scanned_counts.get(site, 0) + 1
 
     total_scanned = len(merchant_catalog)
-    base_reason = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates))
-    if cross_check_notes:
-        base_reason += "\n\n" + " ".join(cross_check_notes)
-    if cross_check_notes:
-        base_reason += " " + " ".join(cross_check_notes)
+    base_reason = _format_discovery_audit_reason(total_scanned, scanned_counts, len(candidates), candidates=candidates)
 
     audit_event(
         state,

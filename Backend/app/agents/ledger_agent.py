@@ -55,21 +55,24 @@ def persist_new_events(state: TransactionState, ledger: InMemoryLedger, *, from_
 
 
 def finalize(state: TransactionState) -> TransactionState:
-    _t0 = time.perf_counter()
-    summary = complete_json(
-        model=REASONING_MODEL,
-        system="Return JSON {\"summary\": string}. Summarize only supplied transaction facts in one sentence.",
-        user=str({"status": state["payment_status"], "events": len(state["audit_log"])}),
-    )
-    _elapsed = time.perf_counter() - _t0
-    output = {"payment_status": state["payment_status"]}
-    if isinstance(summary, dict) and isinstance(summary.get("summary"), str):
-        output["human_summary"] = summary["summary"]
-        logger.info("[LEDGER] ✅ LLM summary generated (%.3fs).", _elapsed)
+    """Lock the transaction ledger with a deterministic, unambiguous final status."""
+    status = state.get("payment_status", "pending")
+
+    if status == "success":
+        final_label = "Transaction Complete"
+    elif status == "escalated":
+        final_label = "Transaction Escalated for Human Review"
+    elif status == "pending":
+        # Pending means awaiting buyer confirmation (risk passed, not yet approved or paid)
+        final_label = "Awaiting Buyer Approval"
     else:
-        logger.warning(
-            "[LEDGER] 🟡 LLM summary FAILED (%.3fs) — audit log will have no human_summary field.",
-            _elapsed,
-        )
-    audit_event(state, agent="ledger", decision_reason="Transaction graph finished; audit log remains append-only.", output_summary=output)
+        final_label = "Transaction Escalated for Human Review"
+
+    audit_event(
+        state,
+        agent="ledger",
+        decision_reason=final_label,
+        output_summary={"payment_status": status, "final_label": final_label},
+    )
     return state
+
