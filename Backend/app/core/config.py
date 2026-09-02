@@ -3,7 +3,19 @@ Core configuration settings for GlassBox Backend.
 """
 
 import os
+from pathlib import Path
 from pydantic import BaseModel
+
+# Load .env from the project root before any os.getenv() calls are evaluated.
+# This is required because Settings uses plain BaseModel (not pydantic-settings
+# BaseSettings), so .env is NOT loaded automatically. Without this, every
+# os.getenv() below returns None and all agents fall back to deterministic mode.
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[2] / ".env"
+    load_dotenv(dotenv_path=_env_path, override=False)
+except ImportError:
+    pass  # python-dotenv not installed; rely on OS environment being pre-set
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
