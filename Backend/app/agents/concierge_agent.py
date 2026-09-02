@@ -51,8 +51,8 @@ _PARAM_LABELS: dict[str, str] = {
 }
 
 _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating", "requested_sites"]
-# Autonomous mode checklist - collects user's gender/department, size, color, budget range, rating
-_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "color", "gender", "size", "min_rating"]
+# Autonomous mode checklist — collects all user choices (brand, color, gender, size, rating, budget)
+_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "brand", "color", "gender", "size", "min_rating"]
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +406,10 @@ def run(state: TransactionState) -> TransactionState:
                 existing_intent["budget_max"] = float(llm_intent["budget_max"])
         if isinstance(llm_intent.get("min_rating"), (int, float)) and llm_intent["min_rating"] >= 0:
             existing_intent["min_rating"] = float(llm_intent["min_rating"])
+
+    # If budget_max is set but no floor was specified, default budget_min to 0.0
+    if existing_intent.get("budget_max") is not None and existing_intent.get("budget_min") is None:
+        existing_intent["budget_min"] = 0.0
 
     intent = existing_intent
     intent["needs_clarification"] = False

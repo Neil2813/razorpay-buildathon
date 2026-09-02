@@ -99,29 +99,29 @@ def generate_catalog():
     inv_items = []
     p_counter = 1
 
-    # We want 120+ shoes, 80+ shirts, 60+ pants, 50+ tshirts, 20+ hats, 20+ socks across 25 merchants
-    # Let's ensure demo_tenant gets a huge chunk so buyer testing on demo_tenant has everything available!
-
     departments = [
         ("Men's", "men", SHOE_SIZES_MEN, CLOTHING_SIZES_MEN),
         ("Women's", "women", SHOE_SIZES_WOMEN, CLOTHING_SIZES_WOMEN),
         ("Unisex", "unisex", SHOE_SIZES_UNISEX, CLOTHING_SIZES_UNISEX)
     ]
 
+    primary_colors = ["Black", "White", "Blue", "Red", "Navy", "Grey", "Brown"]
+
     for tenant_id, tenant_name, _ in MERCHANTS:
         prefix = tenant_name.split()[0]
 
-        # Generate Shoes (approx 5-6 per tenant -> 130+ shoes total)
+        # Generate Shoes (each color & style across departments)
         for dept_label, dept_code, shoe_sizes, _ in departments:
             for s_name, s_desc in SHOE_TYPES:
-                if random.random() < 0.65:  # generate subset for diversity
+                # For demo_tenant, generate all colors; for others, pick 2 colors per style
+                colors_to_seed = primary_colors if tenant_id == "demo_tenant" else random.sample(primary_colors, k=2)
+                for color in colors_to_seed:
                     pid = f"prod_shoe_{p_counter:04d}"
-                    color = random.choice(COLORS)
-                    price = round(random.uniform(1299.0, 6999.0), -1)
+                    price = round(random.uniform(799.0, 4999.0), -1)
                     rating = round(random.uniform(3.9, 4.9), 1)
                     full_name = f"{prefix} {dept_label} {color} {s_name}"
-                    desc = f"{s_desc} Designed for {dept_label.lower()} comfort."
-                    return_pol = "30-day hassle-free return policy." if random.random() > 0.15 else None
+                    desc = f"{s_desc} Designed for {dept_label.lower()} ({dept_code}) comfort."
+                    return_pol = "30-day hassle-free return policy." if random.random() > 0.1 else None
                     del_days = random.choice([2, 3, 4])
 
                     products.append((
@@ -138,13 +138,13 @@ def generate_catalog():
         # Generate Shirts
         for dept_label, dept_code, _, cloth_sizes in departments:
             for sh_name, sh_desc in SHIRT_TYPES:
-                if random.random() < 0.6:
+                colors_to_seed = primary_colors if tenant_id == "demo_tenant" else random.sample(primary_colors, k=2)
+                for color in colors_to_seed:
                     pid = f"prod_shirt_{p_counter:04d}"
-                    color = random.choice(COLORS)
-                    price = round(random.uniform(999.0, 4500.0), -1)
+                    price = round(random.uniform(599.0, 3499.0), -1)
                     rating = round(random.uniform(4.0, 4.9), 1)
                     full_name = f"{prefix} {dept_label} {color} {sh_name}"
-                    desc = f"{sh_desc} Suitable for {dept_label.lower()} wear."
+                    desc = f"{sh_desc} Suitable for {dept_label.lower()} ({dept_code}) wear."
                     return_pol = "30-day return window in original condition."
                     del_days = random.choice([2, 3])
 
@@ -162,13 +162,13 @@ def generate_catalog():
         # Generate Pants
         for dept_label, dept_code, _, _ in departments:
             for p_type_name, p_type_desc in PANT_TYPES:
-                if random.random() < 0.5:
+                colors_to_seed = primary_colors if tenant_id == "demo_tenant" else random.sample(primary_colors, k=2)
+                for color in colors_to_seed:
                     pid = f"prod_pant_{p_counter:04d}"
-                    color = random.choice(COLORS)
-                    price = round(random.uniform(1499.0, 4999.0), -1)
+                    price = round(random.uniform(999.0, 3999.0), -1)
                     rating = round(random.uniform(4.1, 4.8), 1)
                     full_name = f"{prefix} {dept_label} {color} {p_type_name}"
-                    desc = f"{p_type_desc} Tailored for {dept_label.lower()} styling."
+                    desc = f"{p_type_desc} Tailored for {dept_label.lower()} ({dept_code}) styling."
                     return_pol = "30-day hassle-free exchange."
                     del_days = random.choice([2, 3, 4])
 
@@ -186,13 +186,13 @@ def generate_catalog():
         # Generate T-Shirts
         for dept_label, dept_code, _, cloth_sizes in departments:
             for ts_name, ts_desc in TSHIRT_TYPES:
-                if random.random() < 0.5:
+                colors_to_seed = primary_colors if tenant_id == "demo_tenant" else random.sample(primary_colors, k=2)
+                for color in colors_to_seed:
                     pid = f"prod_tshirt_{p_counter:04d}"
-                    color = random.choice(COLORS)
-                    price = round(random.uniform(599.0, 2499.0), -1)
+                    price = round(random.uniform(499.0, 1999.0), -1)
                     rating = round(random.uniform(4.0, 4.9), 1)
                     full_name = f"{prefix} {dept_label} {color} {ts_name}"
-                    desc = f"{ts_desc} Designed for daily {dept_label.lower()} fashion."
+                    desc = f"{ts_desc} Designed for daily {dept_label.lower()} ({dept_code}) fashion."
                     return_pol = "30-day return policy."
                     del_days = 2
 
@@ -209,24 +209,24 @@ def generate_catalog():
 
         # Generate Accessories (Hats, Socks)
         for acc_title, acc_desc, acc_cat, acc_sizes, min_p, max_p in ACCESSORY_TYPES:
-            pid = f"prod_acc_{p_counter:04d}"
-            color = random.choice(COLORS)
-            price = round(random.uniform(min_p, max_p), -1)
-            rating = round(random.uniform(4.2, 4.9), 1)
-            full_name = f"{prefix} {color} {acc_title}"
-            return_pol = "14-day easy return policy."
-            del_days = 2
+            for color in ["Black", "White", "Blue", "Grey"]:
+                pid = f"prod_acc_{p_counter:04d}"
+                price = round(random.uniform(min_p, max_p), -1)
+                rating = round(random.uniform(4.2, 4.9), 1)
+                full_name = f"{prefix} {color} {acc_title}"
+                return_pol = "14-day easy return policy."
+                del_days = 2
 
-            products.append((
-                pid, tenant_id, full_name, acc_desc, price, acc_cat, color,
-                json.dumps(acc_sizes), 1, return_pol, del_days, rating
-            ))
-            inv_items.extend([
-                (f"wh_{tenant_id}_blr", pid, random.randint(25, 80)),
-                (f"wh_{tenant_id}_del", pid, random.randint(20, 70)),
-                (f"wh_{tenant_id}_mum", pid, random.randint(25, 80)),
-            ])
-            p_counter += 1
+                products.append((
+                    pid, tenant_id, full_name, acc_desc, price, acc_cat, color,
+                    json.dumps(acc_sizes), 1, return_pol, del_days, rating
+                ))
+                inv_items.extend([
+                    (f"wh_{tenant_id}_blr", pid, random.randint(25, 80)),
+                    (f"wh_{tenant_id}_del", pid, random.randint(20, 70)),
+                    (f"wh_{tenant_id}_mum", pid, random.randint(25, 80)),
+                ])
+                p_counter += 1
 
     return products, inv_items
 

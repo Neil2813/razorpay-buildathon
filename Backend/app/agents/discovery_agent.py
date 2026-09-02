@@ -275,20 +275,32 @@ def _qualifies(product: dict[str, Any], intent: dict[str, Any]) -> bool:
     if not product.get("in_stock", True):
         return False
 
-    # Category match
+    # Category match (e.g. 'running shoes' -> 'shoe', 'formal shirt' -> 'shirt')
     category = intent.get("category")
     if category:
+        cat_str = category.lower()
         prod_cat = str(product.get("category", "")).lower()
-        if prod_cat not in {category.lower(), category.lower().rstrip("s")}:
+        # Check direct match, plural/singular, or word containment
+        cat_words = [w.rstrip("s") for w in cat_str.split()]
+        if not (prod_cat in cat_str or cat_str in prod_cat or prod_cat in cat_words or any(w == prod_cat for w in cat_words)):
             return False
 
-    # Budget floor
+    # Gender match (men, women, unisex)
+    gender = intent.get("gender")
+    if gender and gender.lower() not in ("any", ""):
+        g_target = gender.lower()
+        prod_text = f"{product.get('name', '')} {product.get('description', '')}".lower()
+        # Unisex products match both men and women queries
+        if "unisex" not in prod_text and g_target not in prod_text:
+            return False
+
+    # Budget floor (compare against listing price)
     budget_min = intent.get("budget_min")
     if budget_min is not None and product.get("price") is not None:
         if float(product["price"]) < float(budget_min):
             return False
 
-    # Budget ceiling
+    # Budget ceiling (compare against listing price)
     budget_max = intent.get("budget_max")
     if budget_max is not None and product.get("price") is not None:
         if float(product["price"]) > float(budget_max):
@@ -304,7 +316,8 @@ def _qualifies(product: dict[str, Any], intent: dict[str, Any]) -> bool:
     brand = intent.get("brand")
     if brand and brand.lower() not in ("any", ""):
         prod_brand = str(product.get("brand", "")).lower()
-        if brand.lower() not in prod_brand:
+        prod_name = str(product.get("name", "")).lower()
+        if brand.lower() not in prod_brand and brand.lower() not in prod_name:
             return False
 
     # Size availability
