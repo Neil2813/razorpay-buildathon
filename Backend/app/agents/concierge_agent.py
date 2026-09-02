@@ -43,7 +43,7 @@ _PARAM_LABELS: dict[str, str] = {
     "budget_min":      "floor price (e.g. ₹500)",
     "budget_max":      "ceiling / max price (e.g. ₹4000)",
     "brand":           "brand preference (or type 'any')",
-    "color":           "colour preference (or type 'any')",
+    "color":           "colour preference (e.g. Black, White, Blue)",
     "gender":          "gender / department (e.g. Men, Women, Unisex)",
     "size":            "size (e.g. M, L, 9, 10)",
     "min_rating":      "minimum star rating out of 5 (e.g. 4)",

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Wifi, CreditCard } from 'lucide-react';
+import { Wifi } from 'lucide-react';
 
 interface InteractiveCard3DProps {
   cardNumber: string;
@@ -17,7 +17,7 @@ export default function InteractiveCard3D({
   expiry,
   cvv,
   focusedField,
-  paymentMethod,
+  paymentMethod: _paymentMethod,
   cardTheme = 'dark'
 }: InteractiveCard3DProps) {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
@@ -39,13 +39,7 @@ export default function InteractiveCard3D({
   const isFlipped = focusedField === 'cvv';
 
   const getBrandLogo = () => {
-    const cleanNum = cardNumber.replace(/\s/g, '');
-    if (cleanNum.startsWith('4')) return 'VISA';
-    if (cleanNum.startsWith('5')) return 'MASTERCARD';
-    if (cleanNum.startsWith('3')) return 'AMEX';
-    if (paymentMethod === 'upi') return 'UPI FAST';
-    if (paymentMethod === 'crypto') return 'USDT CRYPTO';
-    return 'GLASSBOX CARD';
+    return 'RAZORPAY';
   };
 
   const formattedNum = cardNumber || '•••• •••• •••• ••••';
@@ -182,11 +176,6 @@ export default function InteractiveCard3D({
               <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', fontWeight: 800 }}>
                 {expiry || 'MM/YY'}
               </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.85, fontSize: '0.65rem', fontWeight: 700 }}>
-              <ShieldCheck size={14} style={{ color: isLight ? '#060e26' : '#10b981' }} />
-              <span>GLASSBOX SECURE</span>
             </div>
           </div>
         </div>

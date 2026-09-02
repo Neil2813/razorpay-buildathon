@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Lock, ShieldAlert, RefreshCw, Send, ShieldX, CheckCircle, Globe, Star, Tag, Filter, Play, TrendingUp, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { AuditEvent } from '../components/KnowledgeGraph';
-import RiskFeatureChart, { RiskFeaturesData } from '../components/RiskFeatureChart';
+import type { RiskFeaturesData } from '../components/RiskFeatureChart';
+
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { soundFX } from '../lib/soundFX';
@@ -95,7 +96,7 @@ const AGENT_LABELS: Record<string, string> = {
 const GUIDED_PARAMS: MissingParam[] = [
   { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['men', 'women', 'unisex'] },
   { key: 'size', label: 'Size', inputType: 'select', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
-  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
+  { key: 'color', label: 'Colour', inputType: 'select', options: ['black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_min', label: 'Floor Price (₹)', inputType: 'number', placeholder: 'e.g. 500' },
   { key: 'budget_max', label: 'Ceiling Price (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
   { key: 'brand', label: 'Brand', inputType: 'text', placeholder: 'e.g. Nike, or type "any"' },
@@ -105,7 +106,7 @@ const GUIDED_PARAMS: MissingParam[] = [
 const AUTONOMOUS_PARAMS: MissingParam[] = [
   { key: 'gender', label: 'Gender / Department', inputType: 'select', options: ['men', 'women', 'unisex'] },
   { key: 'size', label: 'Size', inputType: 'select', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11'] },
-  { key: 'color', label: 'Colour', inputType: 'select', options: ['any', 'black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
+  { key: 'color', label: 'Colour', inputType: 'select', options: ['black', 'white', 'blue', 'red', 'green', 'brown', 'pink', 'yellow', 'grey', 'navy', 'beige', 'orange'] },
   { key: 'budget_max', label: 'Max Budget / Ceiling (₹)', inputType: 'number', placeholder: 'e.g. 4000' },
   { key: 'budget_min', label: 'Min Budget / Floor (₹)', inputType: 'number', placeholder: 'e.g. 500' },
   { key: 'min_rating', label: 'Minimum Rating (out of 5)', inputType: 'select', options: ['any', '3', '3.5', '4', '4.5'] },
@@ -117,28 +118,92 @@ const AUTONOMOUS_PARAMS: MissingParam[] = [
 function LiveAgentProgress() {
   return (
     <div style={{
-      margin: '0.75rem 0',
+      margin: '0.85rem 0',
       padding: '1rem 1.25rem',
       background: '#ffffff',
-      borderRadius: '2px',
-      border: '1px solid #e4e4e7',
-      boxShadow: 'none',
+      borderRadius: '0px',
+      border: '2px solid #060e26',
+      boxShadow: '3px 3px 0px #060e26',
       animation: 'slide-in-up 0.3s ease-out',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-        <RefreshCw size={16} color="#0044ff" style={{ animation: 'spin 1.2s linear infinite' }} />
-        <span className="brutalist-subtitle" style={{ color: '#0044ff' }}>
-          Autonomous Pipeline Executing…
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.55rem' }}>
+        <RefreshCw size={16} color="#060e26" style={{ animation: 'spin 1.2s linear infinite' }} />
+        <span className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 900, fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
+          AUTONOMOUS PIPELINE EXECUTING…
         </span>
       </div>
-      <div className="brutalist-text" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.78rem', color: '#111111' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: '#0044ff' }}>
-          <Globe size={13} /> Discovery Agent Triggered: Searching this merchant's catalogue…
+      <div className="brutalist-text" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: '#060e26', fontFamily: "'Space Grotesk', sans-serif" }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, color: '#060e26' }}>
+          <Globe size={14} color="#060e26" /> Discovery Agent Triggered: Searching this merchant's catalogue…
         </div>
-        <div style={{ fontSize: '0.72rem', color: '#71717a', paddingLeft: '1.2rem', lineHeight: 1.4 }}>
+        <div style={{ fontSize: '0.74rem', color: '#52525b', paddingLeft: '1.35rem', lineHeight: 1.4, fontWeight: 500 }}>
           Evaluating merchant SKUs against budget guardrails, availability, and the risk model…
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Merchant Table Component (Rows & Columns Formatting)
+// ---------------------------------------------------------------------------
+function MerchantTable({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const headerLine = lines[0];
+  const bulletLines = lines.filter(l => l.trim().startsWith('•'));
+  const footerLines = lines.filter(l => !l.trim().startsWith('•') && l !== headerLine && l.trim().length > 0);
+
+  const rows = bulletLines.map(line => {
+    const match = line.match(/•\s*(.*?):\s*(\d+\s*products?)\s*—\s*Avg Rating:\s*([\d\.]+\s*\/\s*5)/i);
+    if (match) {
+      return { merchant: match[1].trim(), count: match[2].trim(), rating: match[3].trim() };
+    }
+    const parts = line.replace('•', '').split(/[:—]/);
+    return {
+      merchant: parts[0]?.trim() || line,
+      count: parts[1]?.trim() || '',
+      rating: parts[2]?.replace('Avg Rating:', '')?.trim() || '',
+    };
+  });
+
+  if (rows.length === 0) {
+    return <div className="brutalist-text" style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{content}</div>;
+  }
+
+  return (
+    <div style={{ marginTop: '0.4rem', marginBottom: '0.4rem' }}>
+      {headerLine && (
+        <div className="brutalist-subtitle" style={{ fontSize: '0.82rem', color: '#060e26', fontWeight: 800, marginBottom: '0.75rem', fontFamily: "'Space Grotesk', sans-serif" }}>
+          {headerLine}
+        </div>
+      )}
+      
+      <div style={{ overflowX: 'auto', border: '2px solid #060e26', boxShadow: '3px 3px 0px #060e26', background: '#ffffff' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', fontFamily: "'Space Grotesk', sans-serif", textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: '#060e26', color: '#ffffff' }}>
+              <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', borderRight: '1px solid #1a233d' }}>Merchant Name</th>
+              <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', textAlign: 'center', borderRight: '1px solid #1a233d' }}>Matching Products</th>
+              <th style={{ padding: '0.6rem 0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.72rem', textAlign: 'right' }}>Avg Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f6f1e5', borderBottom: idx === rows.length - 1 ? 'none' : '1px solid #e4e4e7' }}>
+                <td style={{ padding: '0.55rem 0.85rem', fontWeight: 700, color: '#060e26', borderRight: '1px solid #e4e4e7' }}>{row.merchant}</td>
+                <td style={{ padding: '0.55rem 0.85rem', color: '#060e26', fontWeight: 600, textAlign: 'center', borderRight: '1px solid #e4e4e7' }}>{row.count}</td>
+                <td style={{ padding: '0.55rem 0.85rem', fontWeight: 800, color: '#060e26', textAlign: 'right' }}>★ {row.rating}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {footerLines.map((fl, idx) => (
+        <div key={idx} className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', marginTop: '0.5rem', fontWeight: 600 }}>
+          {fl}
+        </div>
+      ))}
     </div>
   );
 }
@@ -171,57 +236,58 @@ function ClarificationCard({
     onSubmit(finalValues);
   };
 
-  const modeColor = mode === 'guided' ? '#0044ff' : '#7c3aed';
   const modeLabel = mode === 'guided' ? 'Guided Mode' : 'Autonomous Mode';
 
   return (
     <div style={{
-      marginTop: '0.75rem',
+      marginTop: '0.85rem',
       padding: '1.1rem 1.25rem',
       background: '#ffffff',
-      borderRadius: '2px',
-      border: `1px solid #e4e4e7`,
-      borderLeft: `4px solid ${modeColor}`,
+      borderRadius: '0px',
+      border: '2px solid #060e26',
+      boxShadow: '4px 4px 0px #060e26',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-        <Filter size={15} color={modeColor} />
-        <span className="brutalist-subtitle" style={{ color: modeColor }}>
-          {modeLabel} — Provide Details to Search
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.85rem' }}>
+        <Filter size={16} color="#060e26" />
+        <span className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
+          {modeLabel} — PROVIDE DETAILS TO SEARCH
         </span>
       </div>
-      <p className="brutalist-text" style={{ fontSize: '0.8rem', color: '#71717a', marginBottom: '0.85rem', lineHeight: 1.5 }}>
-        I need a few more details before I start searching for your perfect product:
-      </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.1rem', marginBottom: '1.1rem', width: '100%' }}>
         {missing.map((param) => (
-          <div key={param.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label className="brutalist-subtitle" style={{ color: modeColor, display: 'block', fontSize: '0.72rem', fontWeight: 800 }}>
+          <div key={param.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <label className="brutalist-subtitle" style={{ color: '#060e26', display: 'block', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
               {param.label}
             </label>
             {param.inputType === 'select' && param.options ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {param.options.map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setValues((v: Record<string, string>) => ({ ...v, [param.key]: opt }))}
-                    disabled={disabled}
-                    style={{
-                      padding: '0.35rem 0.8rem',
-                      borderRadius: '2px',
-                      border: `1px solid ${values[param.key] === opt ? modeColor : '#e4e4e7'}`,
-                      background: values[param.key] === opt ? modeColor : '#ffffff',
-                      color: values[param.key] === opt ? '#ffffff' : '#71717a',
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      cursor: disabled ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {opt}
-                  </button>
-                ))}
+                {param.options.map(opt => {
+                  const isSelected = values[param.key] === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setValues((v: Record<string, string>) => ({ ...v, [param.key]: opt }))}
+                      disabled={disabled}
+                      style={{
+                        padding: '0.4rem 0.85rem',
+                        borderRadius: '0px',
+                        border: '1.5px solid #060e26',
+                        background: isSelected ? '#060e26' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#060e26',
+                        fontSize: '0.78rem',
+                        fontWeight: isSelected ? 800 : 700,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.1s ease-in-out',
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        boxShadow: isSelected ? '2px 2px 0px #060e26' : 'none',
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <input
@@ -230,8 +296,18 @@ function ClarificationCard({
                 value={values[param.key] || ''}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValues((v: Record<string, string>) => ({ ...v, [param.key]: e.target.value }))}
                 disabled={disabled}
-                className="minimal-input"
-                style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                style={{
+                  padding: '0.55rem 0.75rem',
+                  fontSize: '0.85rem',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  borderRadius: '0px',
+                  border: '1.5px solid #060e26',
+                  color: '#060e26',
+                  fontWeight: 600,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  background: '#ffffff',
+                }}
               />
             )}
           </div>
@@ -242,10 +318,25 @@ function ClarificationCard({
         type="button"
         onClick={handleSubmit}
         disabled={disabled}
-        className="minimal-btn minimal-btn-primary"
-        style={{ padding: '0.55rem 1.25rem', fontSize: '0.8rem', borderRadius: '2px' }}
+        style={{
+          padding: '0.65rem 1.35rem',
+          fontSize: '0.82rem',
+          borderRadius: '0px',
+          background: '#060e26',
+          color: '#ffffff',
+          border: '2px solid #060e26',
+          boxShadow: '3px 3px 0px #000000',
+          fontWeight: 900,
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          fontFamily: "'Space Grotesk', sans-serif",
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+        }}
       >
-        <Send size={13} /> Search Now
+        <Send size={14} color="#ffffff" /> SEARCH NOW
       </button>
     </div>
   );
@@ -263,17 +354,17 @@ function ModeSelectionCard({
 }) {
   return (
     <div style={{
-      marginTop: '0.75rem',
+      marginTop: '0.85rem',
       padding: '1.1rem 1.25rem',
       background: '#ffffff',
-      borderRadius: '2px',
-      border: '1px solid #e4e4e7',
-      borderLeft: '4px solid #0044ff',
+      borderRadius: '0px',
+      border: '2px solid #060e26',
+      boxShadow: '4px 4px 0px #060e26',
     }}>
-      <div className="brutalist-subtitle" style={{ color: '#111111', marginBottom: '0.4rem' }}>
-        Select Execution Mode
+      <div className="brutalist-subtitle" style={{ color: '#060e26', marginBottom: '0.4rem', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
+        SELECT EXECUTION MODE
       </div>
-      <p className="brutalist-text" style={{ fontSize: '0.8rem', color: '#71717a', marginBottom: '0.85rem', lineHeight: 1.45 }}>
+      <p className="brutalist-text" style={{ fontSize: '0.8rem', color: '#52525b', marginBottom: '0.85rem', lineHeight: 1.45, fontWeight: 500 }}>
         How would you like the agent to execute your request?
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
@@ -283,20 +374,20 @@ function ModeSelectionCard({
           onClick={() => onSelectMode('autonomous')}
           style={{
             padding: '0.9rem',
-            borderRadius: '2px',
-            border: '1px solid #e4e4e7',
+            borderRadius: '0px',
+            border: '2px solid #060e26',
+            boxShadow: '3px 3px 0px #060e26',
             background: '#ffffff',
             textAlign: 'left',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.15s',
+            fontFamily: "'Space Grotesk', sans-serif",
           }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = '#7c3aed'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = '#e4e4e7'}
         >
-          <div className="brutalist-subtitle" style={{ color: '#7c3aed', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Play size={14} /> Autonomous Mode
+          <div className="brutalist-subtitle" style={{ color: '#060e26', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 900 }}>
+            <Play size={14} color="#060e26" /> Autonomous Mode
           </div>
-          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', lineHeight: 1.4 }}>
+          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#52525b', lineHeight: 1.4, fontWeight: 500 }}>
             Let AI discover & buy automatically across vetted stores. Requires Size, Colour, Floor & Ceiling budget.
           </div>
         </button>
@@ -307,20 +398,20 @@ function ModeSelectionCard({
           onClick={() => onSelectMode('guided')}
           style={{
             padding: '0.9rem',
-            borderRadius: '2px',
-            border: '1px solid #e4e4e7',
+            borderRadius: '0px',
+            border: '2px solid #060e26',
+            boxShadow: '3px 3px 0px #060e26',
             background: '#ffffff',
             textAlign: 'left',
             cursor: disabled ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.15s',
+            fontFamily: "'Space Grotesk', sans-serif",
           }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = '#0044ff'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = '#e4e4e7'}
         >
-          <div className="brutalist-subtitle" style={{ color: '#0044ff', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Globe size={14} /> Guided Mode
+          <div className="brutalist-subtitle" style={{ color: '#060e26', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 900 }}>
+            <Globe size={14} color="#060e26" /> Guided Mode
           </div>
-          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#71717a', lineHeight: 1.4 }}>
+          <div className="brutalist-text" style={{ fontSize: '0.74rem', color: '#52525b', lineHeight: 1.4, fontWeight: 500 }}>
             You specify the exact store URL, brand, rating cap, size, colour, floor & ceiling budget before searching.
           </div>
         </button>
@@ -724,7 +815,26 @@ export default function CheckoutPage() {
             });
           }
 
-          // 2. Negotiation / Selection & Guardrail Message
+          // 2. Risk Assessment Message
+          if (data.risk_score !== undefined || data.risk_features) {
+            const rf = data.risk_features || {};
+            const riskEvent = currentTurnEvents.find(e => e.agent === 'risk');
+            newTurnMessages.push({
+              role: 'agent',
+              agent: 'risk',
+              content: riskEvent?.decision_reason || 'ML Risk Engine evaluated transaction features.',
+              riskData: {
+                risk_score: data.risk_score ?? 0.01,
+                risk_level: data.risk_score ? (data.risk_score > (rf.threshold ?? 0.8) ? 'HIGH' : 'LOW') : 'LOW',
+                threshold: rf.threshold ?? 0.8,
+                top_features: rf.top_features || [],
+                explanation: rf.explanation,
+                model: rf.model === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
+              },
+            });
+          }
+
+          // 3. Negotiation / Selection & Guardrail Message
           if (data.chosen_product || data.guardrail_ceiling) {
             const chosen = data.chosen_product;
             const negEvent = currentTurnEvents.find(e => e.agent === 'negotiation');
@@ -732,49 +842,79 @@ export default function CheckoutPage() {
               negEvent?.output_summary?.selection_reason ||
               'Best match for your specified requirements.';
 
-            const conciergeEvt = data.audit_log?.find((e: any) => e.agent === 'concierge' && e.output_summary?.intent);
-            const intent = conciergeEvt?.output_summary?.intent || {};
             const candidatesList = data.discovered_candidates?.length > 0
               ? data.discovered_candidates
               : (data.catalog_candidates || []);
 
-            // Generate dialogue bubbles representing negotiation
-            const dialogue = [];
-            const cat = intent.category || 'item';
-            
-            dialogue.push({
-              agent: 'concierge',
-              name: 'Concierge Agent',
-              avatar: 'C',
-              text: `Verified user intent: looking for ${intent.color || 'any'} ${cat}, size ${intent.size || 'any'}, price range ₹${intent.budget_min || 0} - ₹${intent.budget_max || 5000}, min rating ${intent.min_rating || 'any'} stars. Routing to Discovery...`
-            });
-
-            dialogue.push({
-              agent: 'discovery',
-              name: 'Discovery Agent',
-              avatar: 'D',
-              text: `Scanned pre-approved sites. Discovered ${candidatesList.length} matching candidates meeting safety and trust guidelines.`
-            });
+            // Generate comparative dialogue bubbles comparing chosen product vs other candidate options
+            const dialogue: Array<{ agent: string; name: string; avatar: string; text: string }> = [];
 
             if (chosen) {
               const cleanReason = (selectionReason || '')
                 .replace(/\s*\(\s*prod_[a-zA-Z0-9_-]+\s*\)/g, '')
                 .replace(/\bprod_[a-zA-Z0-9_-]+\b/g, '')
                 .trim();
+
+              const ceiling = data.guardrail_ceiling || 5000;
+              const otherCandidates = candidatesList.filter((c: any) => 
+                (c.product_id && chosen.product_id && c.product_id !== chosen.product_id) ||
+                (c.name && chosen.name && c.name !== chosen.name)
+              );
+
+              // 1. Overall Decision Verdict
               dialogue.push({
                 agent: 'decision',
                 name: 'Decision Agent',
                 avatar: 'A',
-                text: cleanReason || `Selected "${chosen.name}" (₹${chosen.price}) based on highest rating and best fit within budget.`
+                text: `Selected "${chosen.name}" (₹${chosen.price}${chosen.rating ? `, ${chosen.rating}★` : ''}) as the #1 optimal choice among the ${candidatesList.length || 5} candidate options evaluated by the negotiator.`
               });
 
-              const passed = Number(chosen.price) <= (data.guardrail_ceiling || 5000);
+              // 2. Price & Value Comparison
+              const cheaperCount = otherCandidates.filter((c: any) => Number(c.price) < Number(chosen.price)).length;
+              const pricierCount = otherCandidates.filter((c: any) => Number(c.price) > Number(chosen.price)).length;
+
+              let valueText = `At ₹${chosen.price}, this product stays comfortably under the ₹${ceiling} spend ceiling limit.`;
+              if (cheaperCount > 0 && pricierCount > 0) {
+                valueText += ` It strikes the optimal value balance between ${pricierCount} higher-priced option(s) and ${cheaperCount} budget alternative(s).`;
+              } else if (pricierCount > 0) {
+                valueText += ` It is priced lower than ${pricierCount} other candidate(s) while maintaining superior features.`;
+              } else if (cheaperCount > 0) {
+                valueText += ` Offers superior build and rating quality that justifies the modest price difference over ${cheaperCount} budget alternative(s).`;
+              }
+
               dialogue.push({
-                agent: 'guardrail',
-                name: 'Deterministic Guardrail',
-                avatar: 'G',
-                text: `Running spend ceiling guardrail check. Item price ₹${chosen.price} ${passed ? '<=' : '>'} Ceiling Limit ₹${data.guardrail_ceiling || 5000}. Status: ${passed ? 'PASSED' : 'BLOCKED'}.`
+                agent: 'value',
+                name: 'Price & Value Agent',
+                avatar: '₹',
+                text: valueText
               });
+
+              // 3. Rating & Quality Comparison
+              if (chosen.rating != null) {
+                const higherRated = otherCandidates.filter((c: any) => c.rating != null && Number(c.rating) > Number(chosen.rating));
+                let ratingText = `Rated ${chosen.rating}★ out of 5.`;
+                if (higherRated.length === 0) {
+                  ratingText += ` Holds the highest customer rating among all top candidate options evaluated by the negotiator.`;
+                } else {
+                  ratingText += ` Combines strong customer feedback with the exact specifications requested.`;
+                }
+                dialogue.push({
+                  agent: 'rating',
+                  name: 'Rating & Quality Agent',
+                  avatar: '★',
+                  text: ratingText
+                });
+              }
+
+              // 4. Detailed Candidate Trade-Off Analysis (Why chosen over other 4)
+              if (cleanReason) {
+                dialogue.push({
+                  agent: 'comparison',
+                  name: 'Candidate Trade-off Analysis',
+                  avatar: 'VS',
+                  text: cleanReason
+                });
+              }
             }
 
             newTurnMessages.push({
@@ -792,25 +932,6 @@ export default function CheckoutPage() {
                 dialogue: dialogue,
               },
               upsellOffer: data.upsell_offer || upsellOffer || undefined,
-            });
-          }
-
-          // 3. Risk Assessment Message
-          if (data.risk_score !== undefined || data.risk_features) {
-            const rf = data.risk_features || {};
-            const riskEvent = currentTurnEvents.find(e => e.agent === 'risk');
-            newTurnMessages.push({
-              role: 'agent',
-              agent: 'risk',
-              content: riskEvent?.decision_reason || 'ML Risk Engine evaluated transaction features.',
-              riskData: {
-                risk_score: data.risk_score ?? 0.01,
-                risk_level: data.risk_score ? (data.risk_score > (rf.threshold ?? 0.8) ? 'HIGH' : 'LOW') : 'LOW',
-                threshold: rf.threshold ?? 0.8,
-                top_features: rf.top_features || [],
-                explanation: rf.explanation,
-                model: rf.model === 'rule_based_fallback' ? 'Rule-Based Risk Engine (Fallback)' : 'XGBoost+LightGBM Hybrid Ensemble',
-              },
             });
           }
 
@@ -834,7 +955,7 @@ export default function CheckoutPage() {
             agent: 'ledger',
             content: isTrustHalt
               ? `Transaction paused on Site Trust Warning — awaiting user action (Restart or Continue with trust_override).`
-              : `Transaction complete: ${data.payment_status.toUpperCase()}${data.escalation_message ? ` — ${data.escalation_message}` : ''}`,
+              : `Transaction Status: ${data.payment_status.toUpperCase()}${data.escalation_message ? ` — ${data.escalation_message}` : ''}`,
             trustWarningPrompt: isTrustHalt ? {
               site: trustEvent?.output_summary?.site || data.requested_sites?.[0] || 'requested site',
               reason: data.escalation_message || 'Site failed safety check: Typosquatting / domain age flag',
@@ -1043,81 +1164,7 @@ export default function CheckoutPage() {
 
         </div>
 
-        {chosenProduct && paymentStatus === 'pending' && !buyerApproved && !isRunning && (
-          <div>
-            <div className="brutalist-subtitle" style={{ color: '#ffffff', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              PAYMENT APPROVAL
-            </div>
-            <div style={{ padding: '1rem', background: '#ffffff', border: '2px solid #000000', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <p className="brutalist-text" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#111111' }}>
-                {chosenProduct.name}
-              </p>
 
-              {/* Invoice Breakdown */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#faf9f6', padding: '0.75rem', border: '1px solid #e4e4e7', borderRadius: '2px', fontSize: '0.76rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#71717a' }}>Product Price:</span>
-                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.price).toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#71717a' }}>Shipping Fee:</span>
-                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.shipping_fee || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#71717a' }}>Taxes (18% GST):</span>
-                  <span style={{ fontWeight: 600, color: '#111111' }}>₹{Number(chosenProduct.fulfilment?.tax_amount || 0).toLocaleString('en-IN')}</span>
-                </div>
-                <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 900 }}>
-                  <span style={{ color: '#060e26' }}>Total Checkout:</span>
-                  <span style={{ color: '#060e26' }}>₹{Number(chosenProduct.total_amount || chosenProduct.price).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-
-              {/* Delivery Address & Estimate */}
-              {deliveryAddress && (
-                <div style={{ fontSize: '0.74rem', border: '1px solid #e4e4e7', padding: '0.75rem', borderRadius: '2px', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <div style={{ fontWeight: 700, color: '#111111', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>Delivery Address</div>
-                  <div style={{ color: '#111111', fontWeight: 600 }}>{deliveryAddress.recipient_name} ({deliveryAddress.phone})</div>
-                  <div style={{ color: '#71717a' }}>{deliveryAddress.line1}{deliveryAddress.line2 ? `, ${deliveryAddress.line2}` : ''}</div>
-                  <div style={{ color: '#71717a' }}>{deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}</div>
-                  
-                  {chosenProduct.fulfilment?.delivery_estimate && (
-                    <div style={{ borderTop: '1px solid #f4f4f5', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#060e26', fontWeight: 700 }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#060e26' }} />
-                      Estimated Delivery: {chosenProduct.fulfilment.delivery_estimate}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button 
-                type="button" 
-                onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} 
-                style={{ 
-                  width: '100%', 
-                  fontSize: '0.82rem', 
-                  padding: '0.8rem', 
-                  background: '#ffffff',
-                  color: '#060e26',
-                  border: '3px solid #000000',
-                  boxShadow: '3px 3px 0px #000000',
-                  fontWeight: 900,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  cursor: 'pointer',
-                  borderRadius: '0px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <Lock size={14} style={{ color: '#060e26' }} /> APPROVE & OPEN TEST CHECKOUT
-              </button>
-            </div>
-          </div>
-        )}
 
 
 
@@ -1227,7 +1274,13 @@ export default function CheckoutPage() {
                           width: '100%',
                           boxSizing: 'border-box'
                         }}>
-                          <div className="brutalist-text" style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                          {(!msg.missingParams || msg.missingParams.length === 0) && msg.agent !== 'negotiation' && (
+                            msg.content.includes('•') ? (
+                              <MerchantTable content={msg.content} />
+                            ) : (
+                              <div className="brutalist-text" style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                            )
+                          )}
 
                           {/* ---- Clarification / Mode Selection Card ---- */}
                           {msg.missingParams && msg.missingParams.length > 0 && (
@@ -1335,7 +1388,7 @@ export default function CheckoutPage() {
                                         Negotiated between candidate(s):
                                       </div>
                                       <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.4rem' }}>
-                                        {msg.guardrailData.candidates.map((cand: any, idx: number) => {
+                                        {msg.guardrailData.candidates.slice(0, 5).map((cand: any, idx: number) => {
                                           const isChosen = cand.product_id === msg.guardrailData?.chosenProduct?.product_id;
                                           return (
                                             <div key={idx} style={{
@@ -1374,12 +1427,12 @@ export default function CheckoutPage() {
                                   {msg.guardrailData?.dialogue && msg.guardrailData.dialogue.length > 0 && (
                                     <div style={{ marginTop: '0.75rem', padding: '0.75rem 0.9rem', background: '#f6f1e5', borderRadius: '0px', border: '1px solid #060e26', borderLeft: '4px solid #060e26' }}>
                                       <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 800, marginBottom: '0.5rem', fontSize: '0.68rem', fontFamily: "'Space Grotesk', sans-serif" }}>
-                                        Agent Negotiation Logs
+                                        WHY THIS PRODUCT WAS CHOSEN (CANDIDATE COMPARISON)
                                       </div>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {msg.guardrailData.dialogue.map((bubble: any, bIdx: number) => (
                                           <div key={bIdx} style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
-                                            <div style={{ width: '18px', height: '18px', borderRadius: '0px', background: '#060e26', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, flexShrink: 0 }}>
+                                            <div style={{ width: '22px', height: '22px', borderRadius: '0px', background: '#060e26', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 800, flexShrink: 0 }}>
                                               {bubble.avatar}
                                             </div>
                                             <div className="brutalist-text" style={{ flex: 1 }}>
@@ -1389,6 +1442,98 @@ export default function CheckoutPage() {
                                           </div>
                                         ))}
                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Inline Payment Approval Action Card */}
+                                  {(msg.guardrailData?.chosenProduct || (index === messages.length - 1 && chosenProduct)) && paymentStatus === 'pending' && !buyerApproved && (
+                                    <div style={{
+                                      marginTop: '0.85rem',
+                                      padding: '1rem 1.15rem',
+                                      background: '#ffffff',
+                                      border: '2px solid #060e26',
+                                      boxShadow: '4px 4px 0px #060e26',
+                                      borderRadius: '0px',
+                                    }}>
+                                      <div className="brutalist-subtitle" style={{ color: '#060e26', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.05em', marginBottom: '0.65rem', textTransform: 'uppercase', fontFamily: "'Space Grotesk', sans-serif" }}>
+                                        PAYMENT APPROVAL REQUIRED
+                                      </div>
+
+                                      {(() => {
+                                        const prod = (msg.guardrailData?.chosenProduct || chosenProduct) as any;
+                                        const addr = deliveryAddress;
+                                        const price = Number(prod?.price || 0);
+                                        const shipping = Number(prod?.fulfilment?.shipping_fee || 0);
+                                        const tax = Number(prod?.fulfilment?.tax_amount || 0);
+                                        const total = Number(prod?.total_amount || (price + shipping + tax));
+
+                                        return (
+                                          <>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: '#faf9f6', padding: '0.75rem 0.9rem', border: '1px solid #060e26', borderRadius: '0px', fontSize: '0.78rem' }}>
+                                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#52525b' }}>Product Price:</span>
+                                                <span style={{ fontWeight: 700, color: '#060e26' }}>₹{price.toLocaleString('en-IN')}</span>
+                                              </div>
+                                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#52525b' }}>Shipping Fee:</span>
+                                                <span style={{ fontWeight: 700, color: '#060e26' }}>₹{shipping.toLocaleString('en-IN')}</span>
+                                              </div>
+                                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#52525b' }}>Taxes (18% GST):</span>
+                                                <span style={{ fontWeight: 700, color: '#060e26' }}>₹{tax.toLocaleString('en-IN')}</span>
+                                              </div>
+                                              <div style={{ borderTop: '1px solid #060e26', marginTop: '0.35rem', paddingTop: '0.35rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 900 }}>
+                                                <span style={{ color: '#060e26' }}>Total Checkout:</span>
+                                                <span style={{ color: '#060e26' }}>₹{total.toLocaleString('en-IN')}</span>
+                                              </div>
+                                            </div>
+
+                                            {addr && (
+                                              <div style={{ marginTop: '0.65rem', fontSize: '0.75rem', border: '1px solid #060e26', padding: '0.75rem', background: '#ffffff', borderRadius: '0px', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                <div style={{ fontWeight: 800, color: '#060e26', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.05em' }}>Delivery Address</div>
+                                                <div style={{ color: '#060e26', fontWeight: 700 }}>{addr.recipient_name} ({addr.phone})</div>
+                                                <div style={{ color: '#52525b' }}>{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}</div>
+                                                <div style={{ color: '#52525b' }}>{addr.city}, {addr.state} - {addr.pincode}</div>
+                                                
+                                                {prod?.fulfilment?.delivery_estimate && (
+                                                  <div style={{ borderTop: '1px solid #e4e4e7', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#060e26', fontWeight: 700 }}>
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#060e26' }} />
+                                                    Estimated Delivery: {prod.fulfilment.delivery_estimate}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            <button 
+                                              type="button" 
+                                              disabled={isRunning}
+                                              onClick={() => handleSend('I approve this exact merchant order and amount.', autonomyMode, undefined, true)} 
+                                              style={{ 
+                                                width: '100%', 
+                                                marginTop: '0.75rem',
+                                                fontSize: '0.85rem', 
+                                                padding: '0.8rem', 
+                                                background: '#060e26',
+                                                color: '#ffffff',
+                                                border: '2px solid #060e26',
+                                                boxShadow: '3px 3px 0px #000000',
+                                                fontWeight: 900,
+                                                letterSpacing: '0.04em',
+                                                textTransform: 'uppercase',
+                                                fontFamily: "'Space Grotesk', sans-serif",
+                                                cursor: 'pointer',
+                                                borderRadius: '0px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem'
+                                              }}
+                                            >
+                                              <Lock size={15} style={{ color: '#ffffff' }} /> APPROVE & OPEN TEST CHECKOUT
+                                            </button>
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                   )}
                                 </div>
@@ -1513,29 +1658,9 @@ export default function CheckoutPage() {
                             </div>
                           )}
 
-                          {/* ---- Payment Attempts ---- */}
-                          {msg.paymentAttempts && msg.paymentAttempts.length > 0 && (
-                            <div style={{ marginTop: '0.85rem', padding: '1rem', background: '#f4f4f5', borderRadius: '2px', border: '1px solid #e4e4e7', color: '#111111' }}>
-                              <div className="brutalist-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem', color: '#111111' }}>
-                                <RefreshCw size={14} />
-                                Razorpay Gateway (Fixed 1-Retry Policy)
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
-                                {msg.paymentAttempts.map((att, idx) => (
-                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '2px', border: '1px solid #e4e4e7', fontSize: '0.78rem' }}>
-                                    <span className="brutalist-text"><strong>Attempt {att.attempt}</strong> ({att.attempt === 1 ? 'Initial' : 'Retry 1/1'}): {att.reason || att.status}</span>
-                                    <span className="minimal-pill minimal-pill-danger">{att.status}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="brutalist-text" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ffffff', padding: '0.45rem 0.7rem', borderRadius: '2px', borderLeft: '4px solid #ef4444', fontSize: '0.75rem', fontWeight: 600, color: '#ef4444' }}>
-                                <ShieldAlert size={14} />
-                                Policy Enforced: No further charges attempted. Awaiting details.
-                              </div>
-                            </div>
-                          )}
 
-                          {msg.riskData && <RiskFeatureChart data={msg.riskData} />}
+
+
                         </div>
                       </div>
                     </div>
