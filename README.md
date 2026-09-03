@@ -28,7 +28,7 @@ By combining a natural language shopping experience with hard-coded, determinist
 12. [Project Structure](#project-structure)
 13. [Environment Configuration](#environment-configuration)
 14. [Local Development & Demo Setup](#local-development--demo-setup)
-15. [Production Deployment](#production-deployment)
+15. [Deployment Strategies](#deployment-strategies)
 16. [Model Evaluation & Audit Metrics](#model-evaluation--audit-metrics)
 17. [Testing](#testing)
 18. [Sample Data & Seeding](#sample-data--seeding)
@@ -64,6 +64,8 @@ Glassbox solves this with a **bounded and gated Multi-Agent pipeline** combined 
 | **Deep Security Layer** | HMAC-SHA256 webhook verification (`X-Razorpay-Signature`), SSRF protection against internal IPs, and domain allowlisting. |
 | **Multi-Tenant RBAC** | Strict row-level tenant isolation, scoped database tables, and distinct roles (`buyer`, `merchant_admin`, `platform_admin`). |
 
+> **Deployment Status:** Glassbox runs locally today on FastAPI and SQLite for demo purposes. The architecture described below (AWS Step Functions, DynamoDB, OpenSearch, EventBridge) is the production target, with `serverless.yml` and `lambda_handler.py` in place as the AWS deployment entry points.
+
 ---
 
 ## Technology Stack
@@ -77,7 +79,7 @@ Glassbox solves this with a **bounded and gated Multi-Agent pipeline** combined 
 ### Backend Engine
 - **Framework:** FastAPI (Python 3.11+)
 - **Machine Learning:** XGBoost, LightGBM, Scikit-learn, Joblib
-- **Database & Persistence:** SQLite (Local WAL mode), Supabase pgvector (RAG embeddings)
+- **Database & Persistence:** Local Dev: SQLite (WAL mode) & Supabase pgvector | Production Target: AWS DynamoDB & Amazon OpenSearch Service
 - **Security & Auth:** Zero-dependency HS256 JWT, PBKDF2-HMAC-SHA256 password hashing
 
 ### Frontend Stack
@@ -533,9 +535,31 @@ VITE_API_URL=http://localhost:8000/api
 VITE_WS_URL=ws://localhost:8000/api/transaction/ws
 ```
 
+### AWS Production Configuration (`.env.production`)
+```env
+# AWS Infrastructure & Region Settings
+AWS_REGION=ap-south-1
+DYNAMODB_TABLE_NAME=glassbox_transactions
+OPENSEARCH_ENDPOINT=https://search-glassbox-domain.ap-south-1.es.amazonaws.com
+S3_AUDIT_BUCKET=glassbox-audit-vault-logs
+ELASTICACHE_REDIS_URL=redis://glassbox-cache.xxxxxx.ng.0001.aps1.cache.amazonaws.com:6379
+
+# Production Gateway & Client Endpoints
+API_GATEWAY_URL=https://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/prod
+VITE_API_URL=https://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/prod/api
+VITE_WS_URL=wss://xxxxxxxxxx.execute-api.ap-south-1.amazonaws.com/prod/api/transaction/ws
+
+# Production Security & Integrations
+ENVIRONMENT=production
+ALLOWED_DOMAINS=api.razorpay.com,api.groq.com
+ENABLE_SSRF_PROTECTION=true
+```
+
 ---
 
 ## Local Development & Demo Setup
+
+*The steps below spin up Glassbox locally for development and demo purposes. Production deployment targets the serverless AWS architecture described above.*
 
 ### 1. Backend Setup
 ```powershell
@@ -562,9 +586,9 @@ Open `http://localhost:5173` in your browser to access the application.
 
 ---
 
-## Production Deployment
+## Deployment Strategies
 
-### Containerized Deployment (Docker Compose)
+### Local / Demo Containerized Setup (Docker Compose)
 ```yaml
 version: '3.8'
 services:
@@ -586,6 +610,13 @@ services:
 volumes:
   sqlite_data:
 ```
+
+### AWS Production Deployment (Serverless)
+
+Glassbox includes production-ready Serverless Infrastructure-as-Code definitions for deploying to AWS:
+
+- **`Backend/lambda_handler.py`**: Adapts the FastAPI ASGI backend application to run seamlessly inside AWS Lambda execution environments using [Mangum](https://mangum.io/), translating incoming API Gateway HTTP requests into ASGI events.
+- **`Backend/serverless.yml`**: Configures the AWS Cloud infrastructure deployment using the Serverless Framework. It provisions the AWS Lambda compute functions, API Gateway HTTP endpoints, IAM execution roles, binary media types, and environment variable bindings required for production cloud deployment.
 
 ---
 

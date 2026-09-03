@@ -44,6 +44,15 @@ app/model/
 # Prompts
 Prompts/
 
+# Video / Media
+Video/
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.mpeg
+*.mpv
+
 # OS / IDE
 .DS_Store
 Thumbs.db
