@@ -88,138 +88,151 @@ Glassbox solves this with a **bounded and gated Multi-Agent pipeline** combined 
 
 ---
 
-## Amazon Web Services (AWS) Cloud Stack
-
-Glassbox features native, production-ready support for **Amazon Web Services (AWS)** serverless infrastructure, allowing the multi-agent pipeline and API backend to run on AWS Cloud or locally with seamless fallback mechanisms.
-
-### AWS Infrastructure Architecture
-
-```mermaid
-graph TB
-    subgraph "AWS Edge & Gateway"
-        CF[AWS CloudFront CDN]
-        S3[AWS S3 Bucket — React SPA]
-        APIGW[AWS HTTP API Gateway]
-    end
-
-    subgraph "AWS Compute & Orchestration"
-        Lambda[AWS Lambda — FastAPI + Mangum]
-        SF[AWS Step Functions — Agent State Machine]
-        EB[AWS EventBridge — Event Bus]
-    end
-
-    subgraph "AWS AI & Data Integrations"
-        GroqAPI[Groq LPU API]
-        RazorpayAPI[Razorpay Test Gateway]
-        DBStore[SQLite / Supabase Store]
-    end
-
-    CF --> S3
-    CF --> APIGW
-    APIGW --> Lambda
-    Lambda --> SF
-    Lambda --> EB
-    SF --> GroqAPI
-    Lambda --> RazorpayAPI
-    Lambda --> DBStore
-```
-
-### AWS Cloud Services & Components
-
-| AWS Service | File / Integration | Role in Glassbox | Fallback Mechanism |
-|---|---|---|---|
-| **AWS Lambda** | `Backend/lambda_handler.py` | Runs FastAPI serverlessly via Mangum ASGI wrapper. | Local Uvicorn server (`uvicorn main:app`). |
-| **AWS Step Functions** | `Backend/app/services/aws_step_functions.py` | Native state machine orchestrator for the 6-agent transaction graph. | Local LangGraph state graph router (`orchaestartor_langgraph.py`). |
-| **AWS EventBridge** | `Backend/app/services/aws_eventbridge.py` | Event bus (`glassbox-events`) publishing real-time agent telemetry & audit trails. | In-memory event bus & local SQLite audit logging. |
-| **AWS CloudFront** | `serverless.yml` | Edge distribution for HTTPS API termination and low-latency frontend static asset delivery. | Direct Nginx reverse proxy. |
-| **AWS S3** | `serverless.yml` | Static site bucket (`glassbox-frontend`) for deployment artifacts and asset persistence. | Local file system storage. |
-| **AWS IAM** | `serverless.yml` | Execution roles (`GlassBoxStepFunctionsRole`) with zero cross-tenant access. | Local environment variables. |
-
-### Serverless Framework Integration (`serverless.yml`)
-
-The backend contains a full `serverless.yml` deployment specification enabling one-command provisioning to AWS:
-
-```yaml
-service: glassbox-backend
-provider:
-  name: aws
-  runtime: python3.11
-  environment:
-    ENABLE_AWS_SERVERLESS: 'true'
-    ENABLE_AWS_STEP_FUNCTIONS: 'true'
-    ENABLE_AWS_EVENTBRIDGE: 'true'
-    AWS_EVENTBUS_NAME: glassbox-events
-```
-
-### AWS Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `ENABLE_AWS_SERVERLESS` | Enables AWS Lambda Mangum handler execution mode. | `false` |
-| `ENABLE_AWS_STEP_FUNCTIONS` | Directs agent graph execution to AWS Step Functions state machine. | `false` |
-| `ENABLE_AWS_EVENTBRIDGE` | Enables event publishing to AWS EventBridge event bus. | `false` |
-| `AWS_EVENTBUS_NAME` | Target EventBridge bus for audit telemetry. | `glassbox-events` |
-| `AWS_STEP_FUNCTIONS_ARN` | ARN for the 6-agent Step Functions state machine. | `None` |
-| `AWS_REGION` | Target AWS cloud region. | `us-east-1` |
-
----
-
 ## System Architecture
 
-![System Architecture](Diagrams/Architecture.png)
+The GLASSBOX Architecture is an enterprise-grade, event-driven, and bound multi-agent system designed for autonomous agentic commerce. It balances the non-deterministic reasoning of generative AI agents with strict, deterministic governance (spending limits, circuit breakers, risk gates, and regulatory auditability).
 
-Glassbox uses a decoupled architecture. The React SPA frontend communicates with a Python FastAPI backend over REST API and real-time WebSockets. The backend manages a local SQLite database and orchestrates external API calls to Razorpay (for payments) and Groq (for LLM inference).
+### Layer-by-Layer Breakdown
+
+#### 1. Ingress & Edge Layer (Scalability & Perimeter Security)
+**Clients / Agents Supported:**
+- **AI Buyer Agent:** Interacts machine-to-machine over agentic negotiation standards like NPCI UAP, ACP, AP2, or HTTP 402 (x402).
+- **Human Shopper:** Connects via Web, Mobile, or Voice interfaces over HTTPS and WebSockets.
+
+- **AWS WAF:** Sanitizes all traffic, mitigating Layer 7 DDoS, prompt injection spam, and volumetric rate abuses before reaching downstream components.
+- **Amazon API Gateway:** Acts as the reverse proxy for routing, rate limiting, and protocol translation (normalizing agentic RPC/HTTP protocols into internal microservice contracts).
+- **Amazon CloudFront CDN:** Caches static product media (images, videos, static catalog snapshots) to reduce edge response latency.
+
+#### 2. Compute & Orchestration Layer (Stateful Agent Pipeline)
+Orchestrated deterministically using AWS Step Functions, the pipeline enforces an ordered state transition for every conversational or transactional turn:
+- **Ingest & Context Builder:** Reconstitutes user profile, cart state, active session, and short-term dialogue history.
+- **NLU / Intent Parsing:** Extracts structured entities (category, hard spending ceilings, deadlines, sizing constraints).
+- **Context Retrieval:** Performs hybrid parametric and dense vector search against the catalog to pull matching candidate products.
+- **Campaign & Upsell Agent:** Evaluates business cross-sell logic, promotional bundles, and personalized discounts against candidate items.
+- **Transaction Gating & Bounding:** The core safety checkpoint. Evaluates hard programmatic spend limits, risk scoring (e.g., XGBoost fraud/chargeback models), and circuit breakers before any money action is triggered.
+- **Audit & Explainability:** Formulates structured metadata (prompt snapshots, context trees, model version, and deterministic decisions) to ensure every AI transaction is fully explainable.
+
+#### 3. Data & Storage Tier (High Throughput & CQRS Separation)
+The data layer avoids dual-write hazards and matches read/write workloads to the proper database engines:
+- **ElastiCache (Redis / DAX):** Provides sub-millisecond session state caching to reduce p99 turn latencies for conversational agents.
+- **Amazon DynamoDB:** Serves as the single transactional source of truth for shopping carts, agent state checkpoints, and completed orders.
+- **Amazon OpenSearch Service:** Powers low-latency parametric filters and semantic vector embeddings for product discovery. Synchronized asynchronously from DynamoDB using DynamoDB Streams & OpenSearch Ingestion (OSIS).
+- **Amazon S3:** High-throughput object store for product media, model artifacts, and raw JSON/XML catalog drops.
+- **S3 Glacier Vault Lock (WORM):** Captures immutable audit trails via DynamoDB Streams. Enforces non-rewritable compliance logging for auditing and financial reconciliation.
+
+#### 4. External Integrations & Webhook Ingress
+- **Payment Outbound:** Once cleared by Step 5 (Transaction Gating), the orchestrator triggers settlement calls against the Razorpay Payment Gateway.
+- **Isolated Webhook Ingress:** Razorpay callbacks pass through a dedicated API Gateway with HMAC Verification Lambda. Validated callbacks resume waiting state machines; unverified or forged webhooks are deflected immediately into failure queues.
+
+#### 5. Graceful Failure Handling (Decoupled Resiliency)
+- Failed orchestrations, network timeouts, or validation anomalies route directly to an Amazon EventBridge bus.
+- Events buffer in an SQS Processing Queue and execute via worker runtimes (Lambda / ECS Fargate) with exponential backoff and jitter.
+- Repeated failures drain into an SQS Dead Letter Queue (DLQ), triggering CloudWatch / SNS Alerts for operational visibility.
+
+### Architecture Diagram
 
 ```mermaid
-graph TB
-    subgraph "Client Layer (Frontend SPA)"
-        User[Buyer / Merchant]
-        ReactApp[React 19 + Vite SPA]
-        WSClient[WebSocket Connection]
+graph TD
+    %% Global Styling
+    classDef client fill:#388E3C,stroke:#1B5E20,stroke-width:2px,color:#FFFFFF;
+    classDef edge fill:#FBC02D,stroke:#F57F17,stroke-width:2px,color:#000000;
+    classDef compute fill:#512DA8,stroke:#311B92,stroke-width:2px,color:#FFFFFF;
+    classDef data fill:#1976D2,stroke:#0D47A1,stroke-width:2px,color:#FFFFFF;
+    classDef external fill:#FBC02D,stroke:#C49000,stroke-width:2px,color:#000000;
+    classDef webhook fill:#303F9F,stroke:#1A237E,stroke-width:2px,color:#FFFFFF;
+    classDef resilience fill:#FFA000,stroke:#E65100,stroke-width:2px,color:#000000;
+
+    %% Ingress Clients
+    subgraph Clients ["Ingress Actors"]
+        AI_AGENT["AI Buyer Agent<br/>(NPCI UAP / ACP / AP2 / x402)"]:::client
+        HUMAN["Human Shopper<br/>(Conversational UI / Web / App)"]:::client
     end
 
-    subgraph "FastAPI Backend API Engine"
-        API[FastAPI Router :8000]
-        JWTAuth[JWT & RBAC Middleware]
-        SecLayer[SSRF & Webhook Validator]
+    %% External Systems
+    subgraph ExternalServices ["External Gateways"]
+        RAZORPAY["Razorpay Payment Gateway<br/>(Live APIs & Webhooks)"]:::external
     end
 
-    subgraph "Virtual Brain (LangGraph Multi-Agent Engine)"
-        Graph[LangGraph State Orchestrator]
-        AgentConcierge[Concierge Agent 70B]
-        AgentCatalog[Catalog RAG Agent 8B]
-        AgentNegotiation[Negotiation Agent 70B]
-        AgentRisk[Risk Agent ML]
-        AgentPayment[Payment Agent 8B]
-        AgentAudit[Audit/Ledger Agent 70B]
+    %% Edge & Gateway Layer
+    subgraph EdgeLayer ["Edge & Gateway (Scalability Layer)"]
+        WAF["AWS WAF<br/>(Security & DDoS)"]:::edge
+        APIGW["API Gateway<br/>(Protocol Translation & Routing)"]:::edge
+        CDN["CloudFront CDN<br/>(Static Assets / Media)"]:::edge
     end
 
-    subgraph "Data & External Integrations"
-        DB[(SQLite / Supabase)]
-        Groq[Groq LPU API Llama 3.3/3.1]
-        MLModel[Hybrid XGBoost/LightGBM]
-        Razorpay[Razorpay Payment Gateway]
+    %% Compute & Orchestrator
+    subgraph OrchestrationLayer ["Compute & Orchestration Layer (AWS Step Functions)"]
+        S1["1. Ingest & Context<br/>(Session, User, Cart)"]:::compute
+        S2["2. NLU / Intent<br/>(Parsing & Entities)"]:::compute
+        S3["3. Context Retrieval<br/>(OpenSearch Catalog)"]:::compute
+        S4["4. Campaign & Upsell<br/>(Personalization & Rules)"]:::compute
+        S5["5. Transaction Gating<br/>(Risk Checks & Spending Limits)"]:::compute
+        S6["6. Audit & Explainability<br/>(Decision Trees & Tracing)"]:::compute
     end
 
-    User --> ReactApp
-    ReactApp -->|REST API| API
-    ReactApp -->|WebSocket| WSClient
-    WSClient --> API
-    API --> JWTAuth
-    JWTAuth --> SecLayer
-    SecLayer --> Graph
-    Graph --> AgentConcierge
-    AgentConcierge --> Groq
-    Graph --> AgentCatalog
-    AgentCatalog --> DB
-    Graph --> AgentNegotiation
-    AgentNegotiation --> Groq
-    Graph --> AgentRisk
-    AgentRisk --> MLModel
-    Graph --> AgentPayment
-    AgentPayment --> Razorpay
-    Graph --> AgentAudit
-    AgentAudit --> DB
+    %% Storage Layer
+    subgraph StorageLayer ["Data & Storage Layer (Persistence & CQRS)"]
+        REDIS["ElastiCache (Redis / DAX)<br/>(Session Cache)"]:::data
+        OPENSEARCH["Amazon OpenSearch Service<br/>(Vector + Parametric Search)"]:::data
+        DYNAMO["AWS DynamoDB<br/>(Transactions & States)"]:::data
+        S3_MEDIA["AWS S3<br/>(Catalog Media Assets)"]:::data
+        S3_VAULT["S3 Glacier Vault Lock<br/>(Immutable Audit Logs)"]:::data
+    end
+
+    %% Webhook Ingress
+    subgraph WebhookIngressLayer ["Webhook Ingress"]
+        WH_GW["API Gateway<br/>(HMAC Signature Verification)"]:::webhook
+    end
+
+    %% Resilience & Failure Handling
+    subgraph FailureLayer ["Graceful Failure Handling"]
+        EVENTBRIDGE["EventBridge<br/>(Event Routing)"]:::resilience
+        SQS["SQS<br/>(Processing Queue)"]:::resilience
+        WORKER["Lambda / ECS Fargate<br/>(Retry / Error Logic)"]:::resilience
+        DLQ["Dead Letter Queue (DLQ)<br/>(Exhausted Retries)"]:::resilience
+        ALERTS["CloudWatch / SNS<br/>(Alerts & Monitoring)"]:::resilience
+    end
+
+    %% Wiring - Ingress & Edge
+    AI_AGENT -->|"Agent Protocols (UAP/ACP/x402)"| WAF
+    HUMAN -->|"HTTPS / WebSocket"| WAF
+    HUMAN -->|"Media Requests"| CDN
+    WAF --> APIGW
+    APIGW --> CDN
+    APIGW --> OrchestrationLayer
+
+    %% Wiring - Compute State Machine
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> S6
+    S5 -->|"Payment Requests"| RAZORPAY
+
+    %% Wiring - Compute to Storage
+    S1 <-->|"Read/Write Session"| REDIS
+    S1 <-->|"Transactions/State"| DYNAMO
+    S3 <-->|"Query Vector/Catalog"| OPENSEARCH
+    S4 <-->|"Catalog Details"| OPENSEARCH
+    S4 -.->|"Read Media"| S3_MEDIA
+    S6 -->|"Store Logs (via Streams)"| DYNAMO
+
+    %% Storage Internal CDC & Sync
+    DYNAMO -->|"Streams / OSIS Sync"| OPENSEARCH
+    DYNAMO -->|"CDC Streams"| S3_VAULT
+    CDN -->|"Pull Origin Assets"| S3_MEDIA
+
+    %% Webhook Ingress Flow
+    RAZORPAY -->|"Payment Webhook"| WH_GW
+    WH_GW -->|"Verified Webhooks"| S5
+    WH_GW -.->|"Validation Failures"| EVENTBRIDGE
+
+    %% Failure Flow
+    OrchestrationLayer -.->|"Execution Failure"| EVENTBRIDGE
+    EVENTBRIDGE --> SQS
+    SQS --> WORKER
+    WORKER -->|"Failed After Retries"| DLQ
+    DLQ --> ALERTS
 ```
 
 ### Transaction Request Flow
