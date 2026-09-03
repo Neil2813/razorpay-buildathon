@@ -62,6 +62,10 @@ class TransactionState(TypedDict, total=False):
     # --- Revenue Growth Engine (Upsell & Cross-Sell) ---
     upsell_offer: dict[str, Any] | None  # complement item bundle proposal
     accept_upsell: bool  # True only when buyer explicitly opted into the bundle
+    # --- Merchant Explainability & Graceful Failure ---
+    evaluation_matrix: list[dict[str, Any]] | None # Detailed comparative evaluation of candidate merchants/SKUs
+    win_loss_reason: str | None                    # Categorized win/loss code (e.g. LOST_SHIPPING_COST, WON_BEST_VALUE)
+    graceful_failure_payload: dict[str, Any] | None # Structured failure diagnosis & recovery recommendations
 
 
 def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str | None = None) -> TransactionState:
@@ -96,6 +100,9 @@ def new_transaction_state(*, tenant_id: str, user_message: str, session_id: str 
         fulfilment=None,
         upsell_offer=None,
         accept_upsell=False,
+        evaluation_matrix=[],
+        win_loss_reason=None,
+        graceful_failure_payload=None,
     )
 
 

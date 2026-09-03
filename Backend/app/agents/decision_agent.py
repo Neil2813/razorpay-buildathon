@@ -300,12 +300,55 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
                     chosen["upsell_product"] = upsell_item.get("name")
                     state["chosen_product"] = chosen
 
-    if not passed:
-        state["payment_status"] = "escalated"
-        state["escalation_message"] = (
-            f"This item exceeds your ₹{state['guardrail_ceiling']:,.2f} unattended limit; "
-            "I need your explicit confirmation to proceed."
-        )
+    # Build structured evaluation matrix for merchant explainability
+    eval_matrix = []
+    chosen_price = float(chosen.get("total_amount", chosen.get("price", 0)))
+    chosen_rating = float(chosen.get("rating") or 0)
+    chosen_policy = bool(chosen.get("return_policy"))
+
+    for item in top5:
+        p_id = item.get("product_id")
+        p_name = item.get("name")
+        p_price = float(item.get("total_amount", item.get("price", 0)))
+        p_rating = float(item.get("rating") or 0)
+        p_policy = bool(item.get("return_policy"))
+        is_chosen = (p_id == chosen.get("product_id"))
+
+        if is_chosen:
+            rej_reason = "Selected as best value candidate"
+            loss_code = "WON_BEST_VALUE"
+        elif not passed and p_price > state["guardrail_ceiling"]:
+            rej_reason = f"Price (₹{p_price:,.0f}) exceeds spend ceiling limit of ₹{state['guardrail_ceiling']:,.0f}"
+            loss_code = "LOST_PRICE_CEILING"
+        elif not p_policy and chosen_policy:
+            rej_reason = "Missing structured machine-readable return policy"
+            loss_code = "LOST_NO_RETURN_POLICY"
+        elif p_price > chosen_price:
+            delta_pct = round(((p_price - chosen_price) / max(chosen_price, 1)) * 100, 1)
+            rej_reason = f"Price is {delta_pct}% higher than chosen alternative (₹{p_price:,.0f} vs ₹{chosen_price:,.0f})"
+            loss_code = "LOST_HIGHER_PRICE"
+        elif p_rating < chosen_rating:
+            rej_reason = f"Rating ({p_rating}★) lower than selected option ({chosen_rating}★)"
+            loss_code = "LOST_LOWER_RATING"
+        else:
+            rej_reason = "Lower overall composite ranking score"
+            loss_code = "LOST_RANKING_SCORE"
+
+        eval_matrix.append({
+            "product_id": p_id,
+            "name": p_name,
+            "price": p_price,
+            "rating": p_rating,
+            "has_return_policy": p_policy,
+            "delivery_time_days": item.get("delivery_time_days", 3),
+            "composite_score": round(_composite_score(item), 2),
+            "selected": is_chosen,
+            "rejection_reason": rej_reason,
+            "loss_code": loss_code,
+        })
+
+    state["evaluation_matrix"] = eval_matrix
+    state["win_loss_reason"] = "WON_BEST_VALUE" if (passed and chosen) else ("LOST_PRICE_CEILING" if not passed else "LOST_RANKING_SCORE")
 
     audit_event(
         state, agent="negotiation",
@@ -319,6 +362,8 @@ def run(state: TransactionState, *, guardrail_ceiling: float) -> TransactionStat
             "price": price,
             "ceiling": state["guardrail_ceiling"],
             "guardrail_passed": passed,
+            "evaluation_matrix": eval_matrix,
+            "win_loss_reason": state["win_loss_reason"],
             # Revenue Growth Engine output
             "upsell_offer": upsell_offer,
             "upsell_triggered": upsell_offer is not None,

@@ -54,7 +54,7 @@ _GUIDED_REQUIRED: list[str] = ["budget_min", "budget_max", "brand", "color", "ge
 # Autonomous mode checklist — collects all user choices (brand, color, gender, size, rating, budget)
 # Autonomous mode checklist — budget_min must be explicitly answered (user must state a floor or say 'any/no minimum')
 # brand and min_rating are asked but have 'any' / 0.0 defaults when user says 'any'.
-_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "color", "gender", "size"]
+_AUTONOMOUS_REQUIRED: list[str] = ["category", "budget_min", "budget_max", "color", "gender", "size", "min_rating"]
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +173,9 @@ def parse_intent_fallback(message: str) -> dict[str, Any]:
         max_match = _MAX_BUDGET_RE.search(text)
         if max_match:
             val_str = max_match.group(1) or max_match.group(2)
-            budget_max = _extract_number(val_str)
+            val = _extract_number(val_str)
+            if val != budget_min or not floor_match:
+                budget_max = val
         elif not floor_match:
             curr_match = _CURRENCY_RE.search(text)
             if curr_match:
@@ -436,7 +438,7 @@ def run(state: TransactionState) -> TransactionState:
         valid_floors = [n for n in numbers if (b_max is None or n < b_max) and n not in (existing_intent.get("size"), existing_intent.get("min_rating"))]
         if valid_floors:
             existing_intent["budget_min"] = valid_floors[0]
-        else:
+        elif _NO_MINIMUM_RE.search(msg) or _ANY_RE.search(msg):
             existing_intent["budget_min"] = 0.0
 
     intent = existing_intent

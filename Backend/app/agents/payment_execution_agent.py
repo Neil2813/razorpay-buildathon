@@ -69,5 +69,17 @@ def run(state: TransactionState, gateway: PaymentGateway, *, currency: str = "IN
     fallback_message = "Payment could not be completed after one retry. No further charge will be attempted."
     phrasing = complete_json(model=FAST_MODEL, system="Return JSON {\"message\": string}. Explain a failed payment clearly, and state that no further charge will be attempted.", user=str(state["payment_attempts"]))
     state["escalation_message"] = phrasing.get("message", fallback_message) if isinstance(phrasing, dict) else fallback_message
-    audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"]), "idempotency_key_present": True})
+
+    failure_payload = {
+        "failure_type": "PAYMENT_RETRY_EXHAUSTED",
+        "error_code": "PAYMENT_GATEWAY_REJECTED",
+        "root_cause": state["escalation_message"],
+        "gracefully_handled": True,
+        "attempts_count": len(state["payment_attempts"]),
+        "suggested_recovery_action": "Switch to alternative payment method (e.g. Netbanking / UPI) or retry transaction.",
+        "merchant_alert": "Razorpay test mode order creation failed after 2 attempts. No funds were debited."
+    }
+    state["graceful_failure_payload"] = failure_payload
+
+    audit_event(state, agent="payment", decision_reason="Two payment attempts failed; fixed retry policy requires escalation.", output_summary={"attempts": len(state["payment_attempts"]), "idempotency_key_present": True, "graceful_failure": failure_payload})
     return state

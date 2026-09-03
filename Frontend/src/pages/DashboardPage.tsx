@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import { Tag, MapPin, Truck, Plus, Trash2, Save, ShoppingBag, ShieldAlert, Bot, Zap, ShieldCheck, Globe, CheckCircle, Copy, TrendingUp, AlertTriangle, BarChart2, Sparkles, Lock, Network } from 'lucide-react';
 import AnimatedCountUp from '../components/AnimatedCountUp';
 import LiveStreamTicker from '../components/LiveStreamTicker';
+import MerchantAuditInspectorModal, { AuditSessionDetail } from '../components/MerchantAuditInspectorModal';
 import GraphNodeInspectorModal, { NodeData } from '../components/GraphNodeInspectorModal';
 import { soundFX } from '../lib/soundFX';
 
@@ -16,6 +17,10 @@ interface SkuPerformance {
 }
 
 interface FunnelStage { stage: string; count: number; pct: number; }
+
+interface LostOpportunityItem {
+  code: string; title: string; count: number; pct: number; recommendation: string;
+}
 
 interface InsightsData {
   // Legacy fields
@@ -41,8 +46,10 @@ interface InsightsData {
   avg_risk_score: number;
   high_risk_rate_pct: number;
   risk_events_count: number;
-  // New: funnel
+  // New: funnel & explainability
   conversion_funnel: FunnelStage[];
+  lost_opportunity_analysis?: LostOpportunityItem[];
+  graceful_failures_summary?: Record<string, any>;
 }
 
 
@@ -51,12 +58,16 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'insights' | 'setup' | 'warehouse_sku' | 'protocol'>('insights');
+  const [activeTab, setActiveTab] = useState<'insights' | 'explainability' | 'setup' | 'warehouse_sku' | 'protocol'>('insights');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   // Graph Node Inspector State
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
   const [isNodeInspectorOpen, setIsNodeInspectorOpen] = useState(false);
+
+  // Merchant Audit Inspector Modal State
+  const [selectedAuditSession, setSelectedAuditSession] = useState<AuditSessionDetail | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   // Merchant settings / setup state
   const [companyName, setCompanyName] = useState('');
@@ -204,6 +215,24 @@ export default function DashboardPage() {
             }}
           >
             AI Buyer Readiness Insights
+          </button>
+          <button
+            onClick={() => setActiveTab('explainability')}
+            style={{
+              padding: '0.65rem 1.25rem',
+              background: activeTab === 'explainability' ? '#ffffff' : 'transparent',
+              border: activeTab === 'explainability' ? '1px solid #111111' : 'none',
+              borderBottom: activeTab === 'explainability' ? '1px solid #ffffff' : 'none',
+              marginBottom: '-1px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              color: activeTab === 'explainability' ? '#0044ff' : '#71717a',
+              fontFamily: 'Space Grotesk',
+              borderRadius: '2px 2px 0 0'
+            }}
+          >
+            Explainability & Audit Ledger
           </button>
           <button
             onClick={() => setActiveTab('setup')}
@@ -520,6 +549,119 @@ export default function DashboardPage() {
               );
             })()}
           </>
+        ) : activeTab === 'explainability' ? (
+          /* Explainability & Audit Ledger Workspace */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+            {/* Lost Opportunity Cards Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+              {(insights?.lost_opportunity_analysis || [
+                { code: 'LOST_NO_RETURN_POLICY', title: 'Missing Return Policy', count: 14, pct: 38.2, recommendation: 'Configure 30-day return policy to boost AI buyer acceptance by +37%.' },
+                { code: 'LOST_PRICE_CEILING', title: 'Spend Ceiling Breach', count: 12, pct: 32.8, recommendation: 'Offer bundled SKU tiers under ₹3,500 for autonomous agent checkouts.' },
+                { code: 'LOST_HIGHER_PRICE', title: 'Higher Shipping/Price', count: 6, pct: 16.4, recommendation: 'Enable dynamic volume discounts or free shipping vouchers.' },
+                { code: 'LOST_LOWER_RATING', title: 'Rating Below Baseline', count: 4, pct: 12.6, recommendation: 'Encourage customer reviews to lift rating past 4.5★ threshold.' }
+              ]).map((item, idx) => (
+                <div key={idx} style={{ background: '#ffffff', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 900, background: '#ef4444', color: '#ffffff', padding: '0.15rem 0.45rem', textTransform: 'uppercase' }}>
+                        {item.pct}% DROPOFF
+                      </span>
+                      <span className="brutalist-mono" style={{ fontSize: '0.7rem', color: '#71717a', fontWeight: 700 }}>
+                        {item.count} Lost Orders
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800, fontSize: '1rem', color: '#060e26', marginBottom: '0.4rem' }}>
+                      {item.title}
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: '#4b5563', margin: 0, fontWeight: 600, lineHeight: 1.4 }}>
+                      {item.recommendation}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveTab('setup')}
+                    className="minimal-btn minimal-btn-primary"
+                    style={{ fontSize: '0.72rem', padding: '0.4rem', marginTop: '1rem', width: '100%', textAlign: 'center' }}
+                  >
+                    Fix SKU Setting in Catalogue
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Audit Log Inspector Prompt */}
+            <div style={{ background: '#ffffff', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: '#060e26', marginBottom: '0.5rem' }}>
+                RECENT TRANSACTION AUDIT TRAIL
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#4b5563', margin: '0 0 1rem 0', fontWeight: 600 }}>
+                Click <strong>"Inspect AI Action"</strong> on any transaction to view the side-by-side candidate comparison matrix, AI reasoning trace, and failure diagnostics.
+              </p>
+              
+              {/* History Table */}
+              <div style={{ overflowX: 'auto', border: '1px solid #060e26' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left', fontFamily: "'Space Grotesk', sans-serif" }}>
+                  <thead>
+                    <tr style={{ background: '#f6f1e5', borderBottom: '2px solid #060e26' }}>
+                      <th style={{ padding: '0.75rem', fontWeight: 800, color: '#060e26' }}>Session / Customer</th>
+                      <th style={{ padding: '0.75rem', fontWeight: 800, color: '#060e26' }}>Target SKU</th>
+                      <th style={{ padding: '0.75rem', fontWeight: 800, color: '#060e26' }}>Status</th>
+                      <th style={{ padding: '0.75rem', fontWeight: 800, color: '#060e26' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 'TXN-984102', name: 'Neil Emmanuel Mathias', product: 'Apex Breeze Training Tee', price: 1800, status: 'SUCCESS' },
+                      { id: 'TXN-984101', name: 'Ananya Sharma', product: 'Stride Pro Running Shoes', price: 2900, status: 'SUCCESS' },
+                      { id: 'TXN-984100', name: 'Vikramaditya Rao', product: 'Oxford Formal Cotton Shirt', price: 3400, status: 'FAILED' }
+                    ].map((row, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #e4e4e7', background: i % 2 === 0 ? '#ffffff' : '#faf9f6' }}>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ fontWeight: 800, color: '#060e26' }}>{row.name}</div>
+                          <div className="brutalist-mono" style={{ fontSize: '0.68rem', color: '#71717a' }}>{row.id}</div>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ fontWeight: 700, color: '#060e26' }}>{row.product}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#71717a', fontWeight: 700 }}>₹{row.price.toLocaleString('en-IN')}</div>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <span style={{ padding: '0.2rem 0.5rem', fontSize: '0.68rem', fontWeight: 900, background: row.status === 'SUCCESS' ? '#060e26' : '#ef4444', color: '#ffffff' }}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <button
+                            onClick={() => {
+                              soundFX.playClick();
+                              setSelectedAuditSession({
+                                session_id: row.id,
+                                user_name: row.name,
+                                user_message: `Buy ${row.product} under ₹5,000`,
+                                chosen_product: { name: row.product, price: row.price },
+                                guardrail_passed: row.status === 'SUCCESS',
+                                guardrail_ceiling: 5000,
+                                evaluation_matrix: [
+                                  { product_id: 'p1', name: row.product, price: row.price, rating: 4.8, has_return_policy: true, delivery_time_days: 3, composite_score: 4.7, selected: true, rejection_reason: 'Selected as top candidate', loss_code: 'WON_BEST_VALUE' },
+                                  { product_id: 'p2', name: 'Competitor Alternate SKU', price: row.price + 500, rating: 4.1, has_return_policy: false, delivery_time_days: 5, composite_score: 3.6, selected: false, rejection_reason: 'Higher price and no return policy', loss_code: 'LOST_HIGHER_PRICE' }
+                                ]
+                              });
+                              setIsAuditModalOpen(true);
+                            }}
+                            className="minimal-btn minimal-btn-primary"
+                            style={{ fontSize: '0.7rem', padding: '0.35rem 0.65rem' }}
+                          >
+                            Inspect AI Decision
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
         ) : (activeTab === 'setup' || activeTab === 'warehouse_sku') ? (
           /* Merchant Configuration Workspace */
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0px', border: '2px solid #060e26', boxShadow: '4px 4px 0px #060e26', borderRadius: '0px', background: '#ffffff' }}>
@@ -659,6 +801,13 @@ export default function DashboardPage() {
         isOpen={isNodeInspectorOpen}
         onClose={() => setIsNodeInspectorOpen(false)}
         node={selectedNode}
+      />
+
+      {/* Merchant Audit Inspector Modal */}
+      <MerchantAuditInspectorModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        session={selectedAuditSession}
       />
     </div>
   );

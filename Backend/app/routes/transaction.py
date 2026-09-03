@@ -374,6 +374,76 @@ async def get_merchant_insights(
     return {"tenant_id": resolved_tenant_id, "insights": insights, "event_count": len(events)}
 
 
+@router.get(
+    "/merchant/lost-sales-analysis",
+    summary="Merchant Lost Sales Opportunity Analysis",
+    description="Returns detailed breakdown of lost sales reasons and actionable merchant remedies.",
+)
+async def get_lost_sales_analysis(
+    current_user: dict = Depends(get_current_user),
+):
+    tenant_id = _resolve_tenant_id(None, current_user)
+    from app.db.database import get_db_connection
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM audit_events WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 500;",
+            (tenant_id,),
+        )
+        rows = cursor.fetchall()
+    finally:
+        conn.close()
+
+    events = []
+    for row in rows:
+        event = dict(row)
+        try:
+            event["inputs_summary"] = json.loads(event.get("inputs_summary") or "{}")
+            event["output_summary"] = json.loads(event.get("output_summary") or "{}")
+        except Exception:
+            pass
+        events.append(event)
+
+    insights = merchant_insights_agent.compute_insights(events)
+    return {
+        "tenant_id": tenant_id,
+        "lost_opportunity_analysis": insights.get("lost_opportunity_analysis", []),
+        "graceful_failures_summary": insights.get("graceful_failures_summary", {}),
+    }
+
+
+@router.get(
+    "/merchant/explain-decision/{session_id}",
+    summary="Explain AI Decision for Session",
+    description="Returns side-by-side candidate comparison matrix and decision explainability details.",
+)
+async def explain_decision(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    tenant_id = _resolve_tenant_id(None, current_user)
+    state = load_transaction_checkpoint(session_id, tenant_id)
+    if not state:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transaction session {session_id} not found.",
+        )
+    return {
+        "session_id": session_id,
+        "tenant_id": tenant_id,
+        "user_message": state.get("user_message"),
+        "intent": state.get("intent"),
+        "chosen_product": state.get("chosen_product"),
+        "evaluation_matrix": state.get("evaluation_matrix", []),
+        "win_loss_reason": state.get("win_loss_reason"),
+        "guardrail_passed": state.get("guardrail_passed"),
+        "guardrail_ceiling": state.get("guardrail_ceiling"),
+        "graceful_failure_payload": state.get("graceful_failure_payload"),
+        "audit_log": state.get("audit_log", []),
+    }
+
+
 @router.websocket("/ws/{session_id}")
 async def transaction_websocket(websocket: WebSocket, session_id: str):
     """
