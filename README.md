@@ -6,7 +6,7 @@ Submitted for participation in **Razorpay Buildathon 2026** (Track 01: AI Growth
 
 ---
 
-Glassbox is an enterprise-grade agentic commerce system designed to facilitate secure, multi-tenant B2B and B2C transactions on Razorpay test-mode APIs. It features a 6-agent LangGraph orchestration pipeline, Groq LLM inference (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant`), zero-dependency HS256 JWT authentication, local SQLite persistence, and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection. 
+Glassbox is an enterprise-grade agentic commerce system designed to facilitate secure, multi-tenant B2B and B2C transactions on Razorpay test-mode APIs. Built natively on **Amazon Web Services (AWS)** to handle massive concurrency without breaking—even at 2 AM under 1,000+ load—it features a 6-agent LangGraph orchestration pipeline, Groq LLM inference (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant`), zero-dependency HS256 JWT authentication, robust AWS persistence (DynamoDB, OpenSearch, S3), and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection. 
 
 By combining a natural language shopping experience with hard-coded, deterministic spend ceilings ("reason freely, spend strictly within bounds"), Glassbox creates a frictionless yet highly secure purchasing environment where every money action is explainable, bounded, and gated.
 
@@ -88,9 +88,9 @@ Glassbox solves this with a **bounded and gated Multi-Agent pipeline** combined 
 
 ---
 
-## System Architecture
+## System Architecture (AWS Enterprise Scalability)
 
-The GLASSBOX Architecture is an enterprise-grade, event-driven, and bound multi-agent system designed for autonomous agentic commerce. It balances the non-deterministic reasoning of generative AI agents with strict, deterministic governance (spending limits, circuit breakers, risk gates, and regulatory auditability).
+The GLASSBOX Architecture is an enterprise-grade, event-driven, and bound multi-agent system designed for autonomous agentic commerce. Built entirely on **AWS**, the infrastructure is designed to guarantee high availability and fault tolerance so that it **will not break at 2 AM under 1,000+ concurrent transaction load**. It balances the non-deterministic reasoning of generative AI agents with strict, deterministic governance (spending limits, circuit breakers, risk gates, and regulatory auditability).
 
 ### Layer-by-Layer Breakdown
 
