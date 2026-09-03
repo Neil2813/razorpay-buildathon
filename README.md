@@ -239,36 +239,52 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-    participant Buyer as Buyer (React UI)
+    autonumber
+    actor Buyer as Buyer (React UI)
     participant API as FastAPI Orchestrator
     participant Concierge as Concierge Agent (70B)
-    participant Catalog as Catalog RAG Agent (8B)
+    participant Catalog as Catalog RAG (Vector + 8B)
     participant Neg as Negotiation Agent (70B)
-    participant Risk as ML Risk Engine
-    participant Pay as Payment Agent
-    participant Audit as Audit Observer
+    participant Risk as ML Risk Engine (XGBoost)
+    participant Pay as Payment Worker (SDK)
+    participant Audit as Audit Sink / EventBus
 
-    Buyer->>API: POST /api/transaction/run (user_message)
-    API->>Concierge: Parse natural language intent
-    Concierge-->>API: Intent JSON {category, max_budget}
-    API->>Catalog: Vector search & hard-filter stock
+    Buyer->>API: POST /api/transaction/run {user_message, session_id}
+    activate API
+
+    API->>Concierge: Parse intent & constraints
+    Concierge-->>API: Intent JSON {category, max_budget, preferences}
+
+    API->>Catalog: Parametric filter & vector search
     Catalog-->>API: Ranked candidate products
-    API->>Neg: Propose product match
-    Neg->>Neg: Code check: price <= guardrail_ceiling
-    alt Exceeds Ceiling
-        Neg-->>Buyer: Route to Human Confirmation
+
+    API->>Neg: Evaluate optimal product match
+    Neg-->>API: Selected product candidate
+
+    Note over API: Deterministic Code Guardrail Check<br/>price <= guardrail_ceiling
+
+    alt Price Exceeds Ceiling
+        API->>Audit: Log event: GUARDRAIL_EXCEEDED
+        API-->>Buyer: 200 OK {status: "NEEDS_CONFIRMATION", action: "APPROVE_OVERSPEND", product}
     else Guardrail Passed
-        API->>Risk: Score fraud/return risk
-        Risk-->>API: Risk Score & Feature Breakdown
-        alt Score > Threshold
-            Risk-->>Buyer: Force Fraud Escalation
-        else Safe
-            API->>Pay: Execute Razorpay Order & Payment
-            Pay-->>API: Success or Single-Retry Response
-            API->>Audit: Log State Transition & Broadcast WS
-            Audit-->>Buyer: Transaction Complete + Audit Trail
+        API->>Risk: Infer fraud & chargeback risk
+        Risk-->>API: Risk Score & Features
+
+        alt Risk Score > Threshold
+            API->>Audit: Log event: HIGH_RISK_FLAGGED
+            API-->>Buyer: 200 OK {status: "ESCALATED", reason: "STEP_UP_AUTH_REQUIRED"}
+        else Risk Clear
+            API->>Pay: Execute payment order (Razorpay SDK)
+            Pay-->>API: Payment capture confirmation
+
+            par Audit & Broadcast
+                API->>Audit: Emit transaction immutable state
+            and Client Notification
+                API-->>Buyer: 200 OK {status: "SUCCESS", order_id, audit_summary}
+            end
         end
     end
+    deactivate API
 ```
 
 ---
