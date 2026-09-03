@@ -291,42 +291,75 @@ Using Groq's LPU hardware, agent completions return within **150–300ms**, enab
 
 ---
 
-## Multi-Agent System
+## Agentic AI Architecture (Multi-Agent System)
 
 ![Multi-Agent Architecture](Diagrams/MultiAgentArchitecture.png)
 
-The multi-agent system uses LangGraph to orchestrate specialized LLM and ML nodes over a shared state:
+The GLASSBOX Multi-Agent System uses LangGraph to orchestrate specialized LLM and ML nodes over a shared state.
+**LLM runtime:** Groq (all LLM-driven agents call Groq's OpenAI-compatible `/openai/v1/chat/completions` endpoint).
+
+### 1. Shared State
 
 ```python
 class TransactionState(TypedDict):
     tenant_id: str
     session_id: str
-    user_message: str
-    intent: dict
-    catalog_candidates: list[dict]
+    user_message: str                 # raw buyer input
+    intent: dict                      # {category, budget_max, size, deadline, ...}
+    catalog_candidates: list[dict]    # ranked products with scores + reasons
     chosen_product: dict | None
-    guardrail_ceiling: float
+    guardrail_ceiling: float          # hard, code-set, never LLM-set
     guardrail_passed: bool
     risk_score: float | None
     risk_features: dict | None
-    payment_attempts: list[dict]
-    payment_status: Literal["pending", "success", "failed", "escalated"]
+    payment_attempts: list[dict]      # each attempt: status, reason, timestamp
+    payment_status: Literal["pending","success","failed","escalated"]
     escalation_message: str | None
-    audit_log: list[dict]
-    current_agent: str
+    audit_log: list[dict]             # every agent writes an event here, always
+    current_agent: str                # drives the live "agent status rail" in the UI
 ```
 
-### Core Agents
+### 2. Agents Overview
 
-| Agent | File | Model | Key Responsibility |
-|---|---|---|---|
-| **Concierge Agent** | `app/agents/concierge_agent.py` | `llama-3.3-70b-versatile` | Natural language intent extraction into structured JSON schema. |
-| **Catalog Agent** | `app/agents/catalog_agent.py` | `llama-3.1-8b-instant` | RAG retrieval, catalog filtering, and match justification. |
-| **Negotiation Agent** | `app/agents/decision_agent.py` | `llama-3.3-70b-versatile` | Product selection and code-level spend ceiling verification. |
-| **Risk Agent** | `app/agents/risk_agent.py` | XGBoost + LightGBM | ML-based fraud risk scoring & SHAP feature translation. |
-| **Payment Agent** | `app/agents/payment_execution_agent.py` | `llama-3.1-8b-instant` | Razorpay API integration with fixed 1-retry fallback logic. |
-| **Audit Agent** | `app/agents/ledger_agent.py` | `llama-3.3-70b-versatile` | Append-only event auditing & WebSocket streaming. |
-| **Merchant Insights** | `app/agents/merchant_insights_agent.py` | `llama-3.1-8b-instant` | Asynchronous merchant revenue & acceptance analytics. |
+| Agent | File | Model | Role | Decides |
+|---|---|---|---|---|
+| **Concierge** | `app/agents/concierge_agent.py` | `llama-3.3-70b-versatile` | Turn messy natural language into structured intent. | Structured intent |
+| **Catalog (RAG)** | `app/agents/catalog_agent.py` | `llama-3.1-8b-instant` | Retrieve and rank real candidate products. | Ranking/justification |
+| **Negotiation** | `app/agents/decision_agent.py` | `llama-3.3-70b-versatile` | Chooses final product & enforces spend ceiling via code. | Chosen product |
+| **Risk** | `app/agents/risk_agent.py` | ML Model (XGBoost) | Score transaction for fraud/return risk. | Risk score |
+| **Payment** | `app/agents/payment_execution_agent.py` | `llama-3.1-8b-instant` | Talk to Razorpay APIs; formats escalation messages. | — |
+| **Audit/Ledger** | `app/agents/ledger_agent.py` | `llama-3.3-70b-versatile` | Summarizes events for human-readable audit logs. | — |
+| **Merchant Insights** | `app/agents/merchant_insights_agent.py` | `llama-3.1-8b-instant` | Summarizes aggregated audit logs for merchants (async). | Phrasing of real stats |
+
+### 3. The LangGraph Wiring
+
+```mermaid
+graph TD
+    A[Concierge Agent] --> B{needs_clarification?}
+    B -- Yes --> C[User]
+    B -- No --> D[Catalog Agent RAG]
+    
+    D --> E{empty candidates?}
+    E -- Yes --> F[Graceful no match]
+    E -- No --> G[Negotiation Agent]
+    
+    G --> H{guardrail passed?}
+    H -- No --> I[Ask for confirmation]
+    H -- Yes --> J[Risk Agent]
+    
+    J --> K{risk below threshold?}
+    K -- No --> L[Force confirmation]
+    K -- Yes --> M[Payment Agent]
+    
+    M --> N[Audit/Ledger Agent]
+    
+    N --> O[Merchant Insights Agent]
+```
+
+### 4. Key Implementation Rules
+- **Guardrails**: Hard checks (like `guardrail_ceiling` and retry limits) are ALWAYS enforced by deterministic code, never by the LLM. 
+- **Audit**: Every state mutation triggers an append-only event in the `audit_log`.
+- **Failure Handling**: Failures map to specific, graceful escalation paths rather than crashing or looping indefinitely.
 
 ---
 
