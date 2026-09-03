@@ -4,7 +4,11 @@ This is the backend service for the **GLASSBOX** agentic commerce system. It pro
 
 ## Architecture & Features
 
+![System Architecture](../Diagrams/Architecture.png)
 ### 1. LangGraph Multi-Agent System (The Virtual Brain)
+
+![Multi-Agent Architecture](../Diagrams/MultiAgentArchitecture.png)
+
 The core of the transaction process is handled by a suite of specialized agents working sequentially and securely:
 *   **Concierge Agent:** Parses natural language intent into structured boundaries.
 *   **Catalog Agent (RAG):** Retrieves candidate products using deterministic eligibility filtering.

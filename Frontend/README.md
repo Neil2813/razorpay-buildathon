@@ -1,16 +1,38 @@
-# React + Vite
+# GlassBox Frontend - AI Agentic Commerce UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is the frontend application for the **GLASSBOX** agentic commerce system. It provides a real-time, conversational interface for buyers to interact with the LangGraph multi-agent backend, as well as a comprehensive dashboard for merchants to view insights and manage tenant configurations.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Framework:** React 19, Vite 8, TypeScript
+- **Styling:** Tailwind CSS 4, Shadcn UI
+- **Routing & State:** React Router DOM
+- **Icons & Animations:** Lucide React, Framer Motion
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Live Agent Status Rail:** Real-time WebSocket connection to the backend to display the exact status of the 6-agent transaction pipeline (Concierge → Catalog → Negotiation → Risk → Payment → Audit).
+- **Conversational Checkout:** A chat-like interface where buyers can state their purchasing intent in natural language.
+- **Merchant Dashboard:** Secure area for merchants (using JWT auth) to view AI buyer acceptance rates, top escalation reasons, and manage spend ceilings.
+- **Responsive Design:** Fully responsive UI built with Tailwind CSS and Shadcn UI components.
 
-## Expanding the Oxlint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Prerequisites
+- Node.js (v18 or higher)
+- npm, yarn, or pnpm
+
+### Installation
+```powershell
+cd d:\RazorPay\Frontend
+npm install
+```
+
+### Running the Development Server
+```powershell
+npm run dev
+```
+The application will be available at `http://localhost:5173`.
+
+### Connecting to the Backend
+Ensure the FastAPI backend is running on `http://localhost:8000` (or as configured). The frontend uses this URL for REST API calls and WebSocket connections to stream agent events.
