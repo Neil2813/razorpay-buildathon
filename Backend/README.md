@@ -1,6 +1,8 @@
 # GlassBox Backend - AI Agentic Commerce Service
 
-This is the backend service for the **GLASSBOX** agentic commerce system. It provides a robust, multi-tenant FastAPI backend that powers a 6-agent LangGraph orchestration, secure JWT authentication, local SQLite persistence, and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection.
+This is the backend service for the **GLASSBOX** agentic commerce system. It provides a robust, multi-tenant FastAPI backend that powers a 6-agent LangGraph orchestration, secure JWT authentication, local SQLite persistence for local development (with AWS DynamoDB & OpenSearch as cloud production targets), and a state-of-the-art Hybrid Machine Learning Risk Engine for real-time fraud detection.
+
+> **Deployment Status:** Glassbox runs locally today on FastAPI and SQLite for demo and evaluation purposes. Production deployment targets the serverless AWS architecture, with `serverless.yml` and `lambda_handler.py` included in this directory as the AWS cloud deployment entry points.
 
 ## Architecture & Features
 
@@ -23,12 +25,16 @@ The core of the transaction process is handled by a suite of specialized agents 
 *   **Roles:** Distinct roles for `buyer`, `merchant_admin`, and `platform_admin`.
 *   **Tenant Isolation:** All database tables and spend ceilings are scoped to `tenant_id`.
 
-### 3. Deep Security Layer
+### 3. Database & Persistence Architecture
+*   **Local Development:** SQLite (WAL mode) with Supabase pgvector for vector search.
+*   **Production Target:** AWS DynamoDB (single transactional source of truth) with Amazon OpenSearch Service (product catalog & vector search) and S3 Glacier Vault Lock (immutable audit trails).
+
+### 4. Deep Security Layer
 *   **Webhook Signature Verification:** Enforces HMAC-SHA256 validation against `X-Razorpay-Signature` to block forged webhook payloads.
 *   **SSRF Protection:** Validates all outbound URLs to block requests to private/internal IPs, loopbacks, and cloud metadata endpoints (e.g., AWS `169.254.169.254`).
 *   **Domain Allowlisting:** Explicitly limits outbound API calls to approved domains (e.g., `api.razorpay.com`, `api.groq.com`).
 
-### 4. Zero Cold-Start Hybrid ML Pipeline
+### 5. Zero Cold-Start Hybrid ML Pipeline
 *   **XGBoost + LightGBM Soft-Voting:** Combines depth-wise tree growth with leaf-wise histogram binning to prevent overfitting on synthetic PaySim artifacts.
 *   **Instant Load:** The `.joblib` model artifact is loaded instantly into memory during the FastAPI lifespan startup event.
 *   **Safe Fallback:** If the environment lacks ML dependencies (like `xgboost` or `lightgbm`), the API automatically falls back to a deterministic rule-based risk calculator without crashing.
@@ -41,7 +47,9 @@ PaySim fraud examples contain a near-deterministic balance-drain signature by de
 
 ---
 
-## Getting Started
+## Local Development & Setup
+
+*The steps below spin up Glassbox backend locally for development and demo purposes. Production deployment targets the serverless AWS architecture described below.*
 
 ### Prerequisites
 *   Python 3.11+
@@ -49,14 +57,14 @@ PaySim fraud examples contain a near-deterministic balance-drain signature by de
 
 ### 1. Setup Environment
 ```powershell
-cd d:\RazorPay\Backend
+cd Backend
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ### 2. Database Initialization & Seeding
-The backend uses a local SQLite database (`glassbox.db`).
+The backend uses a local SQLite database (`glassbox.db`) for local development.
 ```powershell
 # Create tables (Users, Tenants, Catalog, Transactions, Audit)
 python app/db/database.py
@@ -73,11 +81,20 @@ python app/ml/train.py
 python app/ml/evaluate.py
 ```
 
-### 4. Run the Server
+### 4. Run the Local Server
 ```powershell
 uvicorn main:app --reload --port 8000
 ```
 API Documentation available at `http://localhost:8000/docs`.
+
+---
+
+## Production AWS Deployment
+
+Glassbox includes production-ready Serverless Infrastructure-as-Code definitions:
+
+- **`lambda_handler.py`**: Adapts the FastAPI ASGI backend application to run inside AWS Lambda execution environments using [Mangum](https://mangum.io/), converting incoming API Gateway HTTP payloads into ASGI events.
+- **`serverless.yml`**: Configures the Serverless Framework infrastructure setup, provisioning AWS Lambda compute functions, API Gateway HTTP endpoints, IAM execution roles, and binary media types required for AWS deployment.
 
 ---
 
@@ -110,7 +127,9 @@ API Documentation available at `http://localhost:8000/docs`.
 ```text
 Backend/
 ├── main.py                     # FastAPI application factory
-├── glassbox.db                 # SQLite database (auto-generated)
+├── lambda_handler.py           # AWS Lambda Mangum Handler Entrypoint
+├── serverless.yml              # AWS Cloud Serverless Infrastructure as Code
+├── glassbox.db                 # Local SQLite database (auto-generated)
 ├── app/
 │   ├── agents/                 # LangGraph Multi-Agent Nodes (Concierge, Risk, etc.)
 │   ├── auth/                   # JWT & PBKDF2 Security primitives
